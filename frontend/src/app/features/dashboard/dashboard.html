@@ -1,0 +1,27 @@
+<main class="shell">
+  <header class="intro">
+    <h1>Plataforma de gestión nutricional</h1>
+    <p>
+      Base del proyecto lista. Esta pantalla confirma que el tema visual está activo; se sustituye
+      por el dashboard de la nutrióloga.
+    </p>
+    <div class="actions">
+      <button tuiButton type="button" disabled>Crear paciente</button>
+      <button tuiButton type="button" appearance="secondary" disabled>Crear platillo</button>
+    </div>
+  </header>
+
+  <section aria-labelledby="palette-title">
+    <h2 id="palette-title">Paleta base</h2>
+    <ul class="palette">
+      @for (swatch of palette; track swatch.token) {
+        <li>
+          <span class="chip" [style.background]="'var(' + swatch.token + ')'" aria-hidden="true"></span>
+          <span class="name">{{ swatch.name }}</span>
+          <code>{{ swatch.hex }}</code>
+          <span class="use">{{ swatch.use }}</span>
+        </li>
+      }
+    </ul>
+  </section>
+</main>

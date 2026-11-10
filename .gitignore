@@ -1,0 +1,22 @@
+# Secretos
+.env
+.env.*
+!.env.example
+
+# Backend
+backend/bin/
+backend/tmp/
+*.test
+coverage.out
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Configuración local de Claude Code
+.claude/settings.local.json
+
+# SO / editor
+.DS_Store
+Thumbs.db

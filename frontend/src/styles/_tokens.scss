@@ -1,0 +1,53 @@
+// Paleta base del MVP (MVP_SPEC §19.3). Los valores son la fuente de verdad;
+// la marca de la nutrióloga (§19.2) los sobrescribe en runtime vía custom properties.
+// Los pastel se usan en superficies, nunca como color de texto pequeño.
+:root {
+  --nutri-rosa: #f4c9d6;
+  --nutri-salvia: #d7e8d5;
+  --nutri-lavanda: #ddd6f2;
+  --nutri-mantequilla: #f8e8b8;
+  --nutri-cielo: #d8e8f2;
+  --nutri-marfil: #faf7f2;
+  --nutri-texto: #514653;
+  --nutri-borde: #e9e3e5;
+
+  --nutri-font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --nutri-font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+
+  // Derivados del texto ciruela: no introducen tonos nuevos.
+  --nutri-texto-suave: color-mix(in srgb, var(--nutri-texto) 82%, var(--nutri-marfil));
+  --nutri-texto-fuerte: color-mix(in srgb, var(--nutri-texto) 86%, black);
+
+  // Superficies semánticas para niveles de alerta (§14) y estados.
+  --nutri-surface-info: var(--nutri-cielo);
+  --nutri-surface-warning: var(--nutri-mantequilla);
+  --nutri-surface-critical: var(--nutri-rosa);
+  --nutri-surface-success: var(--nutri-salvia);
+  --nutri-surface-accent: var(--nutri-lavanda);
+}
+
+// Mapeo de la paleta a los tokens de Taiga UI.
+:root,
+[tuiTheme='light'] {
+  --tui-font-heading: var(--nutri-font-display);
+  --tui-font-text: var(--nutri-font-ui);
+
+  --tui-background-base: var(--nutri-marfil);
+  --tui-background-base-alt: color-mix(in srgb, var(--nutri-marfil) 70%, var(--nutri-borde));
+  --tui-background-elevation-1: #fff;
+
+  --tui-background-accent-1: var(--nutri-texto);
+  --tui-background-accent-1-hover: var(--nutri-texto-fuerte);
+  --tui-background-accent-1-pressed: color-mix(in srgb, var(--nutri-texto) 74%, black);
+  --tui-text-primary-on-accent-1: var(--nutri-marfil);
+
+  --tui-text-primary: var(--nutri-texto);
+  --tui-text-secondary: var(--nutri-texto-suave);
+  --tui-text-tertiary: var(--nutri-texto-suave);
+  --tui-text-action: var(--nutri-texto);
+  --tui-text-action-hover: var(--nutri-texto-fuerte);
+
+  --tui-border-normal: var(--nutri-borde);
+  --tui-border-hover: color-mix(in srgb, var(--nutri-borde) 60%, var(--nutri-texto));
+  --tui-border-focus: var(--nutri-texto);
+}

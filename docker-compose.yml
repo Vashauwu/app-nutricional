@@ -1,0 +1,33 @@
+# Ambiente de desarrollo local (MVP_SPEC §24.1). Credenciales solo para desarrollo.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: nutri
+      POSTGRES_PASSWORD: nutri_dev
+      POSTGRES_DB: nutri
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nutri -d nutri"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: nutri
+      MINIO_ROOT_PASSWORD: nutri_dev_secret
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+
+volumes:
+  pgdata:
+  miniodata:

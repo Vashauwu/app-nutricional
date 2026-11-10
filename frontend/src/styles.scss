@@ -1,0 +1,40 @@
+@use './styles/tokens';
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--nutri-marfil);
+  color: var(--nutri-texto);
+  font-family: var(--nutri-font-ui);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+.nutri-display {
+  font-family: var(--nutri-font-display);
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+// Foco visible (WCAG 2.2 AA, §20.1)
+:focus-visible {
+  outline: 2px solid var(--nutri-texto);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
