@@ -8,13 +8,234 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
+	ActivatePatientByUser(ctx context.Context, userID uuid.NullUUID) error
+	AssignCustomEquivalence(ctx context.Context, arg AssignCustomEquivalenceParams) error
+	AssignRoleByCode(ctx context.Context, arg AssignRoleByCodeParams) error
+	BumpPlanRevision(ctx context.Context, arg BumpPlanRevisionParams) (MealPlan, error)
+	// Cumplimiento por día (para reportes diarios y semanales).
+	ComplianceByDay(ctx context.Context, arg ComplianceByDayParams) ([]ComplianceByDayRow, error)
+	ComplianceByPatient(ctx context.Context, arg ComplianceByPatientParams) ([]ComplianceByPatientRow, error)
+	// Cumplimiento: comidas programadas (planes no borradores) frente a registradas.
+	ComplianceCounts(ctx context.Context, arg ComplianceCountsParams) (ComplianceCountsRow, error)
+	// Consume el token de un solo uso de forma atómica; devuelve el usuario si era válido.
+	ConsumeResetToken(ctx context.Context, tokenHash []byte) (uuid.UUID, error)
+	CountEntryPhotos(ctx context.Context, entryID uuid.UUID) (int32, error)
+	// Pendientes de revisión (para el dashboard).
+	CountPendingReview(ctx context.Context) (int32, error)
+	// ---------- Ediciones ----------
+	CreateEdition(ctx context.Context, arg CreateEditionParams) (SmaeEdition, error)
+	CreatePatient(ctx context.Context, arg CreatePatientParams) (Patient, error)
+	CreateResetToken(ctx context.Context, arg CreateResetTokenParams) error
+	CreateSession(ctx context.Context, arg CreateSessionParams) (UserSession, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// ---------- Rol paciente ----------
+	// Plan vigente: publicado y dentro de su periodo; si no hay, el publicado más reciente.
+	CurrentPublishedPlan(ctx context.Context, arg CurrentPublishedPlanParams) (MealPlan, error)
+	// Indicadores del tablero de la nutrióloga (MVP_SPEC §13).
+	DashboardPatientCounts(ctx context.Context) (DashboardPatientCountsRow, error)
+	DashboardPlanCounts(ctx context.Context) ([]DashboardPlanCountsRow, error)
+	DeactivateConsentType(ctx context.Context, documentType string) error
+	DeleteAllergy(ctx context.Context, arg DeleteAllergyParams) (int64, error)
+	DeleteCondition(ctx context.Context, arg DeleteConditionParams) (int64, error)
+	DeleteCustomPortions(ctx context.Context, customFoodID uuid.UUID) error
+	// Solo se puede borrar un registro sin fotografías ni comentarios de la nutrióloga (conserva trazabilidad).
+	DeleteEntryIfEmpty(ctx context.Context, arg DeleteEntryIfEmptyParams) (int64, error)
+	DeleteMedication(ctx context.Context, arg DeleteMedicationParams) (int64, error)
+	DeletePreference(ctx context.Context, arg DeletePreferenceParams) (int64, error)
+	// Un platillo solo es visible para la paciente si aparece en SU plan publicado.
+	DishInPatientPublishedPlan(ctx context.Context, arg DishInPatientPublishedPlanParams) (bool, error)
+	// Autorización de descarga: ¿de quién es el archivo y quién puede verlo?
+	DocumentAccessByFile(ctx context.Context, fileObjectID uuid.UUID) (DocumentAccessByFileRow, error)
+	// Al terminar el periodo el plan pasa a finalizado (§11).
+	FinalizeExpiredPlans(ctx context.Context, endDate pgtype.Date) ([]FinalizeExpiredPlansRow, error)
+	GetActiveEdition(ctx context.Context) (SmaeEdition, error)
+	GetCustomFood(ctx context.Context, id uuid.UUID) (CustomFood, error)
+	GetDish(ctx context.Context, id uuid.UUID) (Dish, error)
+	GetDishForPlan(ctx context.Context, id uuid.UUID) (GetDishForPlanRow, error)
+	GetDishVersion(ctx context.Context, arg GetDishVersionParams) (DishVersion, error)
+	GetDocument(ctx context.Context, arg GetDocumentParams) (PatientDocument, error)
+	GetEdition(ctx context.Context, id uuid.UUID) (SmaeEdition, error)
+	GetEntry(ctx context.Context, id uuid.UUID) (TrackingEntry, error)
+	GetFile(ctx context.Context, id uuid.UUID) (FileObject, error)
+	GetFood(ctx context.Context, id uuid.UUID) (GetFoodRow, error)
+	GetFoodByEditionCode(ctx context.Context, arg GetFoodByEditionCodeParams) (GetFoodByEditionCodeRow, error)
+	// ---------- Sustitución ----------
+	GetItemForSubstitution(ctx context.Context, arg GetItemForSubstitutionParams) (GetItemForSubstitutionRow, error)
+	GetPatient(ctx context.Context, id uuid.UUID) (Patient, error)
+	GetPatientByUserID(ctx context.Context, userID uuid.NullUUID) (Patient, error)
+	GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error)
+	GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid.UUID) (SmaeRecalcBatch, error)
+	GetRevision(ctx context.Context, arg GetRevisionParams) (MealPlanRevision, error)
+	GetSessionByID(ctx context.Context, id uuid.UUID) (UserSession, error)
+	// Busca por el hash vigente o por el anterior (para detectar reutilización).
+	GetSessionByRefreshHash(ctx context.Context, refreshTokenHash []byte) (UserSession, error)
+	GetSetting(ctx context.Context, key string) (AppSetting, error)
+	GetSnapshot(ctx context.Context, dishVersionID uuid.UUID) (DishNutritionSnapshot, error)
+	GetTemplate(ctx context.Context, id uuid.UUID) (MealPlanTemplate, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	// Nombres de ingredientes de una versión de platillo (para detectar alérgenos y restricciones).
+	IngredientNames(ctx context.Context, arg IngredientNamesParams) ([]string, error)
+	InsertAcceptance(ctx context.Context, arg InsertAcceptanceParams) (ConsentAcceptance, error)
+	InsertAllergy(ctx context.Context, arg InsertAllergyParams) (PatientAllergy, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	InsertComment(ctx context.Context, arg InsertCommentParams) (MealComment, error)
+	InsertCondition(ctx context.Context, arg InsertConditionParams) (PatientCondition, error)
+	InsertConsentVersion(ctx context.Context, arg InsertConsentVersionParams) (ConsentDocument, error)
+	// ---------- Alimentos personalizados ----------
+	InsertCustomFood(ctx context.Context, arg InsertCustomFoodParams) (CustomFood, error)
+	InsertCustomPortion(ctx context.Context, arg InsertCustomPortionParams) error
+	InsertDish(ctx context.Context, arg InsertDishParams) (Dish, error)
+	InsertDishVersion(ctx context.Context, arg InsertDishVersionParams) (DishVersion, error)
+	InsertDocument(ctx context.Context, arg InsertDocumentParams) (PatientDocument, error)
+	InsertFile(ctx context.Context, arg InsertFileParams) (FileObject, error)
+	InsertFood(ctx context.Context, arg InsertFoodParams) (uuid.UUID, error)
+	// ---------- Taxonomía y alimentos ----------
+	InsertGroup(ctx context.Context, arg InsertGroupParams) (SmaeFoodGroup, error)
+	InsertImportBatch(ctx context.Context, arg InsertImportBatchParams) (SmaeImportBatch, error)
+	InsertIngredient(ctx context.Context, arg InsertIngredientParams) error
+	InsertItem(ctx context.Context, arg InsertItemParams) error
+	// ---------- Mediciones (append-only) ----------
+	InsertMeasurement(ctx context.Context, arg InsertMeasurementParams) (PatientMeasurement, error)
+	InsertMedication(ctx context.Context, arg InsertMedicationParams) (PatientMedication, error)
+	InsertNote(ctx context.Context, arg InsertNoteParams) (PatientNote, error)
+	// ---------- Planes ----------
+	InsertPlan(ctx context.Context, arg InsertPlanParams) (MealPlan, error)
+	InsertPlanEvent(ctx context.Context, arg InsertPlanEventParams) error
+	InsertPortion(ctx context.Context, arg InsertPortionParams) error
+	InsertPreference(ctx context.Context, arg InsertPreferenceParams) (PatientFoodPreference, error)
+	InsertPublication(ctx context.Context, arg InsertPublicationParams) (MealPlanPublication, error)
+	InsertRecalcBatch(ctx context.Context, arg InsertRecalcBatchParams) (SmaeRecalcBatch, error)
+	InsertRecalcDecision(ctx context.Context, arg InsertRecalcDecisionParams) error
+	// ---------- Revisiones, publicaciones, historial ----------
+	InsertRevision(ctx context.Context, arg InsertRevisionParams) error
+	InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) error
+	InsertSubgroup(ctx context.Context, arg InsertSubgroupParams) (SmaeFoodSubgroup, error)
+	// ---------- Sustituciones autorizadas ----------
+	InsertSubstitution(ctx context.Context, arg InsertSubstitutionParams) (DishSubstitution, error)
+	// ---------- Plantillas ----------
+	InsertTemplate(ctx context.Context, arg InsertTemplateParams) (MealPlanTemplate, error)
+	InsertTrackingPhoto(ctx context.Context, arg InsertTrackingPhotoParams) (TrackingPhoto, error)
+	InvalidateUserResetTokens(ctx context.Context, userID uuid.UUID) error
+	ItemPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]ItemPlanIDsRow, error)
+	LastPlanEvent(ctx context.Context, planID uuid.UUID) (MealPlanEvent, error)
+	LinkPatientUser(ctx context.Context, arg LinkPatientUserParams) error
+	ListAcceptances(ctx context.Context, patientID uuid.UUID) ([]ListAcceptancesRow, error)
+	// ---------- Consentimientos ----------
+	ListActiveConsentDocuments(ctx context.Context) ([]ConsentDocument, error)
+	ListActiveSessions(ctx context.Context, userID uuid.UUID) ([]UserSession, error)
+	// ---------- Alergias ----------
+	ListAllergies(ctx context.Context, patientID uuid.UUID) ([]PatientAllergy, error)
+	// Consulta de la bitácora de auditoría (solo lectura; la escritura es del módulo audit).
+	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
+	ListCommentsForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]ListCommentsForEntriesRow, error)
+	// ---------- Condiciones ----------
+	ListConditions(ctx context.Context, patientID uuid.UUID) ([]PatientCondition, error)
+	// Versiones de un documento legal con el número de aceptaciones vigentes (§4.1).
+	ListConsentVersions(ctx context.Context, documentType string) ([]ListConsentVersionsRow, error)
+	// ---------- Recálculo por nueva edición ----------
+	ListCurrentDishVersions(ctx context.Context) ([]ListCurrentDishVersionsRow, error)
+	ListCustomFoods(ctx context.Context, arg ListCustomFoodsParams) ([]ListCustomFoodsRow, error)
+	ListCustomPortionsFor(ctx context.Context, dollar_1 []uuid.UUID) ([]CustomFoodPortion, error)
+	ListDays(ctx context.Context, planID uuid.UUID) ([]MealPlanDay, error)
+	ListDishVersions(ctx context.Context, dishID uuid.UUID) ([]ListDishVersionsRow, error)
+	// Listado con filtros en el servidor y carga progresiva (§6.1, §16).
+	ListDishes(ctx context.Context, arg ListDishesParams) ([]ListDishesRow, error)
+	ListDocuments(ctx context.Context, arg ListDocumentsParams) ([]ListDocumentsRow, error)
+	ListEditions(ctx context.Context) ([]SmaeEdition, error)
+	// Bandeja de actividad con filtros en servidor.
+	ListEntries(ctx context.Context, arg ListEntriesParams) ([]ListEntriesRow, error)
+	// Búsqueda sin acentos, filtro por grupo y paginación (carga progresiva, §20.2).
+	ListFoods(ctx context.Context, arg ListFoodsParams) ([]ListFoodsRow, error)
+	ListGroups(ctx context.Context, editionID uuid.UUID) ([]SmaeFoodGroup, error)
+	ListIngredients(ctx context.Context, dishVersionID uuid.UUID) ([]DishIngredient, error)
+	ListMeasurements(ctx context.Context, patientID uuid.UUID) ([]PatientMeasurement, error)
+	// ---------- Medicamentos ----------
+	ListMedications(ctx context.Context, patientID uuid.UUID) ([]PatientMedication, error)
+	// ---------- Notas privadas ----------
+	ListNotes(ctx context.Context, patientID uuid.UUID) ([]PatientNote, error)
+	// Filtros en el servidor y paginación (§16, §20.2). Búsqueda sin acentos.
+	ListPatients(ctx context.Context, arg ListPatientsParams) ([]ListPatientsRow, error)
+	// Documentos vigentes que el paciente todavía no acepta.
+	ListPendingConsentDocuments(ctx context.Context, patientID uuid.UUID) ([]ConsentDocument, error)
+	ListPermissionCodesForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
+	ListPhotosForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]TrackingPhoto, error)
+	ListPlanEvents(ctx context.Context, planID uuid.UUID) ([]MealPlanEvent, error)
+	// Todo lo necesario para dibujar el plan: platillo, su versión y la nutrición por porción de ESA versión.
+	ListPlanItems(ctx context.Context, planID uuid.UUID) ([]ListPlanItemsRow, error)
+	ListPlanSlots(ctx context.Context, planID uuid.UUID) ([]ListPlanSlotsRow, error)
+	ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPlansRow, error)
+	ListPortionsForFoods(ctx context.Context, dollar_1 []uuid.UUID) ([]SmaePortion, error)
+	// ---------- Preferencias ----------
+	ListPreferences(ctx context.Context, patientID uuid.UUID) ([]PatientFoodPreference, error)
+	ListPublications(ctx context.Context, planID uuid.UUID) ([]MealPlanPublication, error)
+	// Planes publicados vigentes, para el tablero de alertas.
+	ListPublishedPlanIDs(ctx context.Context) ([]uuid.UUID, error)
+	ListRecalcDecisions(ctx context.Context, batchID uuid.UUID) ([]SmaeRecalcDecision, error)
+	ListRevisions(ctx context.Context, planID uuid.UUID) ([]ListRevisionsRow, error)
 	ListRoleCodesForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
+	ListSubgroups(ctx context.Context, editionID uuid.UUID) ([]SmaeFoodSubgroup, error)
+	ListSubstitutions(ctx context.Context, dishVersionID uuid.UUID) ([]DishSubstitution, error)
+	ListTemplates(ctx context.Context, patientID uuid.UUID) ([]MealPlanTemplate, error)
+	MarkEntryReviewed(ctx context.Context, id uuid.UUID) (int64, error)
+	PatientEmailTaken(ctx context.Context, arg PatientEmailTakenParams) (bool, error)
+	// Espacio usado por un paciente (archivos vigentes); size_bytes incluye la miniatura.
+	PatientStorageUsed(ctx context.Context, ownerPatientID uuid.NullUUID) (int64, error)
+	PlansEndingSoon(ctx context.Context, arg PlansEndingSoonParams) ([]PlansEndingSoonRow, error)
+	// Cuántos planes no archivados usan un platillo (para avisar antes de desactivarlo).
+	PlansUsingDish(ctx context.Context, dishID uuid.UUID) (int64, error)
+	RemoveDaysNotIn(ctx context.Context, arg RemoveDaysNotInParams) error
+	RemoveItem(ctx context.Context, id uuid.UUID) error
+	RemoveItemsNotIn(ctx context.Context, arg RemoveItemsNotInParams) error
+	RemoveSlotsNotIn(ctx context.Context, arg RemoveSlotsNotInParams) error
+	RemoveSubstitution(ctx context.Context, arg RemoveSubstitutionParams) (int64, error)
+	RevokeAcceptance(ctx context.Context, arg RevokeAcceptanceParams) (int64, error)
+	RevokeAllUserSessions(ctx context.Context, userID uuid.UUID) error
+	RevokeOtherSessions(ctx context.Context, arg RevokeOtherSessionsParams) (int64, error)
+	RevokeSession(ctx context.Context, arg RevokeSessionParams) error
+	RevokeSessionByID(ctx context.Context, id uuid.UUID) error
+	RotateSessionToken(ctx context.Context, arg RotateSessionTokenParams) error
+	SetCustomFoodStatus(ctx context.Context, arg SetCustomFoodStatusParams) error
+	SetDishStatus(ctx context.Context, arg SetDishStatusParams) error
+	SetEditionStatus(ctx context.Context, arg SetEditionStatusParams) error
+	SetEntryNeedsReview(ctx context.Context, arg SetEntryNeedsReviewParams) error
+	SetPatientDeleted(ctx context.Context, arg SetPatientDeletedParams) (Patient, error)
+	SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (MealPlan, error)
+	SlotPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]SlotPlanIDsRow, error)
+	SoftDeleteDocument(ctx context.Context, arg SoftDeleteDocumentParams) (uuid.UUID, error)
+	SoftDeleteFile(ctx context.Context, id uuid.UUID) error
+	SoftDeleteNote(ctx context.Context, arg SoftDeleteNoteParams) (int64, error)
+	SoftDeletePlan(ctx context.Context, arg SoftDeletePlanParams) error
+	SoftDeleteTemplate(ctx context.Context, id uuid.UUID) (int64, error)
+	TouchPlanEvent(ctx context.Context, id uuid.UUID) error
+	TouchUserLogin(ctx context.Context, id uuid.UUID) error
+	// Comida del plan publicado de la paciente que se puede registrar (la paciente nunca elige el plan por URL).
+	TrackableItem(ctx context.Context, arg TrackableItemParams) (TrackableItemRow, error)
+	TrackingPhotoOwner(ctx context.Context, fileObjectID uuid.UUID) (uuid.UUID, error)
+	UpdateAllergy(ctx context.Context, arg UpdateAllergyParams) (PatientAllergy, error)
+	UpdateCondition(ctx context.Context, arg UpdateConditionParams) (PatientCondition, error)
+	// Al editar los valores se invalida la validación previa.
+	UpdateCustomFood(ctx context.Context, arg UpdateCustomFoodParams) (CustomFood, error)
+	UpdateDishMeta(ctx context.Context, arg UpdateDishMetaParams) error
+	UpdateDocument(ctx context.Context, arg UpdateDocumentParams) (PatientDocument, error)
+	UpdateMedication(ctx context.Context, arg UpdateMedicationParams) (PatientMedication, error)
+	UpdatePatient(ctx context.Context, arg UpdatePatientParams) (Patient, error)
+	// Guardado con concurrencia optimista: solo actualiza si la revisión coincide.
+	UpdatePlanDoc(ctx context.Context, arg UpdatePlanDocParams) (MealPlan, error)
+	UpdatePreference(ctx context.Context, arg UpdatePreferenceParams) (PatientFoodPreference, error)
+	// Establecer contraseña también activa cuentas invitadas.
+	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	// ---------- Documento: días, tiempos y platillos ----------
+	UpsertDay(ctx context.Context, arg UpsertDayParams) (uuid.UUID, error)
+	UpsertEntry(ctx context.Context, arg UpsertEntryParams) (TrackingEntry, error)
+	UpsertItem(ctx context.Context, arg UpsertItemParams) error
+	UpsertSetting(ctx context.Context, arg UpsertSettingParams) error
+	UpsertSlot(ctx context.Context, arg UpsertSlotParams) error
+	ValidateCustomFood(ctx context.Context, arg ValidateCustomFoodParams) error
 }
 
 var _ Querier = (*Queries)(nil)

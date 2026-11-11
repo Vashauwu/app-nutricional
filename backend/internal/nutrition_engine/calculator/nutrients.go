@@ -19,6 +19,7 @@ type Nutrients struct {
 	ProteinG       decimal.Decimal `json:"protein_g"`
 	CarbohydratesG decimal.Decimal `json:"carbohydrates_g"`
 	LipidsG        decimal.Decimal `json:"lipids_g"`
+	FiberG         decimal.Decimal `json:"fiber_g"`
 }
 
 // Add suma exacta, sin redondeo.
@@ -28,6 +29,7 @@ func (n Nutrients) Add(o Nutrients) Nutrients {
 		ProteinG:       n.ProteinG.Add(o.ProteinG),
 		CarbohydratesG: n.CarbohydratesG.Add(o.CarbohydratesG),
 		LipidsG:        n.LipidsG.Add(o.LipidsG),
+		FiberG:         n.FiberG.Add(o.FiberG),
 	}
 }
 
@@ -77,6 +79,9 @@ func (n Nutrients) mapDiv(multiplier, divisor decimal.Decimal) (Nutrients, error
 		return Nutrients{}, err
 	}
 	if out.LipidsG, err = Div(n.LipidsG.Mul(multiplier), divisor); err != nil {
+		return Nutrients{}, err
+	}
+	if out.FiberG, err = Div(n.FiberG.Mul(multiplier), divisor); err != nil {
 		return Nutrients{}, err
 	}
 	return out, nil

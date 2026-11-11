@@ -1,0 +1,53 @@
+name: Liberar un ambiente
+description: Sincroniza los archivos de despliegue, descarga las imágenes de GHCR y reinicia el ambiente en el VPS (con respaldo previo en producción y reversa automática si falla).
+
+inputs:
+  environment: { description: "prod o staging", required: true }
+  tag: { description: "Etiqueta de las imágenes (commit)", required: true }
+  repo: { description: "Registro, p. ej. ghcr.io/usuario", required: true }
+  host: { required: true }
+  user: { required: true }
+  ssh-key: { required: true }
+  known-hosts: { description: "Salida de `ssh-keyscan` del servidor (fija la huella: evita ataques de intermediario)", required: true }
+  registry-token: { required: true }
+  registry-user: { required: true }
+  site-url: { description: "URL pública del ambiente para la prueba de humo", required: true }
+
+runs:
+  using: composite
+  steps:
+    - name: Preparar SSH
+      shell: bash
+      env:
+        KEY: ${{ inputs.ssh-key }}
+        KNOWN: ${{ inputs.known-hosts }}
+      run: |
+        set -euo pipefail
+        mkdir -p ~/.ssh && chmod 700 ~/.ssh
+        printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+        printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+        [ -s ~/.ssh/known_hosts ] || { echo "DEPLOY_KNOWN_HOSTS está vacío"; exit 1; }
+        printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' "${{ inputs.host }}" "${{ inputs.user }}" > ~/.ssh/config
+
+    - name: Sincronizar archivos de despliegue (sin tocar los .env del servidor)
+      shell: bash
+      run: |
+        set -euo pipefail
+        tar -C deploy --exclude='.env*' -cz . | ssh vps "mkdir -p /opt/nutri/${{ inputs.environment }}/deploy && tar -xz -C /opt/nutri/${{ inputs.environment }}/deploy && chmod +x /opt/nutri/${{ inputs.environment }}/deploy/*.sh"
+
+    - name: Liberar
+      shell: bash
+      env:
+        TOKEN: ${{ inputs.registry-token }}
+      run: |
+        set -euo pipefail
+        # El token es de corta duración (vive lo que el trabajo). Se usa para descargar y se cierra la sesión.
+        printf '%s' "$TOKEN" | ssh vps "docker login ghcr.io -u '${{ inputs.registry-user }}' --password-stdin >/dev/null"
+        trap 'ssh vps "docker logout ghcr.io >/dev/null 2>&1 || true"' EXIT
+        ssh vps "cd /opt/nutri/${{ inputs.environment }}/deploy && ./release.sh ${{ inputs.environment }} ${{ inputs.tag }} ${{ inputs.repo }}"
+
+    - name: Prueba de humo desde fuera
+      shell: bash
+      run: |
+        set -euo pipefail
+        bash deploy/smoke.sh "${{ inputs.site-url }}"
