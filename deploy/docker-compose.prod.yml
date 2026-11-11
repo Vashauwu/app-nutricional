@@ -14,7 +14,7 @@ services:
     environment:
       SITE_ADDRESS: ":80"   # TLS lo termina el Caddy de entrada
     volumes:
-      - ./config.js:/srv/config.js:ro
+      - ./config.${ENV_NAME}.js:/srv/config.js:ro
     networks:
       default:
       edge:
@@ -43,6 +43,8 @@ services:
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY_ID: nutri
       S3_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:?}
+      # Solo staging lo activa: permite crear las cuentas de ejemplo con `admin seed-demo-accounts`.
+      ALLOW_DEMO_ACCOUNTS: ${ALLOW_DEMO_ACCOUNTS:-false}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}

@@ -4,12 +4,19 @@ import { Observable, catchError, throwError } from 'rxjs';
 
 declare global {
   interface Window {
-    NUTRI_CONFIG?: { apiMode?: 'mock' | 'api' };
+    NUTRI_CONFIG?: { apiMode?: 'mock' | 'api'; demoAccounts?: boolean };
   }
 }
 
 /** ¿La app habla con la API real? Se decide en public/config.js, sin recompilar. */
 export const isApiMode = (): boolean => typeof window !== 'undefined' && window.NUTRI_CONFIG?.apiMode === 'api';
+
+/**
+ * ¿Se muestran las cuentas de demostración en el ingreso? Por omisión solo en modo simulado.
+ * En staging se activa con `demoAccounts: true` en config.js (y existen porque `admin seed-demo-accounts` las crea).
+ * En producción debe quedar apagado: no se anuncian cuentas ni contraseñas.
+ */
+export const showDemoAccounts = (): boolean => (typeof window === 'undefined' ? false : (window.NUTRI_CONFIG?.demoAccounts ?? !isApiMode()));
 
 export const API = '/api/v1';
 

@@ -4,6 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { DbService } from '../../core/data/db.service';
+import { showDemoAccounts } from '../../core/api/api-client';
 import { SettingsService } from '../../core/services/settings.service';
 import { FieldError } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
@@ -60,6 +61,7 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
             <a routerLink="/recuperar" class="small">¿Olvidaste tu contraseña?</a>
           </form>
 
+          @if (demo) {
           <div class="demo" role="group" aria-label="Cuentas de demostración">
             <p class="small"><strong>Modo demostración</strong> · contraseña <code>demo1234</code>. Los datos son de ejemplo.</p>
             <div class="row">
@@ -68,6 +70,7 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
               <button tuiButton type="button" size="s" appearance="secondary" (click)="fill('daniela@demo.mx')">Daniela (consentimiento pendiente)</button>
             </div>
           </div>
+          }
         </div>
       </main>
     </div>
@@ -82,6 +85,7 @@ export class Login {
   protected readonly brand = computed(() => this.data.db().settings.brand);
   // Modo API: nombre y colores públicos de la consulta para la pantalla de ingreso.
   private readonly publicBrand = inject(SettingsService).loadPublicBrand().subscribe({ error: () => undefined });
+  protected readonly demo = showDemoAccounts();
   protected readonly show = signal(false);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
