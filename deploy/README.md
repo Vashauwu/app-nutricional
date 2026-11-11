@@ -41,6 +41,14 @@ cd /opt/nutri/staging/deploy        # o /opt/nutri/prod/deploy
 ```
 Las cuentas **no se comparten** entre ambientes: hay que crearlas en cada uno.
 
+**Cuentas de ejemplo solo en staging.** El ingreso de staging muestra tres botones de demostración (`config.staging.js`);
+para que funcionen, créalas una vez en staging (el comando se niega a correr donde `ALLOW_DEMO_ACCOUNTS` no sea `true`):
+```bash
+echo 'ALLOW_DEMO_ACCOUNTS=true' >> .env.staging && ./dc.sh staging up -d
+./dc.sh staging exec api /app/admin seed-demo-accounts      # nutri@demo.mx, ana@demo.mx, daniela@demo.mx · contraseña demo1234
+```
+Producción (`config.prod.js`) **no** muestra el panel ni debe tener esa variable.
+
 ## Operación diaria
 `./dc.sh <prod|staging> <comando docker compose>` dentro de `/opt/nutri/<ambiente>/deploy`:
 ```bash
