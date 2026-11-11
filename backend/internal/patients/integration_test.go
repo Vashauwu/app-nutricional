@@ -405,9 +405,16 @@ func TestPatientsIntegration(t *testing.T) {
 		require.Equal(t, 204, code)
 		pc.login("invitada@demo.mx", "MiClave2026")
 
+		// Al crear su contraseña con la invitación, el paciente deja de estar «invitado».
+		_, seen := nutri.do("GET", "/api/v1/patients/"+b["id"].(string), nil)
+		require.Equal(t, "active", seen["status"], "aceptar la invitación activa al paciente")
+
 		code, me := pc.do("GET", "/api/v1/me/patient", nil)
 		require.Equal(t, 200, code)
 		require.Equal(t, "Ines", me["first_name"])
+		require.NotEmpty(t, me["birth_date"], "el perfil de la paciente incluye su fecha de nacimiento (para calcular la edad)")
+		require.NotEmpty(t, me["sex"])
+		require.Contains(t, me, "phone")
 		require.Equal(t, false, me["consent_complete"])
 		require.NotContains(t, me, "clinical_indications")
 		require.NotContains(t, me, "quota_override_bytes")
@@ -429,6 +436,15 @@ func TestPatientsIntegration(t *testing.T) {
 		require.Equal(t, 422, code, "no se puede aceptar dos veces el mismo documento")
 		_, me = pc.do("GET", "/api/v1/me/patient", nil)
 		require.Equal(t, true, me["consent_complete"])
+
+		code, mine := pc.do("GET", "/api/v1/me/consents", nil)
+		require.Equal(t, 200, code, fmt.Sprint(mine))
+		acc := mine["acceptances"].([]any)
+		require.Len(t, acc, 2, "la paciente ve sus propias aceptaciones")
+		first := acc[0].(map[string]any)
+		require.NotEmpty(t, first["title"])
+		require.NotEmpty(t, first["accepted_at"])
+		require.NotContains(t, first, "evidence_metadata", "la evidencia técnica (IP, navegador) no se expone")
 
 		// Aislamiento: un paciente no puede tocar rutas de la nutrióloga ni ver a otro por URL.
 		code, _ = pc.do("GET", "/api/v1/patients/"+other, nil)

@@ -106,8 +106,8 @@ export class PatientDocuments {
       @if (p(); as pt) {
         <section class="panel" aria-labelledby="h-d">
           <h2 id="h-d" class="panel-head" style="font-size: 1.0625rem">Mis datos</h2>
-          <dl style="display: grid; grid-template-columns: auto 1fr; gap: .375rem var(--space-4); margin: 0"><dt class="muted">Nombre</dt><dd style="margin: 0">{{ pt.profile.firstName }} {{ pt.profile.lastName }}</dd><dt class="muted">Edad</dt><dd style="margin: 0">{{ age() }} años</dd><dt class="muted">Correo</dt><dd style="margin: 0">{{ pt.profile.email }}</dd><dt class="muted">Objetivo</dt><dd style="margin: 0">{{ goal[pt.goal] }}</dd></dl>
-          <p class="small muted">Para corregir tus datos o ejercer tus derechos ARCO, contacta a tu nutrióloga: {{ brand().phone }} · {{ brand().email }}.</p>
+          <dl style="display: grid; grid-template-columns: auto 1fr; gap: .375rem var(--space-4); margin: 0"><dt class="muted">Nombre</dt><dd style="margin: 0">{{ pt.profile.firstName }} {{ pt.profile.lastName }}</dd><dt class="muted">Edad</dt><dd style="margin: 0">{{ age() === '—' ? '—' : age() + ' años' }}</dd><dt class="muted">Correo</dt><dd style="margin: 0">{{ pt.profile.email }}</dd><dt class="muted">Objetivo</dt><dd style="margin: 0">{{ goal[pt.goal] }}</dd></dl>
+          <p class="small muted">Para corregir tus datos o ejercer tus derechos ARCO, contacta a tu nutrióloga{{ contact() ? ': ' + contact() : '' }}.</p>
         </section>
         <section class="panel" aria-labelledby="h-a">
           <h2 id="h-a" class="panel-head" style="font-size: 1.0625rem">Mis aceptaciones</h2>
@@ -138,7 +138,12 @@ export class PatientProfileView {
   protected readonly goal = GOAL_LABEL;
   protected readonly fdt = formatDateTime;
   protected readonly brand = computed(() => this.data.db().settings.brand);
-  protected readonly age = computed(() => (this.p() ? ageFrom(this.p()!.profile.birthDate) : 0));
+  protected readonly age = computed(() => {
+    const a = this.p() ? ageFrom(this.p()!.profile.birthDate) : NaN;
+    return Number.isFinite(a) ? String(a) : '—';
+  });
+  /** Teléfono y correo de la consulta; si no están configurados no se muestra una línea vacía ("· ."). */
+  protected readonly contact = computed(() => [this.brand().phone, this.brand().email].filter((x) => x && x.trim()).join(' · '));
   protected readonly sessions = this.auth.mySessions;
   protected readonly accepted = computed(() => {
     const id = this.p()?.id;

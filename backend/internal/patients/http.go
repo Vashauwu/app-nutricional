@@ -109,6 +109,7 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	// Rol paciente: el paciente se resuelve SIEMPRE desde la sesión, nunca desde la URL.
 	me := v1.Group("/me", auth.Authenticate(ct.auth), auth.RequireRole("patient"), auth.CSRF())
 	me.GET("/patient", ct.meGet)
+	me.GET("/consents", ct.meConsents)
 	me.GET("/consents/pending", ct.mePending)
 	me.POST("/consents/accept", ct.meAccept)
 	me.GET("/measurements", ct.meMeasurements)
@@ -743,8 +744,32 @@ func (ct *Controller) meGet(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"id": p.ID, "first_name": p.FirstName, "last_name": p.LastName, "email": p.Email, "goal": p.Goal, "goal_notes": p.GoalNotes,
+		"birth_date": p.BirthDate.Time.Format("2006-01-02"), "sex": p.Sex, "phone": p.Phone,
 		"measurements_visible": p.MeasurementsVisible, "consent_complete": done,
 	})
+}
+
+// meConsents devuelve las aceptaciones de la propia paciente (sin la evidencia técnica).
+func (ct *Controller) meConsents(c *gin.Context) {
+	p, ok := ct.mePatient(c)
+	if !ok {
+		return
+	}
+	acc, err := ct.svc.Acceptances(c.Request.Context(), p.ID)
+	if err != nil {
+		fail(c, ct.log, err)
+		return
+	}
+	out := make([]acceptanceDTO, 0, len(acc))
+	for _, a := range acc {
+		d := acceptanceDTO{ID: a.ID, DocumentID: a.ConsentDocumentID, AcceptedAt: a.AcceptedAt.Time, Method: a.AcceptanceMethod, Type: a.DocumentType, Version: a.Version, Title: a.Title}
+		if a.RevokedAt.Valid {
+			t := a.RevokedAt.Time
+			d.RevokedAt = &t
+		}
+		out = append(out, d)
+	}
+	c.JSON(http.StatusOK, gin.H{"acceptances": out})
 }
 
 func (ct *Controller) mePending(c *gin.Context) {
