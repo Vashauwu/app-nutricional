@@ -36,6 +36,8 @@ no queden con otro dueño:
 ```bash
 crontab -l | crontab -u deploy -   # copia el cron de root a deploy
 crontab -r                         # y lo quita de root
+crontab -u deploy -l               # debe mostrar la línea del respaldo; si sale vacío, instálala:
+(crontab -u deploy -l 2>/dev/null; echo "15 3 * * * /opt/nutri/prod/deploy/backup.sh prod >> /opt/nutri/backups/backup.log 2>&1") | crontab -u deploy -
 ```
 Prueba desde tu PC: `ssh -i nutri-deploy deploy@157.173.101.148 "docker ps"`.
 

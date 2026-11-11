@@ -83,7 +83,9 @@ done
 (cd /opt/nutri/edge && docker compose up -d && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 || true)
 
 if [ "$ENVN" = prod ]; then
-  ( crontab -l 2>/dev/null | grep -v 'nutri/.*/backup.sh'; echo "15 3 * * * /opt/nutri/prod/deploy/backup.sh prod >> /var/log/nutri-backup.log 2>&1" ) | crontab -
+  # El respaldo corre con el usuario que opera el ambiente: «deploy» si existe (así los archivos no quedan de root), si no, root.
+  CRON_USER=root; id deploy >/dev/null 2>&1 && CRON_USER=deploy
+  ( crontab -u "$CRON_USER" -l 2>/dev/null | grep -v 'nutri/.*/backup.sh'; echo "15 3 * * * /opt/nutri/prod/deploy/backup.sh prod >> /opt/nutri/backups/backup.log 2>&1" ) | crontab -u "$CRON_USER" -
 fi
 ./dc.sh "$ENVN" ps
 docker image prune -f >/dev/null
