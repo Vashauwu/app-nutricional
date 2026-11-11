@@ -28,13 +28,13 @@
 
 // Mapeo de la paleta a los tokens de Taiga UI.
 :root,
-[tuiTheme='light'] {
+[tuiTheme] {
   --tui-font-heading: var(--nutri-font-display);
   --tui-font-text: var(--nutri-font-ui);
 
   --tui-background-base: var(--nutri-marfil);
   --tui-background-base-alt: color-mix(in srgb, var(--nutri-marfil) 70%, var(--nutri-borde));
-  --tui-background-elevation-1: #fff;
+  --tui-background-elevation-1: var(--surface);
 
   --tui-background-accent-1: var(--nutri-texto);
   --tui-background-accent-1-hover: var(--nutri-texto-fuerte);
@@ -50,4 +50,43 @@
   --tui-border-normal: var(--nutri-borde);
   --tui-border-hover: color-mix(in srgb, var(--nutri-borde) 60%, var(--nutri-texto));
   --tui-border-focus: var(--nutri-texto);
+}
+
+// Superficies y estado neutros (modo claro). Los gráficos usan estos tokens.
+:root {
+  --surface: #fff;
+  --chart-1: #514653;
+  --chart-2: #2c5a78;
+  --chart-3: #7a5a0c;
+  --chart-4: #3f6b45;
+  --chart-soft: #d9cde0;
+  color-scheme: light;
+}
+
+// Modo oscuro (§20.1: contraste AA). Se redefine la paleta completa: los pastel pasan a
+// superficies profundas y el ciruela a un tono claro, así todo componente se adapta solo.
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --nutri-marfil: #1d181f;
+  --nutri-texto: #efe6ee;
+  --nutri-borde: #3b323d;
+  --nutri-rosa: #5c3345;
+  --nutri-salvia: #2f4a37;
+  --nutri-lavanda: #443b62;
+  --nutri-mantequilla: #574a22;
+  --nutri-cielo: #29465b;
+  --nutri-texto-suave: #c9bdc9;
+  --nutri-texto-fuerte: #fbf5fb;
+  --surface: #28222a;
+  --danger: #ff9db8;
+  --ok: #9fd8a8;
+  --warn: #ecc96e;
+  --info: #93c8ec;
+  --chart-1: #e7d9ee;
+  --chart-2: #8fc4e8;
+  --chart-3: #ecc96e;
+  --chart-4: #9fd8a8;
+  --chart-soft: #5b4d66;
+  --shadow-s: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-m: 0 8px 24px rgb(0 0 0 / 50%);
 }

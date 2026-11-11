@@ -93,6 +93,6 @@ func TestJSONSerializesDecimalsAsStrings(t *testing.T) {
 	b, err := json.Marshal(Nutrients{EnergyKcal: d("180.50"), ProteinG: d("11.25")})
 	require.NoError(t, err)
 	assert.JSONEq(t,
-		`{"energy_kcal":"180.5","protein_g":"11.25","carbohydrates_g":"0","lipids_g":"0"}`,
+		`{"energy_kcal":"180.5","protein_g":"11.25","carbohydrates_g":"0","lipids_g":"0","fiber_g":"0"}`,
 		string(b))
 }

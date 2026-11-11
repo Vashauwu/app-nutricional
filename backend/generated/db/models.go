@@ -7,7 +7,15 @@ package db
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/shopspring/decimal"
 )
+
+type AppSetting struct {
+	Key       string             `json:"key"`
+	Value     []byte             `json:"value"`
+	UpdatedBy uuid.NullUUID      `json:"updated_by"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
 
 type AuditLog struct {
 	ID           uuid.UUID          `json:"id"`
@@ -20,6 +28,264 @@ type AuditLog struct {
 	Metadata     []byte             `json:"metadata"`
 }
 
+type ConsentAcceptance struct {
+	ID                uuid.UUID          `json:"id"`
+	PatientID         uuid.UUID          `json:"patient_id"`
+	ConsentDocumentID uuid.UUID          `json:"consent_document_id"`
+	AcceptedAt        pgtype.Timestamptz `json:"accepted_at"`
+	AcceptanceMethod  string             `json:"acceptance_method"`
+	EvidenceMetadata  []byte             `json:"evidence_metadata"`
+	RevokedAt         pgtype.Timestamptz `json:"revoked_at"`
+}
+
+type ConsentDocument struct {
+	ID           uuid.UUID          `json:"id"`
+	DocumentType string             `json:"document_type"`
+	Version      int32              `json:"version"`
+	Title        string             `json:"title"`
+	Content      string             `json:"content"`
+	PublishedAt  pgtype.Timestamptz `json:"published_at"`
+	IsActive     bool               `json:"is_active"`
+}
+
+type CustomFood struct {
+	ID               uuid.UUID           `json:"id"`
+	Name             string              `json:"name"`
+	Brand            pgtype.Text         `json:"brand"`
+	Description      string              `json:"description"`
+	BasisQuantity    decimal.Decimal     `json:"basis_quantity"`
+	BasisUnit        string              `json:"basis_unit"`
+	DensityGPerMl    decimal.NullDecimal `json:"density_g_per_ml"`
+	EnergyKcal       decimal.Decimal     `json:"energy_kcal"`
+	ProteinG         decimal.Decimal     `json:"protein_g"`
+	CarbohydratesG   decimal.Decimal     `json:"carbohydrates_g"`
+	LipidsG          decimal.Decimal     `json:"lipids_g"`
+	FiberG           decimal.Decimal     `json:"fiber_g"`
+	SourceType       string              `json:"source_type"`
+	SourceReference  string              `json:"source_reference"`
+	Tags             []string            `json:"tags"`
+	CreatedBy        uuid.UUID           `json:"created_by"`
+	ValidatedBy      uuid.NullUUID       `json:"validated_by"`
+	ValidatedAt      pgtype.Timestamptz  `json:"validated_at"`
+	Status           string              `json:"status"`
+	EqSubgroupCode   pgtype.Text         `json:"eq_subgroup_code"`
+	EqReferenceGrams decimal.NullDecimal `json:"eq_reference_grams"`
+	EqValue          decimal.NullDecimal `json:"eq_value"`
+	EqAssignedBy     uuid.NullUUID       `json:"eq_assigned_by"`
+	EqAssignedAt     pgtype.Timestamptz  `json:"eq_assigned_at"`
+	EqCriterion      pgtype.Text         `json:"eq_criterion"`
+	CreatedAt        pgtype.Timestamptz  `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz  `json:"updated_at"`
+}
+
+type CustomFoodPortion struct {
+	ID              uuid.UUID       `json:"id"`
+	CustomFoodID    uuid.UUID       `json:"custom_food_id"`
+	Name            string          `json:"name"`
+	Unit            string          `json:"unit"`
+	Quantity        decimal.Decimal `json:"quantity"`
+	GramsEquivalent decimal.Decimal `json:"grams_equivalent"`
+}
+
+type Dish struct {
+	ID             uuid.UUID          `json:"id"`
+	OwnerUserID    uuid.UUID          `json:"owner_user_id"`
+	Name           string             `json:"name"`
+	Category       string             `json:"category"`
+	Tags           []string           `json:"tags"`
+	Status         string             `json:"status"`
+	CurrentVersion int32              `json:"current_version"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type DishIngredient struct {
+	ID              uuid.UUID           `json:"id"`
+	DishVersionID   uuid.UUID           `json:"dish_version_id"`
+	Position        int32               `json:"position"`
+	FoodKind        string              `json:"food_kind"`
+	FoodID          uuid.UUID           `json:"food_id"`
+	NameSnapshot    string              `json:"name_snapshot"`
+	Quantity        decimal.Decimal     `json:"quantity"`
+	Unit            string              `json:"unit"`
+	Grams           decimal.Decimal     `json:"grams"`
+	EnergyKcal      decimal.Decimal     `json:"energy_kcal"`
+	ProteinG        decimal.Decimal     `json:"protein_g"`
+	CarbohydratesG  decimal.Decimal     `json:"carbohydrates_g"`
+	LipidsG         decimal.Decimal     `json:"lipids_g"`
+	FiberG          decimal.Decimal     `json:"fiber_g"`
+	EquivalentCode  pgtype.Text         `json:"equivalent_code"`
+	EquivalentValue decimal.NullDecimal `json:"equivalent_value"`
+	Official        bool                `json:"official"`
+}
+
+type DishNutritionSnapshot struct {
+	DishVersionID  uuid.UUID          `json:"dish_version_id"`
+	TotalsEnergy   decimal.Decimal    `json:"totals_energy"`
+	TotalsProtein  decimal.Decimal    `json:"totals_protein"`
+	TotalsCarbs    decimal.Decimal    `json:"totals_carbs"`
+	TotalsLipids   decimal.Decimal    `json:"totals_lipids"`
+	TotalsFiber    decimal.Decimal    `json:"totals_fiber"`
+	ServingEnergy  decimal.Decimal    `json:"serving_energy"`
+	ServingProtein decimal.Decimal    `json:"serving_protein"`
+	ServingCarbs   decimal.Decimal    `json:"serving_carbs"`
+	ServingLipids  decimal.Decimal    `json:"serving_lipids"`
+	ServingFiber   decimal.Decimal    `json:"serving_fiber"`
+	Equivalents    []byte             `json:"equivalents"`
+	HasCustomFoods bool               `json:"has_custom_foods"`
+	EngineVersion  string             `json:"engine_version"`
+	CalculatedAt   pgtype.Timestamptz `json:"calculated_at"`
+}
+
+type DishSubstitution struct {
+	ID                uuid.UUID          `json:"id"`
+	DishVersionID     uuid.UUID          `json:"dish_version_id"`
+	SubstituteDishID  uuid.UUID          `json:"substitute_dish_id"`
+	SubstituteVersion int32              `json:"substitute_version"`
+	Label             string             `json:"label"`
+	Note              string             `json:"note"`
+	Rule              string             `json:"rule"`
+	Diff              []byte             `json:"diff"`
+	ApprovedBy        uuid.UUID          `json:"approved_by"`
+	ApprovedAt        pgtype.Timestamptz `json:"approved_at"`
+	RemovedAt         pgtype.Timestamptz `json:"removed_at"`
+}
+
+type DishVersion struct {
+	ID               uuid.UUID          `json:"id"`
+	DishID           uuid.UUID          `json:"dish_id"`
+	VersionNumber    int32              `json:"version_number"`
+	Description      string             `json:"description"`
+	RecipeMode       string             `json:"recipe_mode"`
+	InstructionsText string             `json:"instructions_text"`
+	Steps            []string           `json:"steps"`
+	Servings         decimal.Decimal    `json:"servings"`
+	PrepTimeMinutes  int32              `json:"prep_time_minutes"`
+	Recommendations  string             `json:"recommendations"`
+	ImageFileID      uuid.NullUUID      `json:"image_file_id"`
+	SmaeEditionID    uuid.UUID          `json:"smae_edition_id"`
+	CreatedBy        uuid.UUID          `json:"created_by"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	ChangeReason     string             `json:"change_reason"`
+}
+
+type FileObject struct {
+	ID              uuid.UUID          `json:"id"`
+	StorageKey      string             `json:"storage_key"`
+	ThumbKey        pgtype.Text        `json:"thumb_key"`
+	StorageProvider string             `json:"storage_provider"`
+	Kind            string             `json:"kind"`
+	Visibility      string             `json:"visibility"`
+	MimeType        string             `json:"mime_type"`
+	SizeBytes       int64              `json:"size_bytes"`
+	Width           pgtype.Int4        `json:"width"`
+	Height          pgtype.Int4        `json:"height"`
+	Checksum        string             `json:"checksum"`
+	OwnerPatientID  uuid.NullUUID      `json:"owner_patient_id"`
+	CreatedBy       uuid.NullUUID      `json:"created_by"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type MealComment struct {
+	ID           uuid.UUID          `json:"id"`
+	EntryID      uuid.UUID          `json:"entry_id"`
+	AuthorUserID uuid.UUID          `json:"author_user_id"`
+	AuthorRole   string             `json:"author_role"`
+	Body         string             `json:"body"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	EditedAt     pgtype.Timestamptz `json:"edited_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type MealPlan struct {
+	ID                uuid.UUID          `json:"id"`
+	PatientID         uuid.UUID          `json:"patient_id"`
+	Name              string             `json:"name"`
+	Status            string             `json:"status"`
+	StartDate         pgtype.Date        `json:"start_date"`
+	EndDate           pgtype.Date        `json:"end_date"`
+	Revision          int32              `json:"revision"`
+	TargetEnergy      decimal.Decimal    `json:"target_energy"`
+	TargetProtein     decimal.Decimal    `json:"target_protein"`
+	TargetCarbs       decimal.Decimal    `json:"target_carbs"`
+	TargetLipids      decimal.Decimal    `json:"target_lipids"`
+	TargetEquivalents []byte             `json:"target_equivalents"`
+	TargetsVersion    int32              `json:"targets_version"`
+	CreatedBy         uuid.UUID          `json:"created_by"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedBy         uuid.UUID          `json:"updated_by"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type MealPlanDay struct {
+	ID        uuid.UUID          `json:"id"`
+	PlanID    uuid.UUID          `json:"plan_id"`
+	PlanDate  pgtype.Date        `json:"plan_date"`
+	Notes     string             `json:"notes"`
+	RemovedAt pgtype.Timestamptz `json:"removed_at"`
+}
+
+type MealPlanEvent struct {
+	ID      uuid.UUID          `json:"id"`
+	PlanID  uuid.UUID          `json:"plan_id"`
+	At      pgtype.Timestamptz `json:"at"`
+	Actor   uuid.NullUUID      `json:"actor"`
+	Type    string             `json:"type"`
+	Summary string             `json:"summary"`
+}
+
+type MealPlanPublication struct {
+	ID            uuid.UUID          `json:"id"`
+	PlanID        uuid.UUID          `json:"plan_id"`
+	VersionNumber int32              `json:"version_number"`
+	Revision      int32              `json:"revision"`
+	PublishedAt   pgtype.Timestamptz `json:"published_at"`
+	PublishedBy   uuid.UUID          `json:"published_by"`
+	Summary       string             `json:"summary"`
+}
+
+type MealPlanRevision struct {
+	PlanID   uuid.UUID          `json:"plan_id"`
+	Revision int32              `json:"revision"`
+	SavedAt  pgtype.Timestamptz `json:"saved_at"`
+	SavedBy  uuid.UUID          `json:"saved_by"`
+	Snapshot []byte             `json:"snapshot"`
+}
+
+type MealPlanTemplate struct {
+	ID          uuid.UUID          `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Scope       string             `json:"scope"`
+	PatientID   uuid.NullUUID      `json:"patient_id"`
+	Structure   []byte             `json:"structure"`
+	CreatedBy   uuid.UUID          `json:"created_by"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type MealSlot struct {
+	ID        uuid.UUID          `json:"id"`
+	DayID     uuid.UUID          `json:"day_id"`
+	Name      string             `json:"name"`
+	Position  int32              `json:"position"`
+	RemovedAt pgtype.Timestamptz `json:"removed_at"`
+}
+
+type MealSlotItem struct {
+	ID           uuid.UUID          `json:"id"`
+	SlotID       uuid.UUID          `json:"slot_id"`
+	Position     int32              `json:"position"`
+	DishID       uuid.UUID          `json:"dish_id"`
+	DishVersion  int32              `json:"dish_version"`
+	Servings     decimal.Decimal    `json:"servings"`
+	Instructions string             `json:"instructions"`
+	RemovedAt    pgtype.Timestamptz `json:"removed_at"`
+}
+
 type PasswordResetToken struct {
 	ID        uuid.UUID          `json:"id"`
 	UserID    uuid.UUID          `json:"user_id"`
@@ -27,6 +293,107 @@ type PasswordResetToken struct {
 	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
 	UsedAt    pgtype.Timestamptz `json:"used_at"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type Patient struct {
+	ID                  uuid.UUID          `json:"id"`
+	UserID              uuid.NullUUID      `json:"user_id"`
+	Status              string             `json:"status"`
+	FirstName           string             `json:"first_name"`
+	LastName            string             `json:"last_name"`
+	BirthDate           pgtype.Date        `json:"birth_date"`
+	Sex                 string             `json:"sex"`
+	Email               string             `json:"email"`
+	Phone               string             `json:"phone"`
+	Goal                string             `json:"goal"`
+	GoalNotes           string             `json:"goal_notes"`
+	ClinicalIndications string             `json:"clinical_indications"`
+	MeasurementsVisible bool               `json:"measurements_visible"`
+	QuotaOverrideBytes  pgtype.Int8        `json:"quota_override_bytes"`
+	CreatedBy           uuid.UUID          `json:"created_by"`
+	CreatedAt           pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type PatientAllergy struct {
+	ID        uuid.UUID          `json:"id"`
+	PatientID uuid.UUID          `json:"patient_id"`
+	Allergen  string             `json:"allergen"`
+	Aliases   []string           `json:"aliases"`
+	Reaction  string             `json:"reaction"`
+	Severity  string             `json:"severity"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type PatientCondition struct {
+	ID        uuid.UUID          `json:"id"`
+	PatientID uuid.UUID          `json:"patient_id"`
+	Name      string             `json:"name"`
+	Details   string             `json:"details"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type PatientDocument struct {
+	ID               uuid.UUID          `json:"id"`
+	PatientID        uuid.UUID          `json:"patient_id"`
+	FileObjectID     uuid.UUID          `json:"file_object_id"`
+	Name             string             `json:"name"`
+	Category         string             `json:"category"`
+	Description      string             `json:"description"`
+	DocumentDate     pgtype.Date        `json:"document_date"`
+	VisibleToPatient bool               `json:"visible_to_patient"`
+	ScanStatus       string             `json:"scan_status"`
+	UploadedBy       uuid.UUID          `json:"uploaded_by"`
+	UploadedAt       pgtype.Timestamptz `json:"uploaded_at"`
+	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type PatientFoodPreference struct {
+	ID             uuid.UUID          `json:"id"`
+	PatientID      uuid.UUID          `json:"patient_id"`
+	FoodName       string             `json:"food_name"`
+	PreferenceType string             `json:"preference_type"`
+	Notes          string             `json:"notes"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
+type PatientMeasurement struct {
+	ID         uuid.UUID           `json:"id"`
+	PatientID  uuid.UUID           `json:"patient_id"`
+	MeasuredAt pgtype.Date         `json:"measured_at"`
+	WeightKg   decimal.Decimal     `json:"weight_kg"`
+	HeightCm   decimal.Decimal     `json:"height_cm"`
+	Bmi        decimal.Decimal     `json:"bmi"`
+	WaistCm    decimal.NullDecimal `json:"waist_cm"`
+	HipCm      decimal.NullDecimal `json:"hip_cm"`
+	BodyFatPct decimal.NullDecimal `json:"body_fat_pct"`
+	Notes      string              `json:"notes"`
+	CreatedBy  uuid.UUID           `json:"created_by"`
+	CreatedAt  pgtype.Timestamptz  `json:"created_at"`
+}
+
+type PatientMedication struct {
+	ID        uuid.UUID          `json:"id"`
+	PatientID uuid.UUID          `json:"patient_id"`
+	Name      string             `json:"name"`
+	Dose      string             `json:"dose"`
+	Frequency string             `json:"frequency"`
+	StartDate pgtype.Date        `json:"start_date"`
+	EndDate   pgtype.Date        `json:"end_date"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type PatientNote struct {
+	ID           uuid.UUID          `json:"id"`
+	PatientID    uuid.UUID          `json:"patient_id"`
+	AuthorUserID uuid.UUID          `json:"author_user_id"`
+	Body         string             `json:"body"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
 }
 
 type Permission struct {
@@ -47,6 +414,123 @@ type RolePermission struct {
 	PermissionID uuid.UUID `json:"permission_id"`
 }
 
+type SmaeEdition struct {
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	EditionNumber    int32              `json:"edition_number"`
+	Publisher        string             `json:"publisher"`
+	SourceReference  string             `json:"source_reference"`
+	LicenseReference string             `json:"license_reference"`
+	EffectiveDate    pgtype.Date        `json:"effective_date"`
+	Status           string             `json:"status"`
+	Notes            string             `json:"notes"`
+	ImportedAt       pgtype.Timestamptz `json:"imported_at"`
+	ImportedBy       uuid.NullUUID      `json:"imported_by"`
+}
+
+type SmaeFood struct {
+	ID                  uuid.UUID           `json:"id"`
+	EditionID           uuid.UUID           `json:"edition_id"`
+	SubgroupID          uuid.UUID           `json:"subgroup_id"`
+	Code                string              `json:"code"`
+	Name                string              `json:"name"`
+	FoodState           string              `json:"food_state"`
+	EdiblePct           decimal.Decimal     `json:"edible_pct"`
+	DensityGPerMl       decimal.NullDecimal `json:"density_g_per_ml"`
+	BasisQuantity       decimal.Decimal     `json:"basis_quantity"`
+	BasisUnit           string              `json:"basis_unit"`
+	EnergyKcal          decimal.Decimal     `json:"energy_kcal"`
+	ProteinG            decimal.Decimal     `json:"protein_g"`
+	CarbohydratesG      decimal.Decimal     `json:"carbohydrates_g"`
+	LipidsG             decimal.Decimal     `json:"lipids_g"`
+	FiberG              decimal.Decimal     `json:"fiber_g"`
+	EquivReferenceGrams decimal.Decimal     `json:"equiv_reference_grams"`
+	EquivValue          decimal.Decimal     `json:"equiv_value"`
+	Tags                []string            `json:"tags"`
+	SourceReference     string              `json:"source_reference"`
+	Status              string              `json:"status"`
+}
+
+type SmaeFoodGroup struct {
+	ID        uuid.UUID `json:"id"`
+	EditionID uuid.UUID `json:"edition_id"`
+	Code      string    `json:"code"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+	Tone      string    `json:"tone"`
+}
+
+type SmaeFoodSubgroup struct {
+	ID        uuid.UUID `json:"id"`
+	GroupID   uuid.UUID `json:"group_id"`
+	Code      string    `json:"code"`
+	Name      string    `json:"name"`
+	SortOrder int32     `json:"sort_order"`
+}
+
+type SmaeImportBatch struct {
+	ID             uuid.UUID          `json:"id"`
+	EditionID      uuid.NullUUID      `json:"edition_id"`
+	SourceFileName string             `json:"source_file_name"`
+	Checksum       string             `json:"checksum"`
+	ImportedBy     uuid.NullUUID      `json:"imported_by"`
+	ImportedAt     pgtype.Timestamptz `json:"imported_at"`
+	RowCount       int32              `json:"row_count"`
+	Status         string             `json:"status"`
+	ErrorSummary   string             `json:"error_summary"`
+}
+
+type SmaePortion struct {
+	ID              uuid.UUID       `json:"id"`
+	FoodID          uuid.UUID       `json:"food_id"`
+	Name            string          `json:"name"`
+	Unit            string          `json:"unit"`
+	Quantity        decimal.Decimal `json:"quantity"`
+	GramsEquivalent decimal.Decimal `json:"grams_equivalent"`
+	IsReference     bool            `json:"is_reference"`
+}
+
+type SmaeRecalcBatch struct {
+	ID            uuid.UUID          `json:"id"`
+	FromEditionID uuid.UUID          `json:"from_edition_id"`
+	ToEditionID   uuid.UUID          `json:"to_edition_id"`
+	DecidedBy     uuid.UUID          `json:"decided_by"`
+	DecidedAt     pgtype.Timestamptz `json:"decided_at"`
+}
+
+type SmaeRecalcDecision struct {
+	BatchID     uuid.UUID   `json:"batch_id"`
+	DishID      uuid.UUID   `json:"dish_id"`
+	FromVersion int32       `json:"from_version"`
+	ToVersion   pgtype.Int4 `json:"to_version"`
+	Decision    string      `json:"decision"`
+}
+
+type TrackingEntry struct {
+	ID             uuid.UUID          `json:"id"`
+	PatientID      uuid.UUID          `json:"patient_id"`
+	PlanID         uuid.UUID          `json:"plan_id"`
+	ItemID         uuid.UUID          `json:"item_id"`
+	EntryDate      pgtype.Date        `json:"entry_date"`
+	SlotName       string             `json:"slot_name"`
+	DishID         uuid.UUID          `json:"dish_id"`
+	DishVersion    int32              `json:"dish_version"`
+	DishName       string             `json:"dish_name"`
+	Status         string             `json:"status"`
+	RecordedAt     pgtype.Timestamptz `json:"recorded_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	PatientComment string             `json:"patient_comment"`
+	NeedsReview    bool               `json:"needs_review"`
+}
+
+type TrackingPhoto struct {
+	ID           uuid.UUID          `json:"id"`
+	EntryID      uuid.UUID          `json:"entry_id"`
+	FileObjectID uuid.UUID          `json:"file_object_id"`
+	Alt          string             `json:"alt"`
+	UploadedAt   pgtype.Timestamptz `json:"uploaded_at"`
+}
+
 type User struct {
 	ID           uuid.UUID          `json:"id"`
 	Email        string             `json:"email"`
@@ -55,6 +539,7 @@ type User struct {
 	LastLoginAt  pgtype.Timestamptz `json:"last_login_at"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+	DisplayName  string             `json:"display_name"`
 }
 
 type UserRoleAssignment struct {
@@ -64,13 +549,15 @@ type UserRoleAssignment struct {
 }
 
 type UserSession struct {
-	ID               uuid.UUID          `json:"id"`
-	UserID           uuid.UUID          `json:"user_id"`
-	RefreshTokenHash []byte             `json:"refresh_token_hash"`
-	DeviceLabel      string             `json:"device_label"`
-	UserAgent        string             `json:"user_agent"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	LastSeenAt       pgtype.Timestamptz `json:"last_seen_at"`
-	ExpiresAt        pgtype.Timestamptz `json:"expires_at"`
-	RevokedAt        pgtype.Timestamptz `json:"revoked_at"`
+	ID                   uuid.UUID          `json:"id"`
+	UserID               uuid.UUID          `json:"user_id"`
+	RefreshTokenHash     []byte             `json:"refresh_token_hash"`
+	DeviceLabel          string             `json:"device_label"`
+	UserAgent            string             `json:"user_agent"`
+	CreatedAt            pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt           pgtype.Timestamptz `json:"last_seen_at"`
+	ExpiresAt            pgtype.Timestamptz `json:"expires_at"`
+	RevokedAt            pgtype.Timestamptz `json:"revoked_at"`
+	PrevRefreshTokenHash []byte             `json:"prev_refresh_token_hash"`
+	Ip                   string             `json:"ip"`
 }

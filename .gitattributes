@@ -1,0 +1,8 @@
+# Los scripts y configuraciones que corren en Linux deben usar saltos de línea LF (en Windows git podría convertirlos a CRLF y romperlos).
+*.sh        text eol=lf
+Caddyfile   text eol=lf
+Dockerfile  text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.sql       text eol=lf
+*.go        text eol=lf

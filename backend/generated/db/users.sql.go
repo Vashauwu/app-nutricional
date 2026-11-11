@@ -11,8 +11,58 @@ import (
 	"github.com/google/uuid"
 )
 
+const assignRoleByCode = `-- name: AssignRoleByCode :exec
+INSERT INTO user_role_assignments (user_id, role_id)
+SELECT $1, id FROM roles WHERE code = $2
+ON CONFLICT DO NOTHING
+`
+
+type AssignRoleByCodeParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	Code   string    `json:"code"`
+}
+
+func (q *Queries) AssignRoleByCode(ctx context.Context, arg AssignRoleByCodeParams) error {
+	_, err := q.db.Exec(ctx, assignRoleByCode, arg.UserID, arg.Code)
+	return err
+}
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (email, password_hash, status, display_name)
+VALUES ($1, $2, $3, $4)
+RETURNING id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
+`
+
+type CreateUserParams struct {
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	Status       string `json:"status"`
+	DisplayName  string `json:"display_name"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Status,
+		arg.DisplayName,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Status,
+		&i.LastLoginAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DisplayName,
+	)
+	return i, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, status, last_login_at, created_at, updated_at
+SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
 FROM users
 WHERE email = $1
 `
@@ -28,12 +78,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, status, last_login_at, created_at, updated_at
+SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
 FROM users
 WHERE id = $1
 `
@@ -49,6 +100,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.LastLoginAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.DisplayName,
 	)
 	return i, err
 }
@@ -79,6 +131,35 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 	return err
 }
 
+const listPermissionCodesForUser = `-- name: ListPermissionCodesForUser :many
+SELECT DISTINCT p.code
+FROM permissions p
+JOIN role_permissions rp ON rp.permission_id = p.id
+JOIN user_role_assignments ura ON ura.role_id = rp.role_id
+WHERE ura.user_id = $1
+ORDER BY p.code
+`
+
+func (q *Queries) ListPermissionCodesForUser(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listPermissionCodesForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var code string
+		if err := rows.Scan(&code); err != nil {
+			return nil, err
+		}
+		items = append(items, code)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRoleCodesForUser = `-- name: ListRoleCodesForUser :many
 SELECT r.code
 FROM roles r
@@ -105,4 +186,28 @@ func (q *Queries) ListRoleCodesForUser(ctx context.Context, userID uuid.UUID) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const touchUserLogin = `-- name: TouchUserLogin :exec
+UPDATE users SET last_login_at = now() WHERE id = $1
+`
+
+func (q *Queries) TouchUserLogin(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, touchUserLogin, id)
+	return err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :exec
+UPDATE users SET password_hash = $2, status = CASE WHEN status = 'invited' THEN 'active' ELSE status END, updated_at = now() WHERE id = $1
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID `json:"id"`
+	PasswordHash string    `json:"password_hash"`
+}
+
+// Establecer contraseña también activa cuentas invitadas.
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	return err
 }

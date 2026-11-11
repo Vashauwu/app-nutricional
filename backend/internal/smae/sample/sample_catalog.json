@@ -1,0 +1,1430 @@
+{
+ "name": "SMAE 4.ª edición (datos de ejemplo)",
+ "edition_number": 4,
+ "publisher": "Referencia — pendiente de fuente licenciada",
+ "source_reference": "Carga sintética para desarrollo",
+ "license_reference": "Sin licencia: no usar en producción",
+ "effective_date": "2024-01-01",
+ "notes": "Valores aproximados para ejercitar el motor. No son datos oficiales.",
+ "file_name": "sample-catalog.json",
+ "groups": [
+  {
+   "code": "VER",
+   "name": "Verduras",
+   "tone": "salvia",
+   "subgroups": [
+    {
+     "code": "VER",
+     "name": "Verduras"
+    }
+   ]
+  },
+  {
+   "code": "FRU",
+   "name": "Frutas",
+   "tone": "rosa",
+   "subgroups": [
+    {
+     "code": "FRU",
+     "name": "Frutas"
+    }
+   ]
+  },
+  {
+   "code": "CER",
+   "name": "Cereales y tubérculos",
+   "tone": "mantequilla",
+   "subgroups": [
+    {
+     "code": "CER-SG",
+     "name": "Cereales sin grasa"
+    },
+    {
+     "code": "CER-CG",
+     "name": "Cereales con grasa"
+    }
+   ]
+  },
+  {
+   "code": "LEG",
+   "name": "Leguminosas",
+   "tone": "lavanda",
+   "subgroups": [
+    {
+     "code": "LEG",
+     "name": "Leguminosas"
+    }
+   ]
+  },
+  {
+   "code": "AOA",
+   "name": "Alimentos de origen animal",
+   "tone": "cielo",
+   "subgroups": [
+    {
+     "code": "AOA-MB",
+     "name": "Muy bajo aporte de grasa"
+    },
+    {
+     "code": "AOA-B",
+     "name": "Bajo aporte de grasa"
+    },
+    {
+     "code": "AOA-M",
+     "name": "Moderado aporte de grasa"
+    },
+    {
+     "code": "AOA-A",
+     "name": "Alto aporte de grasa"
+    }
+   ]
+  },
+  {
+   "code": "LEC",
+   "name": "Leche",
+   "tone": "cielo",
+   "subgroups": [
+    {
+     "code": "LEC-D",
+     "name": "Leche descremada"
+    },
+    {
+     "code": "LEC-S",
+     "name": "Leche semidescremada"
+    },
+    {
+     "code": "LEC-E",
+     "name": "Leche entera"
+    }
+   ]
+  },
+  {
+   "code": "ACE",
+   "name": "Aceites y grasas",
+   "tone": "mantequilla",
+   "subgroups": [
+    {
+     "code": "GRA",
+     "name": "Grasas sin proteína"
+    },
+    {
+     "code": "GRP",
+     "name": "Grasas con proteína"
+    }
+   ]
+  },
+  {
+   "code": "AZU",
+   "name": "Azúcares",
+   "tone": "rosa",
+   "subgroups": [
+    {
+     "code": "AZU",
+     "name": "Azúcares sin grasa"
+    }
+   ]
+  },
+  {
+   "code": "LIB",
+   "name": "Libres de energía",
+   "tone": "salvia",
+   "subgroups": [
+    {
+     "code": "LIB",
+     "name": "Libres de energía"
+    }
+   ]
+  }
+ ],
+ "foods": [
+  {
+   "code": "BROC",
+   "name": "Brócoli cocido",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "35",
+   "protein_g": "2.4",
+   "carbohydrates_g": "7.2",
+   "lipids_g": "0.4",
+   "fiber_g": "3.3",
+   "equiv_reference_grams": "70",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "90"
+    }
+   ]
+  },
+  {
+   "code": "JITO",
+   "name": "Jitomate",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "18",
+   "protein_g": "0.9",
+   "carbohydrates_g": "3.9",
+   "lipids_g": "0.2",
+   "fiber_g": "1.2",
+   "equiv_reference_grams": "140",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "120"
+    }
+   ]
+  },
+  {
+   "code": "ESPI",
+   "name": "Espinaca cruda",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "23",
+   "protein_g": "2.9",
+   "carbohydrates_g": "3.6",
+   "lipids_g": "0.4",
+   "fiber_g": "2.2",
+   "equiv_reference_grams": "110",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "30"
+    }
+   ]
+  },
+  {
+   "code": "ZANA",
+   "name": "Zanahoria",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "41",
+   "protein_g": "0.9",
+   "carbohydrates_g": "9.6",
+   "lipids_g": "0.2",
+   "fiber_g": "2.8",
+   "equiv_reference_grams": "60",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "70"
+    }
+   ]
+  },
+  {
+   "code": "CALA",
+   "name": "Calabacita cocida",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "17",
+   "protein_g": "1.2",
+   "carbohydrates_g": "3.1",
+   "lipids_g": "0.3",
+   "fiber_g": "1",
+   "equiv_reference_grams": "150",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "180"
+    }
+   ]
+  },
+  {
+   "code": "NOPA",
+   "name": "Nopal cocido",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "16",
+   "protein_g": "1.3",
+   "carbohydrates_g": "3.3",
+   "lipids_g": "0.1",
+   "fiber_g": "2.2",
+   "equiv_reference_grams": "150",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    }
+   ]
+  },
+  {
+   "code": "LECH",
+   "name": "Lechuga romana",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "17",
+   "protein_g": "1.2",
+   "carbohydrates_g": "3.3",
+   "lipids_g": "0.3",
+   "fiber_g": "2.1",
+   "equiv_reference_grams": "150",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "50"
+    }
+   ]
+  },
+  {
+   "code": "PEPI",
+   "name": "Pepino",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "15",
+   "protein_g": "0.7",
+   "carbohydrates_g": "3.6",
+   "lipids_g": "0.1",
+   "fiber_g": "0.5",
+   "equiv_reference_grams": "160",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza rebanado",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "120"
+    }
+   ]
+  },
+  {
+   "code": "CHAY",
+   "name": "Chayote cocido",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "24",
+   "protein_g": "0.6",
+   "carbohydrates_g": "5.1",
+   "lipids_g": "0.3",
+   "fiber_g": "1.7",
+   "equiv_reference_grams": "100",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "160"
+    }
+   ]
+  },
+  {
+   "code": "CEBO",
+   "name": "Cebolla",
+   "subgroup_code": "VER",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "40",
+   "protein_g": "1.1",
+   "carbohydrates_g": "9.3",
+   "lipids_g": "0.1",
+   "fiber_g": "1.7",
+   "equiv_reference_grams": "60",
+   "equiv_value": "1",
+   "tags": [
+    "verdura"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "110"
+    }
+   ]
+  },
+  {
+   "code": "MANZ",
+   "name": "Manzana",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "52",
+   "protein_g": "0.3",
+   "carbohydrates_g": "13.8",
+   "lipids_g": "0.2",
+   "fiber_g": "2.4",
+   "equiv_reference_grams": "115",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "180"
+    }
+   ]
+  },
+  {
+   "code": "PLAT",
+   "name": "Plátano",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "89",
+   "protein_g": "1.1",
+   "carbohydrates_g": "22.8",
+   "lipids_g": "0.3",
+   "fiber_g": "2.6",
+   "equiv_reference_grams": "65",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "120"
+    }
+   ]
+  },
+  {
+   "code": "NARA",
+   "name": "Naranja",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "47",
+   "protein_g": "0.9",
+   "carbohydrates_g": "11.8",
+   "lipids_g": "0.1",
+   "fiber_g": "2.4",
+   "equiv_reference_grams": "130",
+   "equiv_value": "1",
+   "tags": [
+    "fruta",
+    "cítrico"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    }
+   ]
+  },
+  {
+   "code": "FRES",
+   "name": "Fresa",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "32",
+   "protein_g": "0.7",
+   "carbohydrates_g": "7.7",
+   "lipids_g": "0.3",
+   "fiber_g": "2",
+   "equiv_reference_grams": "185",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    }
+   ]
+  },
+  {
+   "code": "PAPA",
+   "name": "Papaya",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "43",
+   "protein_g": "0.5",
+   "carbohydrates_g": "11",
+   "lipids_g": "0.3",
+   "fiber_g": "1.7",
+   "equiv_reference_grams": "140",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza picada",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "140"
+    }
+   ]
+  },
+  {
+   "code": "MANG",
+   "name": "Mango",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "60",
+   "protein_g": "0.8",
+   "carbohydrates_g": "15",
+   "lipids_g": "0.4",
+   "fiber_g": "1.6",
+   "equiv_reference_grams": "100",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza picado",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "165"
+    }
+   ]
+  },
+  {
+   "code": "UVAS",
+   "name": "Uvas",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "69",
+   "protein_g": "0.7",
+   "carbohydrates_g": "18",
+   "lipids_g": "0.2",
+   "fiber_g": "0.9",
+   "equiv_reference_grams": "85",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    }
+   ]
+  },
+  {
+   "code": "SAND",
+   "name": "Sandía",
+   "subgroup_code": "FRU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "30",
+   "protein_g": "0.6",
+   "carbohydrates_g": "7.6",
+   "lipids_g": "0.2",
+   "fiber_g": "0.4",
+   "equiv_reference_grams": "200",
+   "equiv_value": "1",
+   "tags": [
+    "fruta"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza picada",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    }
+   ]
+  },
+  {
+   "code": "TORT",
+   "name": "Tortilla de maíz",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "218",
+   "protein_g": "5.7",
+   "carbohydrates_g": "44.6",
+   "lipids_g": "2.9",
+   "fiber_g": "6.3",
+   "equiv_reference_grams": "32",
+   "equiv_value": "1",
+   "tags": [
+    "cereal",
+    "maíz"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "30"
+    }
+   ]
+  },
+  {
+   "code": "ARRO",
+   "name": "Arroz cocido",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "130",
+   "protein_g": "2.7",
+   "carbohydrates_g": "28",
+   "lipids_g": "0.3",
+   "fiber_g": "0.4",
+   "equiv_reference_grams": "54",
+   "equiv_value": "1",
+   "tags": [
+    "cereal"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "160"
+    }
+   ]
+  },
+  {
+   "code": "PANI",
+   "name": "Pan integral",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "247",
+   "protein_g": "13",
+   "carbohydrates_g": "41",
+   "lipids_g": "3.4",
+   "fiber_g": "7",
+   "equiv_reference_grams": "28",
+   "equiv_value": "1",
+   "tags": [
+    "cereal",
+    "trigo",
+    "gluten"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Rebanada",
+     "unit": "rebanada",
+     "quantity": "1",
+     "grams_equivalent": "28"
+    }
+   ]
+  },
+  {
+   "code": "AVEN",
+   "name": "Avena en hojuelas",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "389",
+   "protein_g": "16.9",
+   "carbohydrates_g": "66",
+   "lipids_g": "6.9",
+   "fiber_g": "10.6",
+   "equiv_reference_grams": "18",
+   "equiv_value": "1",
+   "tags": [
+    "cereal",
+    "avena"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "80"
+    },
+    {
+     "name": "Cucharada",
+     "unit": "cda",
+     "quantity": "1",
+     "grams_equivalent": "8"
+    }
+   ]
+  },
+  {
+   "code": "PAPC",
+   "name": "Papa cocida",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "87",
+   "protein_g": "1.9",
+   "carbohydrates_g": "20",
+   "lipids_g": "0.1",
+   "fiber_g": "1.8",
+   "equiv_reference_grams": "80",
+   "equiv_value": "1",
+   "tags": [
+    "tubérculo"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    }
+   ]
+  },
+  {
+   "code": "PAST",
+   "name": "Pasta cocida",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "158",
+   "protein_g": "5.8",
+   "carbohydrates_g": "30.9",
+   "lipids_g": "0.9",
+   "fiber_g": "1.8",
+   "equiv_reference_grams": "45",
+   "equiv_value": "1",
+   "tags": [
+    "cereal",
+    "trigo",
+    "gluten"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "140"
+    }
+   ]
+  },
+  {
+   "code": "CAMO",
+   "name": "Camote cocido",
+   "subgroup_code": "CER-SG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "90",
+   "protein_g": "2",
+   "carbohydrates_g": "20.7",
+   "lipids_g": "0.2",
+   "fiber_g": "3.3",
+   "equiv_reference_grams": "78",
+   "equiv_value": "1",
+   "tags": [
+    "tubérculo"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "130"
+    }
+   ]
+  },
+  {
+   "code": "FRIJ",
+   "name": "Frijol cocido",
+   "subgroup_code": "LEG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "127",
+   "protein_g": "8.7",
+   "carbohydrates_g": "22.8",
+   "lipids_g": "0.5",
+   "fiber_g": "6.4",
+   "equiv_reference_grams": "90",
+   "equiv_value": "1",
+   "tags": [
+    "leguminosa"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "170"
+    }
+   ]
+  },
+  {
+   "code": "LENT",
+   "name": "Lenteja cocida",
+   "subgroup_code": "LEG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "116",
+   "protein_g": "9",
+   "carbohydrates_g": "20",
+   "lipids_g": "0.4",
+   "fiber_g": "7.9",
+   "equiv_reference_grams": "100",
+   "equiv_value": "1",
+   "tags": [
+    "leguminosa"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "200"
+    }
+   ]
+  },
+  {
+   "code": "GARB",
+   "name": "Garbanzo cocido",
+   "subgroup_code": "LEG",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "164",
+   "protein_g": "8.9",
+   "carbohydrates_g": "27.4",
+   "lipids_g": "2.6",
+   "fiber_g": "7.6",
+   "equiv_reference_grams": "70",
+   "equiv_value": "1",
+   "tags": [
+    "leguminosa"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "164"
+    }
+   ]
+  },
+  {
+   "code": "POLL",
+   "name": "Pechuga de pollo sin piel, cocida",
+   "subgroup_code": "AOA-MB",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "165",
+   "protein_g": "31",
+   "carbohydrates_g": "0",
+   "lipids_g": "3.6",
+   "fiber_g": "0",
+   "equiv_reference_grams": "30",
+   "equiv_value": "1",
+   "tags": [
+    "pollo",
+    "carne"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "120"
+    }
+   ]
+  },
+  {
+   "code": "CLAR",
+   "name": "Clara de huevo",
+   "subgroup_code": "AOA-MB",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "52",
+   "protein_g": "10.9",
+   "carbohydrates_g": "0.7",
+   "lipids_g": "0.2",
+   "fiber_g": "0",
+   "equiv_reference_grams": "66",
+   "equiv_value": "1",
+   "tags": [
+    "huevo"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Clara",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "33"
+    }
+   ]
+  },
+  {
+   "code": "ATUN",
+   "name": "Atún en agua",
+   "subgroup_code": "AOA-MB",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "116",
+   "protein_g": "25.5",
+   "carbohydrates_g": "0",
+   "lipids_g": "0.8",
+   "fiber_g": "0",
+   "equiv_reference_grams": "35",
+   "equiv_value": "1",
+   "tags": [
+    "pescado",
+    "atún"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Lata",
+     "unit": "lata",
+     "quantity": "1",
+     "grams_equivalent": "140"
+    }
+   ]
+  },
+  {
+   "code": "TILA",
+   "name": "Pescado blanco (tilapia) cocido",
+   "subgroup_code": "AOA-MB",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "128",
+   "protein_g": "26.2",
+   "carbohydrates_g": "0",
+   "lipids_g": "2.7",
+   "fiber_g": "0",
+   "equiv_reference_grams": "40",
+   "equiv_value": "1",
+   "tags": [
+    "pescado"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Filete",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "120"
+    }
+   ]
+  },
+  {
+   "code": "HUEV",
+   "name": "Huevo entero",
+   "subgroup_code": "AOA-B",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "143",
+   "protein_g": "12.6",
+   "carbohydrates_g": "0.7",
+   "lipids_g": "9.5",
+   "fiber_g": "0",
+   "equiv_reference_grams": "50",
+   "equiv_value": "1",
+   "tags": [
+    "huevo"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "50"
+    }
+   ]
+  },
+  {
+   "code": "PANE",
+   "name": "Queso panela",
+   "subgroup_code": "AOA-B",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "264",
+   "protein_g": "18",
+   "carbohydrates_g": "3",
+   "lipids_g": "20",
+   "fiber_g": "0",
+   "equiv_reference_grams": "40",
+   "equiv_value": "1",
+   "tags": [
+    "lácteo",
+    "queso"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Rebanada",
+     "unit": "rebanada",
+     "quantity": "1",
+     "grams_equivalent": "40"
+    }
+   ]
+  },
+  {
+   "code": "RESM",
+   "name": "Carne de res magra, cocida",
+   "subgroup_code": "AOA-B",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "217",
+   "protein_g": "26",
+   "carbohydrates_g": "0",
+   "lipids_g": "12",
+   "fiber_g": "0",
+   "equiv_reference_grams": "30",
+   "equiv_value": "1",
+   "tags": [
+    "res",
+    "carne"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Porción",
+     "unit": "porcion",
+     "quantity": "1",
+     "grams_equivalent": "90"
+    }
+   ]
+  },
+  {
+   "code": "SALM",
+   "name": "Salmón cocido",
+   "subgroup_code": "AOA-M",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "208",
+   "protein_g": "20",
+   "carbohydrates_g": "0",
+   "lipids_g": "13",
+   "fiber_g": "0",
+   "equiv_reference_grams": "35",
+   "equiv_value": "1",
+   "tags": [
+    "pescado",
+    "salmón"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Filete",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "120"
+    }
+   ]
+  },
+  {
+   "code": "LDES",
+   "name": "Leche descremada",
+   "subgroup_code": "LEC-D",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "35",
+   "protein_g": "3.4",
+   "carbohydrates_g": "5",
+   "lipids_g": "0.1",
+   "fiber_g": "0",
+   "equiv_reference_grams": "240",
+   "equiv_value": "1",
+   "density_g_per_ml": "1.03",
+   "tags": [
+    "lácteo",
+    "leche"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza (240 ml)",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "247"
+    }
+   ]
+  },
+  {
+   "code": "LSEM",
+   "name": "Leche semidescremada",
+   "subgroup_code": "LEC-S",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "47",
+   "protein_g": "3.4",
+   "carbohydrates_g": "4.8",
+   "lipids_g": "1.6",
+   "fiber_g": "0",
+   "equiv_reference_grams": "240",
+   "equiv_value": "1",
+   "density_g_per_ml": "1.03",
+   "tags": [
+    "lácteo",
+    "leche"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza (240 ml)",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "247"
+    }
+   ]
+  },
+  {
+   "code": "YOGU",
+   "name": "Yogurt natural",
+   "subgroup_code": "LEC-S",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "61",
+   "protein_g": "3.5",
+   "carbohydrates_g": "4.7",
+   "lipids_g": "3.3",
+   "fiber_g": "0",
+   "equiv_reference_grams": "245",
+   "equiv_value": "1",
+   "tags": [
+    "lácteo",
+    "yogurt"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "245"
+    }
+   ]
+  },
+  {
+   "code": "ACEI",
+   "name": "Aceite de oliva",
+   "subgroup_code": "GRA",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "884",
+   "protein_g": "0",
+   "carbohydrates_g": "0",
+   "lipids_g": "100",
+   "fiber_g": "0",
+   "equiv_reference_grams": "5",
+   "equiv_value": "1",
+   "density_g_per_ml": "0.91",
+   "tags": [
+    "grasa"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Cucharadita",
+     "unit": "cdita",
+     "quantity": "1",
+     "grams_equivalent": "4.5"
+    },
+    {
+     "name": "Cucharada",
+     "unit": "cda",
+     "quantity": "1",
+     "grams_equivalent": "13.5"
+    }
+   ]
+  },
+  {
+   "code": "AGUA",
+   "name": "Aguacate",
+   "subgroup_code": "GRA",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "160",
+   "protein_g": "2",
+   "carbohydrates_g": "8.5",
+   "lipids_g": "14.7",
+   "fiber_g": "6.7",
+   "equiv_reference_grams": "28",
+   "equiv_value": "1",
+   "tags": [
+    "grasa",
+    "aguacate"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza mediana",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "150"
+    },
+    {
+     "name": "Rebanada",
+     "unit": "rebanada",
+     "quantity": "1",
+     "grams_equivalent": "30"
+    }
+   ]
+  },
+  {
+   "code": "ALME",
+   "name": "Almendras",
+   "subgroup_code": "GRP",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "579",
+   "protein_g": "21",
+   "carbohydrates_g": "21.6",
+   "lipids_g": "49.9",
+   "fiber_g": "12.5",
+   "equiv_reference_grams": "8",
+   "equiv_value": "1",
+   "tags": [
+    "oleaginosa",
+    "almendra",
+    "frutos secos"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Pieza",
+     "unit": "pieza",
+     "quantity": "1",
+     "grams_equivalent": "1.2"
+    },
+    {
+     "name": "Cucharada",
+     "unit": "cda",
+     "quantity": "1",
+     "grams_equivalent": "10"
+    }
+   ]
+  },
+  {
+   "code": "CACA",
+   "name": "Cacahuate",
+   "subgroup_code": "GRP",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "567",
+   "protein_g": "25.8",
+   "carbohydrates_g": "16.1",
+   "lipids_g": "49.2",
+   "fiber_g": "8.5",
+   "equiv_reference_grams": "9",
+   "equiv_value": "1",
+   "tags": [
+    "oleaginosa",
+    "cacahuate"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Cucharada",
+     "unit": "cda",
+     "quantity": "1",
+     "grams_equivalent": "9"
+    }
+   ]
+  },
+  {
+   "code": "MIEL",
+   "name": "Miel de abeja",
+   "subgroup_code": "AZU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "304",
+   "protein_g": "0.3",
+   "carbohydrates_g": "82",
+   "lipids_g": "0",
+   "fiber_g": "0.2",
+   "equiv_reference_grams": "13",
+   "equiv_value": "1",
+   "tags": [
+    "azúcar",
+    "miel"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Cucharadita",
+     "unit": "cdita",
+     "quantity": "1",
+     "grams_equivalent": "7"
+    }
+   ]
+  },
+  {
+   "code": "AZUC",
+   "name": "Azúcar",
+   "subgroup_code": "AZU",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "387",
+   "protein_g": "0",
+   "carbohydrates_g": "100",
+   "lipids_g": "0",
+   "fiber_g": "0",
+   "equiv_reference_grams": "10",
+   "equiv_value": "1",
+   "tags": [
+    "azúcar"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Cucharadita",
+     "unit": "cdita",
+     "quantity": "1",
+     "grams_equivalent": "4"
+    }
+   ]
+  },
+  {
+   "code": "CAFE",
+   "name": "Café sin azúcar",
+   "subgroup_code": "LIB",
+   "food_state": "Peso neto, parte comestible",
+   "basis_quantity": "100",
+   "basis_unit": "g",
+   "energy_kcal": "1",
+   "protein_g": "0.1",
+   "carbohydrates_g": "0",
+   "lipids_g": "0",
+   "fiber_g": "0",
+   "equiv_reference_grams": "240",
+   "equiv_value": "1",
+   "tags": [
+    "bebida"
+   ],
+   "source_reference": "Dato de ejemplo",
+   "portions": [
+    {
+     "name": "Taza",
+     "unit": "taza",
+     "quantity": "1",
+     "grams_equivalent": "240"
+    }
+   ]
+  }
+ ]
+}
