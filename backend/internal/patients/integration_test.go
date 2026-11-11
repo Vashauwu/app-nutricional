@@ -581,3 +581,99 @@ func TestInviteLinkExposure(t *testing.T) {
 	require.Equal(t, true, r2["emailed"])
 	require.NotContains(t, r2, "invite_link")
 }
+
+// Un paciente registrado a mano puede recibir acceso después: se crea su cuenta y se envía la invitación.
+func TestInviteManualPatient(t *testing.T) {
+	e := start(t)
+	nutri := e.staff(t, "nutri@demo.mx")
+
+	t.Run("con consentimientos ya registrados en persona, entra directo a la app", func(t *testing.T) {
+		pid := nutri.createPatient("manual@demo.mx", "Mario", "Manual")
+		_, before := nutri.do("GET", "/api/v1/patients/"+pid, nil)
+		require.Equal(t, "active", before["status"])
+		require.Nil(t, before["user_id"], "registrado a mano: sin cuenta")
+		nutri.acceptAll(pid)
+
+		code, r := nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 202, code, fmt.Sprint(r))
+		require.NotEmpty(t, r["invite_link"], "sin correo real configurado se entrega el enlace")
+		_, after := nutri.do("GET", "/api/v1/patients/"+pid, nil)
+		require.Equal(t, "invited", after["status"])
+		require.NotNil(t, after["user_id"], "ahora tiene cuenta")
+
+		token := strings.TrimPrefix(e.mail.lastInvitation(), "http://app.test/restablecer/")
+		pc := e.client(t)
+		code, _ = pc.do("POST", "/api/v1/auth/password/reset", map[string]string{"token": token, "password": "MiClave2026"})
+		require.Equal(t, 204, code)
+		pc.login("manual@demo.mx", "MiClave2026")
+
+		_, seen := nutri.do("GET", "/api/v1/patients/"+pid, nil)
+		require.Equal(t, "active", seen["status"], "al crear su contraseña pasa a activo")
+		_, me := pc.do("GET", "/api/v1/me/patient", nil)
+		require.Equal(t, true, me["consent_complete"], "los consentimientos presenciales siguen vigentes")
+		_, pend := pc.do("GET", "/api/v1/me/consents/pending", nil)
+		require.Empty(t, pend["items"], "no se le piden de nuevo")
+		code, _ = pc.do("GET", "/api/v1/me/measurements", nil)
+		require.NotEqual(t, 423, code, "el expediente no está bloqueado")
+	})
+
+	t.Run("sin consentimientos, la app se los pide al ingresar", func(t *testing.T) {
+		pid := nutri.createPatient("pendiente@demo.mx", "Paola", "Pendiente")
+		code, _ := nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 202, code)
+		token := strings.TrimPrefix(e.mail.lastInvitation(), "http://app.test/restablecer/")
+		pc := e.client(t)
+		code, _ = pc.do("POST", "/api/v1/auth/password/reset", map[string]string{"token": token, "password": "MiClave2026"})
+		require.Equal(t, 204, code)
+		pc.login("pendiente@demo.mx", "MiClave2026")
+		_, pend := pc.do("GET", "/api/v1/me/consents/pending", nil)
+		require.Len(t, pend["items"], 2)
+	})
+
+	t.Run("reinvitar mientras está pendiente reenvía; con cuenta activa se rechaza", func(t *testing.T) {
+		pid := nutri.createPatient("repite@demo.mx", "Rita", "Repite")
+		code, _ := nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 202, code)
+		first := e.mail.lastInvitation()
+		code, _ = nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 202, code, "reenvío")
+		require.NotEqual(t, first, e.mail.lastInvitation(), "el enlace anterior queda invalidado por uno nuevo")
+
+		token := strings.TrimPrefix(e.mail.lastInvitation(), "http://app.test/restablecer/")
+		pc := e.client(t)
+		code, _ = pc.do("POST", "/api/v1/auth/password/reset", map[string]string{"token": token, "password": "MiClave2026"})
+		require.Equal(t, 204, code)
+		code, b := nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 422, code, fmt.Sprint(b))
+	})
+
+	t.Run("un correo que ya es una cuenta del sistema no se puede reutilizar", func(t *testing.T) {
+		_, err := e.auth.CreateUser(context.Background(), "equipo@demo.mx", "Equipo", "nutritionist", "Clave12345")
+		require.NoError(t, err)
+		pid := nutri.createPatient("equipo@demo.mx", "Eva", "Equipo")
+		code, b := nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 409, code, fmt.Sprint(b))
+		require.Equal(t, "account_exists", errCode(b))
+		_, after := nutri.do("GET", "/api/v1/patients/"+pid, nil)
+		require.Equal(t, "active", after["status"], "no se cambió nada")
+		require.Nil(t, after["user_id"])
+	})
+
+	t.Run("un paciente desactivado no se invita, y restaurar a uno manual lo deja activo", func(t *testing.T) {
+		pid := nutri.createPatient("baja@demo.mx", "Beto", "Baja")
+		code, _ := nutri.do("POST", "/api/v1/patients/"+pid+"/deactivate", nil)
+		require.Equal(t, 200, code)
+		code, _ = nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+		require.Equal(t, 422, code)
+		code, _ = nutri.do("POST", "/api/v1/patients/"+pid+"/restore", nil)
+		require.Equal(t, 200, code)
+		_, back := nutri.do("GET", "/api/v1/patients/"+pid, nil)
+		require.Equal(t, "active", back["status"], "un paciente registrado a mano no queda como «invitado» al restaurarlo")
+	})
+
+	t.Run("la invitación queda en la auditoría", func(t *testing.T) {
+		var n int
+		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action = 'patient.invited'`).Scan(&n))
+		require.GreaterOrEqual(t, n, 3)
+	})
+}

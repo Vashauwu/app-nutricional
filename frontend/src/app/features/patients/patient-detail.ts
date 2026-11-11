@@ -70,7 +70,8 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
             @if (!p.deletedAt) {
               <a tuiButton size="m" routerLink="/planes/nuevo" [queryParams]="{ paciente: p.id }" [attr.aria-disabled]="!consentOk()"><app-icon name="calendar" [size]="18" /> Nuevo plan</a>
               <button tuiButton type="button" size="m" appearance="secondary" (click)="openEdit()"><app-icon name="edit" [size]="18" /> Editar datos</button>
-              @if (p.status === 'invited') { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Reenviar invitación</button> }
+              @if (patients.apiMode && !p.userId) { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Invitar al paciente</button> }
+              @else if (p.status === 'invited') { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Reenviar invitación</button> }
               <button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="deactivate()">Desactivar</button>
             } @else {
               <button tuiButton type="button" size="m" (click)="restore()"><app-icon name="refresh" [size]="18" /> Restaurar paciente</button>
@@ -204,7 +205,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
   `,
 })
 export class PatientDetail {
-  private readonly patients = inject(PatientsService);
+  protected readonly patients = inject(PatientsService);
   private readonly plansSvc = inject(PlansService);
   private readonly tracking = inject(TrackingService);
   private readonly data = inject(DbService);
@@ -285,7 +286,12 @@ export class PatientDetail {
 
   protected resend(): void {
     this.patients.resendInvite(this.id()).subscribe({
-      next: (r) => { if (r.inviteLink) this.shareLink.set(r.inviteLink); else this.toast.ok(r.emailed ? 'Invitación reenviada por correo.' : 'Invitación reenviada.'); },
+      next: (r) => {
+        // La cuenta pudo crearse ahora (paciente registrado a mano): se refresca el expediente para ver su estado.
+        this.patients.load(this.id()).subscribe({ error: () => undefined });
+        if (r.inviteLink) this.shareLink.set(r.inviteLink);
+        else this.toast.ok(r.emailed ? 'Invitación enviada por correo.' : 'Invitación enviada.');
+      },
       error: (e: unknown) => this.toast.error(e instanceof Error ? e.message : 'No se pudo completar la operación.'),
     });
   }

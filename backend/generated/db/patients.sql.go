@@ -923,10 +923,12 @@ func (q *Queries) RevokeAcceptance(ctx context.Context, arg RevokeAcceptancePara
 const setPatientDeleted = `-- name: SetPatientDeleted :one
 UPDATE patients SET
     deleted_at = CASE WHEN $1::bool THEN now() ELSE NULL END,
+    -- Al restaurar: «invitado» solo si su cuenta sigue sin activarse; un paciente registrado a mano (sin cuenta) vuelve a «activo».
     status = CASE WHEN $1::bool THEN 'inactive'
-                  WHEN user_id IS NULL THEN 'invited' ELSE 'active' END,
+                  WHEN EXISTS (SELECT 1 FROM users u WHERE u.id = patients.user_id AND u.status = 'invited') THEN 'invited'
+                  ELSE 'active' END,
     updated_at = now()
-WHERE id = $2
+WHERE patients.id = $2
 RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at
 `
 
@@ -959,6 +961,16 @@ func (q *Queries) SetPatientDeleted(ctx context.Context, arg SetPatientDeletedPa
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const setPatientInvited = `-- name: SetPatientInvited :exec
+UPDATE patients SET status = 'invited', updated_at = now() WHERE id = $1
+`
+
+// Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
+func (q *Queries) SetPatientInvited(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setPatientInvited, id)
+	return err
 }
 
 const softDeleteNote = `-- name: SoftDeleteNote :execrows

@@ -53,6 +53,8 @@ func fail(c *gin.Context, log *slog.Logger, err error) {
 		shared.AbortWithError(c, http.StatusNotFound, "not_found", "No encontrado.")
 	case errors.Is(err, ErrEmailTaken):
 		shared.AbortWithError(c, http.StatusConflict, "email_taken", ErrEmailTaken.Error()+".")
+	case errors.Is(err, ErrAccountExists):
+		shared.AbortWithError(c, http.StatusConflict, "account_exists", ErrAccountExists.Error()+".")
 	case errors.Is(err, ErrNotAdult):
 		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, shared.ErrorBody{Error: shared.ErrorDetail{
 			Code: "not_adult", Message: ErrNotAdult.Error() + ".", RequestID: middleware.GetRequestID(c), Fields: map[string]string{"birth_date": ErrNotAdult.Error()}}})
