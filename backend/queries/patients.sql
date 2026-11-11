@@ -38,14 +38,20 @@ RETURNING *;
 -- name: SetPatientDeleted :one
 UPDATE patients SET
     deleted_at = CASE WHEN sqlc.arg(deleted)::bool THEN now() ELSE NULL END,
+    -- Al restaurar: «invitado» solo si su cuenta sigue sin activarse; un paciente registrado a mano (sin cuenta) vuelve a «activo».
     status = CASE WHEN sqlc.arg(deleted)::bool THEN 'inactive'
-                  WHEN user_id IS NULL THEN 'invited' ELSE 'active' END,
+                  WHEN EXISTS (SELECT 1 FROM users u WHERE u.id = patients.user_id AND u.status = 'invited') THEN 'invited'
+                  ELSE 'active' END,
     updated_at = now()
-WHERE id = sqlc.arg(id)
+WHERE patients.id = sqlc.arg(id)
 RETURNING *;
 
 -- name: LinkPatientUser :exec
 UPDATE patients SET user_id = $2, updated_at = now() WHERE id = $1;
+
+-- Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
+-- name: SetPatientInvited :exec
+UPDATE patients SET status = 'invited', updated_at = now() WHERE id = $1;
 
 -- name: ActivatePatientByUser :exec
 UPDATE patients SET status = 'active', updated_at = now() WHERE user_id = $1 AND status = 'invited';

@@ -25,6 +25,7 @@ import (
 var (
 	ErrNotFound       = errors.New("no encontrado")
 	ErrEmailTaken     = errors.New("ya existe un paciente con este correo")
+	ErrAccountExists  = errors.New("ya existe una cuenta con este correo (de otra persona o del equipo)")
 	ErrNotAdult       = errors.New("el MVP atiende solo a personas adultas (18 años o más)")
 	ErrConsentPending = errors.New("el expediente clínico está restringido hasta que se acepten el aviso de privacidad y el consentimiento informado")
 	ErrNotAvailable   = errors.New("esta información no está disponible")
@@ -161,17 +162,63 @@ func (s *Service) TakeInvitation(id uuid.UUID) (auth.Invitation, bool) {
 	return v.(auth.Invitation), true
 }
 
-// Resend reenvía la invitación a un paciente que aún no crea su contraseña y devuelve el resultado.
+// Resend invita al paciente a usar la app y devuelve el resultado:
+//   - con invitación pendiente: reenvía el enlace;
+//   - registrado a mano (sin cuenta): crea su cuenta, lo deja «invitado» y envía el enlace;
+//   - con cuenta ya activa o desactivado: se rechaza.
 func (s *Service) Resend(ctx context.Context, a Actor, id uuid.UUID) (auth.Invitation, error) {
 	p, err := s.Get(ctx, id)
 	if err != nil {
 		return auth.Invitation{}, err
 	}
-	if p.Status != "invited" || !p.UserID.Valid {
-		return auth.Invitation{}, ValidationError{"status": "este paciente no tiene una invitación pendiente"}
+	switch {
+	case p.DeletedAt.Valid:
+		return auth.Invitation{}, ValidationError{"status": "el paciente está desactivado; restáuralo antes de invitarlo"}
+	case p.UserID.Valid && p.Status == "invited":
+		s.rec(ctx, a, "patient.invitation_resent", id, nil)
+		return s.inviter.Invite(ctx, p.UserID.UUID)
+	case p.UserID.Valid:
+		return auth.Invitation{}, ValidationError{"status": "este paciente ya activó su cuenta"}
 	}
-	s.rec(ctx, a, "patient.invitation_resent", id, nil)
-	return s.inviter.Invite(ctx, p.UserID.UUID)
+	return s.inviteManual(ctx, a, p)
+}
+
+// inviteManual crea la cuenta de un paciente registrado a mano. Los consentimientos NO cambian: si la nutrióloga ya
+// los registró en persona, el paciente entra directo a la app; si no, la app se los pide al ingresar.
+func (s *Service) inviteManual(ctx context.Context, a Actor, p db.Patient) (auth.Invitation, error) {
+	junk := make([]byte, 24)
+	_, _ = rand.Read(junk)
+	hash, err := auth.HashPassword(uuid.NewString() + string(junk))
+	if err != nil {
+		return auth.Invitation{}, err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return auth.Invitation{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.q.WithTx(tx)
+	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: p.Email, PasswordHash: hash, Status: "invited", DisplayName: strings.TrimSpace(p.FirstName + " " + p.LastName)})
+	if err != nil {
+		if strings.Contains(err.Error(), "users_email_key") {
+			return auth.Invitation{}, ErrAccountExists
+		}
+		return auth.Invitation{}, err
+	}
+	if err := q.AssignRoleByCode(ctx, db.AssignRoleByCodeParams{UserID: u.ID, Code: "patient"}); err != nil {
+		return auth.Invitation{}, err
+	}
+	if err := q.LinkPatientUser(ctx, db.LinkPatientUserParams{ID: p.ID, UserID: uuid.NullUUID{UUID: u.ID, Valid: true}}); err != nil {
+		return auth.Invitation{}, err
+	}
+	if err := q.SetPatientInvited(ctx, p.ID); err != nil {
+		return auth.Invitation{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return auth.Invitation{}, err
+	}
+	s.rec(ctx, a, "patient.invited", p.ID, nil)
+	return s.inviter.Invite(ctx, u.ID)
 }
 
 // RecordInviteLinkShown deja constancia de que la nutrióloga vio el enlace (no hubo correo): quien activa la cuenta

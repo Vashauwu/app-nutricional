@@ -204,6 +204,8 @@ type Querier interface {
 	SetEditionStatus(ctx context.Context, arg SetEditionStatusParams) error
 	SetEntryNeedsReview(ctx context.Context, arg SetEntryNeedsReviewParams) error
 	SetPatientDeleted(ctx context.Context, arg SetPatientDeletedParams) (Patient, error)
+	// Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
+	SetPatientInvited(ctx context.Context, id uuid.UUID) error
 	SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (MealPlan, error)
 	SlotPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]SlotPlanIDsRow, error)
 	SoftDeleteDocument(ctx context.Context, arg SoftDeleteDocumentParams) (uuid.UUID, error)
