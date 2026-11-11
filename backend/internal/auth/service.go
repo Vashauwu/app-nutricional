@@ -322,6 +322,10 @@ func (s *Service) ResetPassword(ctx context.Context, raw, newPassword string, m 
 	if err := q.RevokeAllUserSessions(ctx, uid); err != nil {
 		return err
 	}
+	// Si la cuenta pertenece a un paciente invitado, aceptar la invitación lo activa (deja de verse «Invitación pendiente»).
+	if err := q.ActivatePatientByUser(ctx, uuid.NullUUID{UUID: uid, Valid: true}); err != nil {
+		return err
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
@@ -370,6 +374,52 @@ func (s *Service) Invite(ctx context.Context, userID uuid.UUID) (Invitation, err
 		emailed = d.Delivers()
 	}
 	return Invitation{Link: link, Emailed: emailed}, nil
+}
+
+// SetPasswordByEmail cambia la contraseña de una cuenta (CLI de administración, p. ej. cuando no hay correo para
+// recuperarla). Aplica la misma política de contraseñas, cierra TODAS las sesiones de la cuenta y deja constancia.
+func (s *Service) SetPasswordByEmail(ctx context.Context, email, newPassword string) error {
+	e, err := normalizeEmail(email)
+	if err != nil {
+		return err
+	}
+	if err := ValidatePassword(newPassword); err != nil {
+		return err
+	}
+	u, err := s.q.GetUserByEmail(ctx, e)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return err
+	}
+	hash, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.q.WithTx(tx)
+	if err := q.UpdateUserPassword(ctx, db.UpdateUserPasswordParams{ID: u.ID, PasswordHash: hash}); err != nil {
+		return err
+	}
+	if err := q.RevokeAllUserSessions(ctx, u.ID); err != nil {
+		return err
+	}
+	if err := q.InvalidateUserResetTokens(ctx, u.ID); err != nil {
+		return err
+	}
+	if err := q.ActivatePatientByUser(ctx, uuid.NullUUID{UUID: u.ID, Valid: true}); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.audit(ctx, uuid.NullUUID{}, "auth.password_set_by_admin", "user", nu(u.ID), Meta{}, nil)
+	return nil
 }
 
 // CreateUser crea una cuenta con rol; lo usa la CLI de administración.

@@ -1,5 +1,6 @@
 // Command admin ejecuta tareas de administración que no tienen interfaz.
 //
+//	NEW_USER_PASSWORD='...' go run ./cmd/admin set-password -email a@b.mx    # cambia la contraseña y cierra sus sesiones
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin create-user -email a@b.mx -name "Lic. X" -role nutritionist
 //	go run ./cmd/admin seed-demo-catalog            # catálogo SMAE de EJEMPLO (no oficial), activo
 //	go run ./cmd/admin seed-demo-catalog -errata    # edición de ejemplo en borrador, para probar el recálculo
@@ -27,7 +28,7 @@ import (
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "uso:\n  admin create-user -email <correo> -name <nombre> -role <nutritionist|patient>  (contraseña en NEW_USER_PASSWORD)\n  admin seed-demo-catalog [-errata]\n  admin seed-demo-accounts   (solo con ALLOW_DEMO_ACCOUNTS=true)")
+	fmt.Fprintln(os.Stderr, "uso:\n  admin set-password -email <correo>  (nueva contraseña en NEW_USER_PASSWORD)\n  admin create-user -email <correo> -name <nombre> -role <nutritionist|patient>  (contraseña en NEW_USER_PASSWORD)\n  admin seed-demo-catalog [-errata]\n  admin seed-demo-accounts   (solo con ALLOW_DEMO_ACCOUNTS=true)")
 	os.Exit(2)
 }
 
@@ -52,6 +53,8 @@ func main() {
 	switch os.Args[1] {
 	case "create-user":
 		createUser(ctx, pool, cfg, log)
+	case "set-password":
+		setPassword(ctx, pool, cfg, log)
 	case "seed-demo-catalog":
 		seedCatalog(ctx, pool, log)
 	case "seed-demo-accounts":
@@ -172,4 +175,21 @@ func seedAccounts(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, lo
 		fmt.Println("creada:", p.email)
 	}
 	fmt.Println("listo. Contraseña de las tres cuentas: demo1234")
+}
+
+func setPassword(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, log *slog.Logger) {
+	fs := flag.NewFlagSet("set-password", flag.ExitOnError)
+	email := fs.String("email", "", "correo de la cuenta")
+	_ = fs.Parse(os.Args[2:])
+	pw := os.Getenv("NEW_USER_PASSWORD") // por variable de entorno: por flag quedaría en el historial del shell
+	if *email == "" || pw == "" {
+		fmt.Fprintln(os.Stderr, "faltan -email y/o la variable NEW_USER_PASSWORD")
+		os.Exit(2)
+	}
+	svc := auth.NewService(pool, cfg, auth.LogMailer{Log: log}, log)
+	if err := svc.SetPasswordByEmail(ctx, *email, pw); err != nil {
+		fmt.Fprintln(os.Stderr, "no se pudo cambiar:", err)
+		os.Exit(1)
+	}
+	fmt.Println("contraseña actualizada; se cerraron las sesiones abiertas de esa cuenta")
 }

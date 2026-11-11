@@ -195,12 +195,19 @@ export class PatientsService {
 
   update(id: string, patch: Partial<Pick<Patient, 'goal' | 'goalNotes' | 'clinicalIndications' | 'measurementsVisibleToPatient' | 'quotaOverrideBytes'>> & { profile?: Partial<PatientProfile> }): void {
     if (this.apiMode) {
+      // Solo se envía lo que cambió: el servidor trata las notas del objetivo y las indicaciones como datos clínicos y
+      // los rechaza (423) mientras no haya consentimientos; mandarlos sin cambios bloquearía editar un simple correo.
+      const cur = this.get(id);
       const b: Record<string, unknown> = {};
-      const set = (k: string, v: unknown): void => { if (v !== undefined) b[k] = v; };
-      set('goal', patch.goal); set('goal_notes', patch.goalNotes); set('clinical_indications', patch.clinicalIndications);
-      set('measurements_visible', patch.measurementsVisibleToPatient); set('quota_override_bytes', patch.quotaOverrideBytes);
+      const set = (k: string, v: unknown, old: unknown): void => { if (v !== undefined && v !== old) b[k] = v; };
+      set('goal', patch.goal, cur?.goal); set('goal_notes', patch.goalNotes, cur?.goalNotes); set('clinical_indications', patch.clinicalIndications, cur?.clinicalIndications);
+      set('measurements_visible', patch.measurementsVisibleToPatient, cur?.measurementsVisibleToPatient); set('quota_override_bytes', patch.quotaOverrideBytes, cur?.quotaOverrideBytes);
       const pr = patch.profile;
-      if (pr) { set('first_name', pr.firstName); set('last_name', pr.lastName); set('birth_date', pr.birthDate); set('sex', pr.sex); set('email', pr.email); set('phone', pr.phone); }
+      const cp = cur?.profile;
+      if (pr) {
+        set('first_name', pr.firstName, cp?.firstName); set('last_name', pr.lastName, cp?.lastName); set('birth_date', pr.birthDate, cp?.birthDate);
+        set('sex', pr.sex, cp?.sex); set('email', pr.email, cp?.email); set('phone', pr.phone, cp?.phone);
+      }
       this.fire(id, this.remote.update(id, b));
       return;
     }

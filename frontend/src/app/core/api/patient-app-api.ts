@@ -8,7 +8,8 @@ import { PlansApi } from './plans-api';
 import { TrackingApi } from './tracking-api';
 
 // ---------- Formas de la API ----------
-interface ApiMe { id: string; first_name: string; last_name: string; email: string; goal: Goal; goal_notes: string; measurements_visible: boolean; consent_complete: boolean }
+interface ApiMe { id: string; first_name: string; last_name: string; email: string; goal: Goal; goal_notes: string; birth_date?: string; sex?: 'F' | 'M' | 'O'; phone?: string; measurements_visible: boolean; consent_complete: boolean }
+interface ApiAcceptance { id: string; document_id: string; accepted_at: string; method: 'web_checkbox' | 'in_person'; revoked_at: string | null; document_type: 'privacy' | 'informed'; version: number; title: string }
 interface ApiMeasurement { id: string; measured_at: string; weight_kg: string; height_cm: string; bmi: string; waist_cm: string | null; hip_cm: string | null; body_fat_pct: string | null; notes: string }
 interface ApiDoc { id: string; name: string; category: PatientDocument['category']; description: string; document_date: string; size_bytes: number; uploaded_at: string; url: string }
 interface ApiPatientDish {
@@ -34,11 +35,12 @@ export class PatientAppApi {
       plan: soft(this.api.get<Record<string, unknown>>('/me/plan'), null),
       measurements: soft(this.api.get<{ items: ApiMeasurement[] }>('/me/measurements'), { items: [] as ApiMeasurement[] }),
       docs: soft(this.api.get<{ items: ApiDoc[] }>('/me/documents'), { items: [] as ApiDoc[] }),
+      consents: soft(this.api.get<{ acceptances: ApiAcceptance[] }>('/me/consents'), { acceptances: [] as ApiAcceptance[] }),
     }).pipe(
-      tap(({ me, plan, measurements, docs }) => {
+      tap(({ me, plan, measurements, docs, consents }) => {
         this.data.mutate((d) => {
           const patient: Patient = {
-            id: me.id, status: 'active', profile: { firstName: me.first_name, lastName: me.last_name, birthDate: '', sex: 'F', email: me.email, phone: '' },
+            id: me.id, status: 'active', profile: { firstName: me.first_name, lastName: me.last_name, birthDate: (me.birth_date ?? '').slice(0, 10), sex: me.sex ?? 'F', email: me.email, phone: me.phone ?? '' },
             goal: me.goal, goalNotes: me.goal_notes, clinicalIndications: '', measurementsVisibleToPatient: me.measurements_visible, usedBytes: 0,
             conditions: [], allergies: [], medications: [], preferences: [], notes: [],
             documents: docs.items.map(
@@ -54,6 +56,19 @@ export class PatientAppApi {
           const at = d.patients.findIndex((p) => p.id === me.id);
           if (at >= 0) d.patients[at] = patient;
           else d.patients.push(patient);
+          // Mis aceptaciones: documentos y fecha en que la propia paciente los aceptó.
+          for (const a of consents.acceptances) {
+            if (!d.consentDocuments.some((x) => x.id === a.document_id)) {
+              d.consentDocuments.push({ id: a.document_id, type: a.document_type, version: a.version, title: a.title, content: '', publishedAt: a.accepted_at, isActive: false });
+            }
+          }
+          d.consentAcceptances = [
+            ...d.consentAcceptances.filter((x) => x.patientId !== me.id),
+            ...consents.acceptances.map((a) => ({
+              id: a.id, patientId: me.id, consentDocumentId: a.document_id, acceptedAt: a.accepted_at, method: a.method,
+              evidence: { userAgent: '', recordedBy: 'paciente' }, revokedAt: a.revoked_at ?? undefined,
+            })),
+          ];
         });
         if (plan && plan['id']) {
           // /me/plan no trae objetivos ni datos internos: se completan con ceros para reutilizar el mismo modelo.
