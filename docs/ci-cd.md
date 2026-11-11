@@ -94,6 +94,10 @@ En el servidor, dentro de `/opt/nutri/<ambiente>/deploy`:
 ```
 `deploy.sh` (desde tu PC) sigue sirviendo para el primer despliegue de un ambiente nuevo: compila en el servidor.
 
+## Cambiar de dominio
+Edita `SITE_ADDRESS` y `PUBLIC_URL` en `/opt/nutri/<ambiente>/deploy/.env.<ambiente>`, ejecuta `edge.sh` (o espera al siguiente despliegue: `release.sh` lo ejecuta
+solo) y actualiza la variable `SITE_URL` del ambiente en GitHub. Pasos completos, con el correo, en [`correo-produccion.md`](correo-produccion.md).
+
 ## Mejoras posibles más adelante
 - Separar staging y producción en máquinas distintas (hoy una prueba de carga en staging puede afectar a producción).
 - Mover el almacenamiento a un servicio gestionado y copiar los respaldos fuera del VPS automáticamente.

@@ -34,6 +34,9 @@ healthy() {
   return 1
 }
 
+# Si cambió el dominio de algún ambiente (SITE_ADDRESS), el Caddy de entrada se actualiza antes de liberar.
+[ -x ./edge.sh ] && ./edge.sh
+
 if [ "$ENV" = prod ]; then
   echo "==> Respaldo previo a la liberación"
   ./backup.sh prod
