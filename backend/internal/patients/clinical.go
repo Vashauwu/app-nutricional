@@ -138,8 +138,8 @@ func (s *Service) DeleteAllergy(ctx context.Context, a Actor, patient, id uuid.U
 
 // ---------- Medicamentos ----------
 type MedicationInput struct {
-	Name, Dose, Frequency, Status string
-	StartDate, EndDate            *time.Time
+	Name, Dose, Frequency, Kind, Status string
+	StartDate, EndDate                  *time.Time
 }
 
 func optDate(t *time.Time) pgtype.Date {
@@ -154,6 +154,7 @@ func (s *Service) SaveMedication(ctx context.Context, a Actor, patient uuid.UUID
 	name := clean(in.Name, 200, "name", true, errs)
 	dose := clean(in.Dose, 200, "dose", false, errs)
 	freq := clean(in.Frequency, 200, "frequency", false, errs)
+	kind := clean(in.Kind, 120, "kind", false, errs)
 	oneOf(in.Status, "status", errs, "active", "ended")
 	if in.StartDate != nil && in.EndDate != nil && in.EndDate.Before(*in.StartDate) {
 		errs["end_date"] = "debe ser posterior al inicio"
@@ -164,9 +165,9 @@ func (s *Service) SaveMedication(ctx context.Context, a Actor, patient uuid.UUID
 	var out db.PatientMedication
 	var err error
 	if id == nil {
-		out, err = s.q.InsertMedication(ctx, db.InsertMedicationParams{PatientID: patient, Name: name, Dose: dose, Frequency: freq, StartDate: optDate(in.StartDate), EndDate: optDate(in.EndDate), Status: in.Status})
+		out, err = s.q.InsertMedication(ctx, db.InsertMedicationParams{PatientID: patient, Name: name, Dose: dose, Frequency: freq, StartDate: optDate(in.StartDate), EndDate: optDate(in.EndDate), Status: in.Status, Kind: kind})
 	} else {
-		out, err = s.q.UpdateMedication(ctx, db.UpdateMedicationParams{ID: *id, PatientID: patient, Name: name, Dose: dose, Frequency: freq, StartDate: optDate(in.StartDate), EndDate: optDate(in.EndDate), Status: in.Status})
+		out, err = s.q.UpdateMedication(ctx, db.UpdateMedicationParams{ID: *id, PatientID: patient, Name: name, Dose: dose, Frequency: freq, StartDate: optDate(in.StartDate), EndDate: optDate(in.EndDate), Status: in.Status, Kind: kind})
 		err = notFound(err)
 	}
 	if err == nil {

@@ -2,10 +2,11 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, map, of, switchMap, tap } from 'rxjs';
 import { ApiClient } from '../api/api-client';
 import { PatientsApi } from '../api/patients-api';
+import type { MeasurementInput } from '../api/measurement-map';
 import { ToastService } from './ui.services';
 import { DbService } from '../data/db.service';
 import {
-  Allergy, Condition, ConsentAcceptance, ConsentDocument, DocumentCategory, FoodPreference, Goal, Measurement, Medication,
+  Allergy, COMPOSITION_FIELDS, Condition, ConsentAcceptance, ConsentDocument, DocumentCategory, FoodPreference, Goal, Measurement, Medication,
   Patient, PatientDocument, PatientProfile, PatientStatus,
 } from '../../shared/models/domain';
 import { Page, paginate } from '../../shared/utils/loadable';
@@ -33,15 +34,7 @@ export interface PatientRow {
   consentComplete: boolean;
 }
 
-export interface MeasurementInput {
-  measuredAt: string;
-  weightKg: string;
-  heightCm: string;
-  waistCm?: string;
-  hipCm?: string;
-  bodyFatPct?: string;
-  notes?: string;
-}
+export type { MeasurementInput };
 
 const MB = 1024 * 1024;
 
@@ -247,8 +240,11 @@ export class PatientsService {
       const m: Measurement = {
         id: uid('m'), measuredAt: input.measuredAt, weightKg: input.weightKg, heightCm: input.heightCm,
         bmi: computeBmi(input.weightKg, input.heightCm), waistCm: input.waistCm || undefined, hipCm: input.hipCm || undefined,
-        bodyFatPct: input.bodyFatPct || undefined, notes: input.notes || undefined, createdBy: this.data.actor(),
+        notes: input.notes || undefined, createdBy: this.data.actor(),
       };
+      for (const f of COMPOSITION_FIELDS) m[f.key] = input[f.key] || undefined;
+      const girths = Object.fromEntries(Object.entries(input.girths ?? {}).filter(([, v]) => v));
+      if (Object.keys(girths).length) m.girths = girths;
       p.measurements.push(m);
       this.data.audit(d, 'measurement.create', 'patient', id, `Registró medición del ${input.measuredAt}`);
     });
@@ -271,7 +267,7 @@ export class PatientsService {
   }
   saveMedication(id: string, m: Omit<Medication, 'id'> & { id?: string }): void {
     if (this.apiMode) {
-      this.fire(id, this.remote.saveItem(id, 'medications', m.id, { name: m.name, dose: m.dose, frequency: m.frequency, start_date: m.startDate || undefined, end_date: m.endDate || undefined, status: m.status }));
+      this.fire(id, this.remote.saveItem(id, 'medications', m.id, { name: m.name, dose: m.dose, frequency: m.frequency, kind: m.kind || '', start_date: m.startDate || undefined, end_date: m.endDate || undefined, status: m.status }));
       return;
     }
     this.upsert(id, 'medications', { ...m, id: m.id ?? uid('md') });

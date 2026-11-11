@@ -39,6 +39,7 @@ export const routes: Routes = [
       { path: 'pacientes', title: 'Pacientes', loadComponent: () => import('./features/patients/patient-list').then((m) => m.PatientList) },
       { path: 'pacientes/nuevo', title: 'Nuevo paciente', loadComponent: () => import('./features/patients/patient-create').then((m) => m.PatientCreate) },
       { path: 'pacientes/:id', title: 'Expediente', loadComponent: () => import('./features/patients/patient-detail').then((m) => m.PatientDetail) },
+      { path: 'consultas', title: 'Consultas', loadComponent: () => import('./features/agenda/agenda').then((m) => m.Agenda) },
       { path: 'platillos', title: 'Platillos', loadComponent: () => import('./features/dishes/dish-library').then((m) => m.DishLibrary) },
       { path: 'platillos/nuevo', title: 'Nuevo platillo', canDeactivate: [unsavedChangesGuard], loadComponent: () => import('./features/dishes/dish-editor').then((m) => m.DishEditor) },
       { path: 'platillos/:id', title: 'Platillo', loadComponent: () => import('./features/dishes/dish-detail').then((m) => m.DishDetail) },

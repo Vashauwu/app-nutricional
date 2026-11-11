@@ -5,6 +5,8 @@
 package db
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
@@ -17,6 +19,21 @@ type AppSetting struct {
 	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }
 
+type Appointment struct {
+	ID        uuid.UUID          `json:"id"`
+	PatientID uuid.UUID          `json:"patient_id"`
+	StartsAt  pgtype.Timestamptz `json:"starts_at"`
+	EndsAt    pgtype.Timestamptz `json:"ends_at"`
+	Kind      string             `json:"kind"`
+	Mode      string             `json:"mode"`
+	Place     string             `json:"place"`
+	Notes     string             `json:"notes"`
+	Status    string             `json:"status"`
+	CreatedBy uuid.UUID          `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
 type AuditLog struct {
 	ID           uuid.UUID          `json:"id"`
 	ActorUserID  uuid.NullUUID      `json:"actor_user_id"`
@@ -26,6 +43,12 @@ type AuditLog struct {
 	OccurredAt   pgtype.Timestamptz `json:"occurred_at"`
 	RequestID    string             `json:"request_id"`
 	Metadata     []byte             `json:"metadata"`
+}
+
+type CalendarFeed struct {
+	UserID    uuid.UUID          `json:"user_id"`
+	Token     string             `json:"token"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type ConsentAcceptance struct {
@@ -360,19 +383,47 @@ type PatientFoodPreference struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 }
 
+type PatientLabReport struct {
+	ID        uuid.UUID          `json:"id"`
+	PatientID uuid.UUID          `json:"patient_id"`
+	TakenAt   pgtype.Date        `json:"taken_at"`
+	LabName   string             `json:"lab_name"`
+	Notes     string             `json:"notes"`
+	CreatedBy uuid.UUID          `json:"created_by"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
+type PatientLabResult struct {
+	ID       uuid.UUID           `json:"id"`
+	ReportID uuid.UUID           `json:"report_id"`
+	Name     string              `json:"name"`
+	Value    decimal.Decimal     `json:"value"`
+	Unit     string              `json:"unit"`
+	RefMin   decimal.NullDecimal `json:"ref_min"`
+	RefMax   decimal.NullDecimal `json:"ref_max"`
+	Position int32               `json:"position"`
+}
+
 type PatientMeasurement struct {
-	ID         uuid.UUID           `json:"id"`
-	PatientID  uuid.UUID           `json:"patient_id"`
-	MeasuredAt pgtype.Date         `json:"measured_at"`
-	WeightKg   decimal.Decimal     `json:"weight_kg"`
-	HeightCm   decimal.Decimal     `json:"height_cm"`
-	Bmi        decimal.Decimal     `json:"bmi"`
-	WaistCm    decimal.NullDecimal `json:"waist_cm"`
-	HipCm      decimal.NullDecimal `json:"hip_cm"`
-	BodyFatPct decimal.NullDecimal `json:"body_fat_pct"`
-	Notes      string              `json:"notes"`
-	CreatedBy  uuid.UUID           `json:"created_by"`
-	CreatedAt  pgtype.Timestamptz  `json:"created_at"`
+	ID           uuid.UUID           `json:"id"`
+	PatientID    uuid.UUID           `json:"patient_id"`
+	MeasuredAt   pgtype.Date         `json:"measured_at"`
+	WeightKg     decimal.Decimal     `json:"weight_kg"`
+	HeightCm     decimal.Decimal     `json:"height_cm"`
+	Bmi          decimal.Decimal     `json:"bmi"`
+	WaistCm      decimal.NullDecimal `json:"waist_cm"`
+	HipCm        decimal.NullDecimal `json:"hip_cm"`
+	BodyFatPct   decimal.NullDecimal `json:"body_fat_pct"`
+	Notes        string              `json:"notes"`
+	CreatedBy    uuid.UUID           `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz  `json:"created_at"`
+	FatMassKg    decimal.NullDecimal `json:"fat_mass_kg"`
+	MusclePct    decimal.NullDecimal `json:"muscle_pct"`
+	MuscleMassKg decimal.NullDecimal `json:"muscle_mass_kg"`
+	VisceralFat  decimal.NullDecimal `json:"visceral_fat"`
+	BoneKg       decimal.NullDecimal `json:"bone_kg"`
+	ObesityPct   decimal.NullDecimal `json:"obesity_pct"`
+	Girths       json.RawMessage     `json:"girths"`
 }
 
 type PatientMedication struct {
@@ -385,6 +436,7 @@ type PatientMedication struct {
 	EndDate   pgtype.Date        `json:"end_date"`
 	Status    string             `json:"status"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	Kind      string             `json:"kind"`
 }
 
 type PatientNote struct {

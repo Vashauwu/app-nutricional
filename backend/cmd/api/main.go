@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/nutri/app-nutricional/backend/internal/agenda"
 	"github.com/nutri/app-nutricional/backend/internal/alerts"
 	"github.com/nutri/app-nutricional/backend/internal/auditlog"
 	"github.com/nutri/app-nutricional/backend/internal/auth"
@@ -184,6 +185,11 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) *gin.
 	}, logger).Register(v1)
 	settingsSvc := settings.NewService(pool, logger)
 	settings.NewController(settingsSvc, authSvc, logger).Register(v1)
+	agendaSvc := agenda.NewService(pool, logger)
+	agenda.NewController(agendaSvc, authSvc, func(c *gin.Context, userID uuid.UUID) (uuid.UUID, error) {
+		p, err := patientsSvc.ForUser(c.Request.Context(), userID)
+		return p.ID, err
+	}, logger).Register(v1)
 
 	// Almacenamiento de archivos: solo si hay S3/MinIO configurado.
 	var images tracking.Images

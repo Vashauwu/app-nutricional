@@ -61,8 +61,9 @@ SELECT EXISTS (SELECT 1 FROM patients WHERE email = $1 AND deleted_at IS NULL AN
 
 -- ---------- Mediciones (append-only) ----------
 -- name: InsertMeasurement :one
-INSERT INTO patient_measurements (patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO patient_measurements (patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by,
+                                  fat_mass_kg, muscle_pct, muscle_mass_kg, visceral_fat, bone_kg, obesity_pct, girths)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 RETURNING *;
 
 -- name: ListMeasurements :many
@@ -92,9 +93,9 @@ DELETE FROM patient_allergies WHERE id = $1 AND patient_id = $2;
 -- name: ListMedications :many
 SELECT * FROM patient_medications WHERE patient_id = $1 ORDER BY created_at;
 -- name: InsertMedication :one
-INSERT INTO patient_medications (patient_id, name, dose, frequency, start_date, end_date, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *;
+INSERT INTO patient_medications (patient_id, name, dose, frequency, start_date, end_date, status, kind) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *;
 -- name: UpdateMedication :one
-UPDATE patient_medications SET name = $3, dose = $4, frequency = $5, start_date = $6, end_date = $7, status = $8 WHERE id = $1 AND patient_id = $2 RETURNING *;
+UPDATE patient_medications SET name = $3, dose = $4, frequency = $5, start_date = $6, end_date = $7, status = $8, kind = $9 WHERE id = $1 AND patient_id = $2 RETURNING *;
 -- name: DeleteMedication :execrows
 DELETE FROM patient_medications WHERE id = $1 AND patient_id = $2;
 

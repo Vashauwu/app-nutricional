@@ -7,11 +7,12 @@ import { InsightsService } from '../../core/services/insights.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { AlertItem, Badge, EmptyState } from '../../shared/components/ui';
 import { Icon } from '../../shared/components/icon';
+import { TodayAppointments } from '../agenda/agenda-widgets';
 import { formatDate, longDate, relativeTime, todayIso } from '../../shared/utils/format';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, TuiButton, Icon, AlertItem, Badge, EmptyState],
+  imports: [RouterLink, TuiButton, Icon, AlertItem, Badge, EmptyState, TodayAppointments],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .cols { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
@@ -74,6 +75,7 @@ import { formatDate, longDate, relativeTime, todayIso } from '../../shared/utils
         </div>
 
         <div class="stack">
+          <app-today-appointments />
           <section class="panel" aria-labelledby="h-planes">
             <div class="panel-head"><h2 id="h-planes">Estado de planes</h2><a class="small" routerLink="/planes">Ver todos</a></div>
             <div class="row">

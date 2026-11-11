@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { TuiButton } from '@taiga-ui/core';
 import { PatientsService } from '../../core/services/patients.service';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { computeBmi, latestMeasurement } from '../../core/nutrition/engine';
-import { Allergy, Condition, FoodPreference, Medication, PREFERENCE_LABEL, Patient, PreferenceType } from '../../shared/models/domain';
+import { Allergy, COMPOSITION_FIELDS, Condition, FoodPreference, GIRTH_FIELDS, GIRTH_GROUPS, Measurement, Medication, PREFERENCE_LABEL, Patient, PreferenceType } from '../../shared/models/domain';
 import { FieldError, decimalValidator } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
@@ -39,7 +39,7 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
         </div>
         @if (sorted().length) {
           <div class="chips" role="group" aria-label="Variables a graficar">
-            @for (m of metrics; track m.key) { <button type="button" class="chip-toggle" [attr.aria-pressed]="selected() === m.key" (click)="selected.set(m.key)">{{ m.label }}</button> }
+            @for (m of metrics(); track m.key) { <button type="button" class="chip-toggle" [attr.aria-pressed]="selected() === m.key" (click)="selected.set(m.key)">{{ m.label }}</button> }
           </div>
           <app-line-chart [series]="series()" [unit]="current().unit" [title]="'Evolución de ' + current().label.toLowerCase()" />
         } @else { <app-empty icon="scale" title="Sin mediciones" text="Registra la primera medición para ver su evolución." /> }
@@ -48,8 +48,14 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
       <section class="panel panel--flush" aria-labelledby="h-hist">
         <div class="panel-head"><h2 id="h-hist">Historial (acumulativo)</h2><span class="small muted">Las mediciones nuevas nunca sobrescriben las anteriores.</span></div>
         @if (sorted().length) {
-          <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Fecha</th><th scope="col" class="num">Peso (kg)</th><th scope="col" class="num">Talla (cm)</th><th scope="col" class="num">IMC</th><th scope="col" class="num">Cintura (cm)</th><th scope="col" class="num">Cadera (cm)</th><th scope="col" class="num">Grasa %</th><th scope="col">Notas</th></tr></thead><tbody>
-            @for (m of desc(); track m.id) { <tr><td>{{ fd(m.measuredAt) }}</td><td class="num">{{ m.weightKg }}</td><td class="num">{{ m.heightCm }}</td><td class="num">{{ m.bmi }}</td><td class="num">{{ m.waistCm ?? '—' }}</td><td class="num">{{ m.hipCm ?? '—' }}</td><td class="num">{{ m.bodyFatPct ?? '—' }}</td><td class="small">{{ m.notes ?? '' }}</td></tr> }
+          <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Fecha</th><th scope="col" class="num">Peso (kg)</th><th scope="col" class="num">Talla (cm)</th><th scope="col" class="num">IMC</th><th scope="col" class="num">Cintura (cm)</th><th scope="col" class="num">Cadera (cm)</th><th scope="col" class="num">Grasa %</th><th scope="col">Notas</th><th scope="col"><span class="visually-hidden">Detalle</span></th></tr></thead><tbody>
+            @for (m of desc(); track m.id) {
+              <tr><td>{{ fd(m.measuredAt) }}</td><td class="num">{{ m.weightKg }}</td><td class="num">{{ m.heightCm }}</td><td class="num">{{ m.bmi }}</td><td class="num">{{ m.waistCm ?? '—' }}</td><td class="num">{{ m.hipCm ?? '—' }}</td><td class="num">{{ m.bodyFatPct ?? '—' }}</td><td class="small">{{ m.notes ?? '' }}</td>
+                <td>@if (details(m).length) { <button type="button" class="link-btn small" [attr.aria-expanded]="open() === m.id" (click)="open.set(open() === m.id ? '' : m.id)">{{ open() === m.id ? 'Ocultar' : 'Detalle' }}</button> }</td></tr>
+              @if (open() === m.id) {
+                <tr><td colspan="9"><div class="meas">@for (d of details(m); track d.label) { <div><b>{{ d.value }}</b><span>{{ d.label }}</span></div> }</div></td></tr>
+              }
+            }
           </tbody></table></div>
         }
       </section>
@@ -62,10 +68,30 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
           <div class="field"><label for="m-w">Peso (kg)</label><input id="m-w" class="input" inputmode="decimal" formControlName="weightKg" /><app-field-error [control]="form.controls.weightKg" [messages]="rangeW" /></div>
           <div class="field"><label for="m-h">Talla (cm)</label><input id="m-h" class="input" inputmode="decimal" formControlName="heightCm" /><app-field-error [control]="form.controls.heightCm" [messages]="rangeH" /></div>
           <div class="field"><span class="label">IMC (calculado)</span><output class="input" style="display: flex; align-items: center">{{ bmiPreview() }}</output></div>
-          <div class="field"><label for="m-waist">Cintura (cm) <span class="muted">opcional</span></label><input id="m-waist" class="input" inputmode="decimal" formControlName="waistCm" /><app-field-error [control]="form.controls.waistCm" /></div>
-          <div class="field"><label for="m-hip">Cadera (cm) <span class="muted">opcional</span></label><input id="m-hip" class="input" inputmode="decimal" formControlName="hipCm" /><app-field-error [control]="form.controls.hipCm" /></div>
-          <div class="field"><label for="m-fat">Grasa corporal % <span class="muted">opcional</span></label><input id="m-fat" class="input" inputmode="decimal" formControlName="bodyFatPct" /><app-field-error [control]="form.controls.bodyFatPct" [messages]="rangeF" /></div>
         </div>
+
+        <h3 class="eyebrow">Composición corporal <span class="muted">opcional</span></h3>
+        <div class="form-grid" formGroupName="comp">
+          @for (f of comp; track f.key) {
+            <div class="field"><label [for]="'c-' + f.key">{{ f.label }}@if (f.unit) { ({{ f.unit }}) }</label><input [id]="'c-' + f.key" class="input" inputmode="decimal" [formControlName]="f.key" /><app-field-error [control]="compCtl(f.key)" [messages]="compMsg[f.key]" /></div>
+          }
+        </div>
+
+        <h3 class="eyebrow">Perímetros o circunferencias (cm) <span class="muted">opcional</span></h3>
+        <div class="form-grid">
+          <div class="field"><label for="m-waist">Cintura</label><input id="m-waist" class="input" inputmode="decimal" formControlName="waistCm" /><app-field-error [control]="form.controls.waistCm" /></div>
+          <div class="field"><label for="m-hip">Cadera</label><input id="m-hip" class="input" inputmode="decimal" formControlName="hipCm" /><app-field-error [control]="form.controls.hipCm" /></div>
+        </div>
+        @for (g of girthGroups; track g.title) {
+          <fieldset class="stack" style="border: 0; padding: 0; margin: 0" formGroupName="girths">
+            <legend class="small muted">{{ g.title }}</legend>
+            <div class="form-grid">
+              @for (f of g.fields; track f.key) {
+                <div class="field"><label [for]="'g-' + f.key">{{ f.label }}</label><input [id]="'g-' + f.key" class="input" inputmode="decimal" [formControlName]="f.key" /><app-field-error [control]="girthCtl(f.key)" [messages]="girthMsg" /></div>
+              }
+            </div>
+          </fieldset>
+        }
         <div class="field"><label for="m-notes">Notas <span class="muted">opcional</span></label><textarea id="m-notes" class="textarea" formControlName="notes"></textarea></div>
       </form>
       <ng-container modalFooter>
@@ -86,22 +112,37 @@ export class MeasurementsTab {
   protected readonly adding = signal(false);
   protected readonly rangeW = RANGE_MSG('Peso', 20, 400);
   protected readonly rangeH = RANGE_MSG('Talla', 100, 250);
-  protected readonly rangeF = RANGE_MSG('Porcentaje', 2, 70);
-  protected readonly metrics = [
-    { key: 'weightKg', label: 'Peso', unit: 'kg' },
-    { key: 'bmi', label: 'IMC', unit: '' },
-    { key: 'waistCm', label: 'Cintura', unit: 'cm' },
-    { key: 'hipCm', label: 'Cadera', unit: 'cm' },
-    { key: 'bodyFatPct', label: '% grasa', unit: '%' },
-  ] as const;
-  protected readonly selected = signal<(typeof this.metrics)[number]['key']>('weightKg');
-  protected readonly current = computed(() => this.metrics.find((m) => m.key === this.selected())!);
+  protected readonly comp = COMPOSITION_FIELDS;
+  protected readonly girthGroups = GIRTH_GROUPS;
+  protected readonly compMsg = Object.fromEntries(COMPOSITION_FIELDS.map((f) => [f.key, RANGE_MSG(f.label, f.min, f.max)]));
+  protected readonly girthMsg = RANGE_MSG('Perímetro', 5, 250);
+  protected readonly open = signal('');
+
+  private static readonly ALL_METRICS: readonly { key: string; label: string; unit: string; get: (m: Measurement) => string | undefined }[] = [
+    { key: 'weightKg', label: 'Peso', unit: 'kg', get: (m) => m.weightKg },
+    { key: 'bmi', label: 'IMC', unit: '', get: (m) => m.bmi },
+    { key: 'waistCm', label: 'Cintura', unit: 'cm', get: (m) => m.waistCm },
+    { key: 'hipCm', label: 'Cadera', unit: 'cm', get: (m) => m.hipCm },
+    ...COMPOSITION_FIELDS.map((f) => ({ key: f.key as string, label: f.label, unit: f.unit, get: (m: Measurement) => m[f.key] })),
+    ...GIRTH_FIELDS.map((f) => ({ key: `g:${f.key}`, label: f.label, unit: 'cm', get: (m: Measurement) => m.girths?.[f.key] })),
+  ];
   protected readonly sorted = computed(() => [...this.patient().measurements].sort((a, b) => a.measuredAt.localeCompare(b.measuredAt)));
   protected readonly desc = computed(() => [...this.sorted()].reverse());
+  /** Solo se ofrecen las variables que tienen al menos un dato; peso e IMC siempre. */
+  protected readonly metrics = computed(() => MeasurementsTab.ALL_METRICS.filter((x) => ['weightKg', 'bmi'].includes(x.key) || this.sorted().some((m) => x.get(m) !== undefined)));
+  protected readonly selected = signal('weightKg');
+  protected readonly current = computed(() => this.metrics().find((m) => m.key === this.selected()) ?? this.metrics()[0]);
   protected readonly series = computed<LineSeries[]>(() => {
-    const key = this.selected();
-    return [{ label: this.current().label, points: this.sorted().filter((m) => m[key] !== undefined).map((m) => ({ date: m.measuredAt, value: Number(m[key]) })) }];
+    const cur = this.current();
+    return [{ label: cur.label, points: this.sorted().filter((m) => cur.get(m) !== undefined).map((m) => ({ date: m.measuredAt, value: Number(cur.get(m)) })) }];
   });
+
+  /** Datos adicionales de una medición (composición y perímetros) para el detalle del historial. */
+  protected details(m: Measurement): { label: string; value: string }[] {
+    return MeasurementsTab.ALL_METRICS
+      .filter((x) => !['weightKg', 'bmi', 'waistCm', 'hipCm', 'bodyFatPct'].includes(x.key) && x.get(m) !== undefined)
+      .map((x) => ({ label: x.label, value: `${x.get(m)}${x.unit ? ' ' + x.unit : ''}` }));
+  }
 
   protected readonly form = this.fb.nonNullable.group({
     measuredAt: [todayIso(), Validators.required],
@@ -109,9 +150,12 @@ export class MeasurementsTab {
     heightCm: ['', [Validators.required, decimalValidator, range(100, 250)]],
     waistCm: ['', [decimalValidator, range(30, 250)]],
     hipCm: ['', [decimalValidator, range(40, 250)]],
-    bodyFatPct: ['', [decimalValidator, range(2, 70)]],
+    comp: new FormGroup(Object.fromEntries(COMPOSITION_FIELDS.map((f) => [f.key, new FormControl('', { nonNullable: true, validators: [decimalValidator, range(f.min, f.max)] })]))),
+    girths: new FormGroup(Object.fromEntries(GIRTH_FIELDS.map((f) => [f.key, new FormControl('', { nonNullable: true, validators: [decimalValidator, range(5, 250)] })]))),
     notes: [''],
   });
+  protected compCtl(key: string): FormControl<string> { return this.form.controls.comp.controls[key] as FormControl<string>; }
+  protected girthCtl(key: string): FormControl<string> { return this.form.controls.girths.controls[key] as FormControl<string>; }
   private readonly formValue = signal(this.form.getRawValue());
   protected readonly bmiPreview = computed(() => {
     const v = this.formValue();
@@ -124,7 +168,7 @@ export class MeasurementsTab {
 
   protected openAdd(): void {
     const last = latestMeasurement(this.patient().measurements);
-    this.form.reset({ measuredAt: todayIso(), weightKg: '', heightCm: last?.heightCm ?? '', waistCm: '', hipCm: '', bodyFatPct: '', notes: '' });
+    this.form.reset({ measuredAt: todayIso(), weightKg: '', heightCm: last?.heightCm ?? '', waistCm: '', hipCm: '', notes: '' });
     this.adding.set(true);
   }
 
@@ -133,7 +177,8 @@ export class MeasurementsTab {
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
     if (v.measuredAt > todayIso()) { this.form.controls.measuredAt.setErrors({ futureDate: true }); return; }
-    this.patients.addMeasurement(this.patient().id, v);
+    const { comp, girths, ...base } = v;
+    this.patients.addMeasurement(this.patient().id, { ...base, ...comp, girths });
     this.adding.set(false);
     this.toast.ok('Medición registrada. Se agregó al historial.');
   }
@@ -144,7 +189,11 @@ export class MeasurementsTab {
   }
 
   protected exportCsv(): void {
-    const rows = [['Fecha', 'Peso (kg)', 'Talla (cm)', 'IMC', 'Cintura (cm)', 'Cadera (cm)', 'Grasa (%)', 'Notas'], ...this.sorted().map((m) => [m.measuredAt, m.weightKg, m.heightCm, m.bmi, m.waistCm, m.hipCm, m.bodyFatPct, m.notes])];
+    const extra = MeasurementsTab.ALL_METRICS.filter((x) => !['weightKg', 'bmi', 'waistCm', 'hipCm'].includes(x.key));
+    const rows = [
+      ['Fecha', 'Peso (kg)', 'Talla (cm)', 'IMC', 'Cintura (cm)', 'Cadera (cm)', ...extra.map((x) => (x.unit ? `${x.label} (${x.unit})` : x.label)), 'Notas'],
+      ...this.sorted().map((m) => [m.measuredAt, m.weightKg, m.heightCm, m.bmi, m.waistCm, m.hipCm, ...extra.map((x) => x.get(m)), m.notes]),
+    ];
     downloadBlob(`mediciones-${this.patient().id}.csv`, toCsv(rows), 'text/csv;charset=utf-8');
     this.patients.logExport(this.patient().id, 'mediciones (CSV)');
     this.toast.ok('Exportación registrada en auditoría.');
@@ -192,7 +241,7 @@ export class MeasurementsTab {
         <div class="panel-head"><h2 id="h-meds">Medicamentos</h2><button tuiButton type="button" size="s" (click)="openMed()"><app-icon name="plus" [size]="16" /> Agregar</button></div>
         <ul class="list-plain list-rows">
           @for (m of patient().medications; track m.id) {
-            <li><div class="grow"><strong>{{ m.name }}</strong> · {{ m.dose }} · {{ m.frequency }} <app-badge [tone]="m.status === 'active' ? 'info' : 'neutral'">{{ m.status === 'active' ? 'Vigente' : 'Suspendido' }}</app-badge></div>
+            <li><div class="grow"><strong>{{ m.name }}</strong>@if (m.kind) { · {{ m.kind }} } · {{ m.dose }} · {{ m.frequency }} <app-badge [tone]="m.status === 'active' ? 'info' : 'neutral'">{{ m.status === 'active' ? 'Vigente' : 'Suspendido' }}</app-badge></div>
               <button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Editar ' + m.name" (click)="openMed(m)"><app-icon name="edit" [size]="18" /></button>
               <button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Eliminar ' + m.name" (click)="remove('medications', m.id, m.name)"><app-icon name="trash" [size]="18" /></button></li>
           } @empty { <li><span class="muted">Sin medicamentos registrados.</span></li> }
@@ -222,6 +271,7 @@ export class MeasurementsTab {
     <app-modal [(open)]="medOpen" [title]="medForm.controls.id.value ? 'Editar medicamento' : 'Nuevo medicamento'">
       <form [formGroup]="medForm" id="med-form" (ngSubmit)="saveMed()" class="stack" novalidate>
         <div class="field"><label for="md-name">Medicamento</label><input id="md-name" class="input" formControlName="name" /><app-field-error [control]="medForm.controls.name" /></div>
+        <div class="field"><label for="md-kind">Tipo</label><input id="md-kind" class="input" formControlName="kind" placeholder="Ej. antihipertensivo, antidiabético, suplemento" /></div>
         <div class="form-grid"><div class="field"><label for="md-dose">Dosis</label><input id="md-dose" class="input" formControlName="dose" /></div><div class="field"><label for="md-f">Frecuencia</label><input id="md-f" class="input" formControlName="frequency" /></div>
         <div class="field"><label for="md-s">Estado</label><select id="md-s" class="select" formControlName="status"><option value="active">Vigente</option><option value="ended">Suspendido</option></select></div></div>
       </form>
@@ -242,7 +292,7 @@ export class ClinicalTab {
 
   protected readonly condForm = this.fb.nonNullable.group({ id: [''], name: ['', Validators.required], details: [''], status: ['active' as Condition['status']] });
   protected readonly allForm = this.fb.nonNullable.group({ id: [''], allergen: ['', Validators.required], aliases: [''], reaction: [''], severity: ['moderate' as Allergy['severity']] });
-  protected readonly medForm = this.fb.nonNullable.group({ id: [''], name: ['', Validators.required], dose: [''], frequency: [''], status: ['active' as Medication['status']] });
+  protected readonly medForm = this.fb.nonNullable.group({ id: [''], name: ['', Validators.required], kind: [''], dose: [''], frequency: [''], status: ['active' as Medication['status']] });
 
   protected saveIndications(v: string): void {
     this.patients.update(this.patient().id, { clinicalIndications: v.trim() });
@@ -269,7 +319,7 @@ export class ClinicalTab {
     this.toast.ok('Alergia guardada. Las alertas de los planes se actualizan automáticamente.');
   }
 
-  protected openMed(m?: Medication): void { this.medForm.reset({ id: m?.id ?? '', name: m?.name ?? '', dose: m?.dose ?? '', frequency: m?.frequency ?? '', status: m?.status ?? 'active' }); this.medOpen.set(true); }
+  protected openMed(m?: Medication): void { this.medForm.reset({ id: m?.id ?? '', name: m?.name ?? '', kind: m?.kind ?? '', dose: m?.dose ?? '', frequency: m?.frequency ?? '', status: m?.status ?? 'active' }); this.medOpen.set(true); }
   protected saveMed(): void {
     this.medForm.markAllAsTouched();
     if (this.medForm.invalid) return;

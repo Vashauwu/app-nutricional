@@ -4,6 +4,7 @@ package patients
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"strings"
@@ -453,6 +454,19 @@ type MeasurementInput struct {
 	WeightKg, HeightCm         decimal.Decimal
 	WaistCm, HipCm, BodyFatPct *decimal.Decimal
 	Notes                      string
+	// Composición corporal (de una báscula de bioimpedancia) y perímetros. Todo opcional.
+	FatMassKg, MusclePct, MuscleMassKg, VisceralFat, BoneKg, ObesityPct *decimal.Decimal
+	Girths                                                              map[string]decimal.Decimal
+}
+
+// GirthKeys son los perímetros (cm) que se aceptan además de cintura y cadera. L = izquierdo, R = derecho.
+var GirthKeys = []string{
+	"shoulders", "chest", "abdomen",
+	"bicep_relaxed_l", "bicep_relaxed_r", "bicep_flexed_l", "bicep_flexed_r",
+	"forearm_relaxed_l", "forearm_relaxed_r", "forearm_flexed_l", "forearm_flexed_r",
+	"wrist_l", "wrist_r",
+	"thigh_relaxed_l", "thigh_relaxed_r", "thigh_flexed_l", "thigh_flexed_r",
+	"calf_relaxed_l", "calf_relaxed_r", "calf_flexed_l", "calf_flexed_r",
 }
 
 var (
@@ -487,9 +501,28 @@ func (s *Service) AddMeasurement(ctx context.Context, a Actor, patient uuid.UUID
 	if in.BodyFatPct != nil && (in.BodyFatPct.IsNegative() || in.BodyFatPct.GreaterThan(decimal.NewFromInt(100))) {
 		errs["body_fat_pct"] = "el porcentaje debe estar entre 0 y 100"
 	}
-	for k, v := range map[string]*decimal.Decimal{"waist_cm": in.WaistCm, "hip_cm": in.HipCm} {
+	for k, v := range map[string]*decimal.Decimal{"waist_cm": in.WaistCm, "hip_cm": in.HipCm, "fat_mass_kg": in.FatMassKg, "muscle_mass_kg": in.MuscleMassKg, "bone_kg": in.BoneKg} {
 		if v != nil && !v.IsPositive() {
 			errs[k] = "debe ser mayor a cero"
+		}
+	}
+	if in.MusclePct != nil && (in.MusclePct.IsNegative() || in.MusclePct.GreaterThan(decimal.NewFromInt(100))) {
+		errs["muscle_pct"] = "el porcentaje debe estar entre 0 y 100"
+	}
+	for k, v := range map[string]*decimal.Decimal{"visceral_fat": in.VisceralFat, "obesity_pct": in.ObesityPct} {
+		if v != nil && v.IsNegative() {
+			errs[k] = "no puede ser negativo"
+		}
+	}
+	valid := map[string]bool{}
+	for _, k := range GirthKeys {
+		valid[k] = true
+	}
+	for k, v := range in.Girths {
+		if !valid[k] {
+			errs["girths"] = "perímetro desconocido: " + k
+		} else if !v.IsPositive() || v.GreaterThan(decimal.NewFromInt(300)) {
+			errs["girths."+k] = "debe estar entre 0 y 300 cm"
 		}
 	}
 	if len(errs) > 0 {
@@ -499,9 +532,19 @@ func (s *Service) AddMeasurement(ctx context.Context, a Actor, patient uuid.UUID
 	if err != nil {
 		return db.PatientMeasurement{}, err
 	}
+	girths := map[string]string{}
+	for k, v := range in.Girths {
+		girths[k] = v.String()
+	}
+	girthsJSON, err := json.Marshal(girths)
+	if err != nil {
+		return db.PatientMeasurement{}, err
+	}
 	m, err := s.q.InsertMeasurement(ctx, db.InsertMeasurementParams{
 		PatientID: patient, MeasuredAt: pgDate(in.MeasuredAt), WeightKg: in.WeightKg, HeightCm: in.HeightCm, Bmi: bmi,
 		WaistCm: nd(in.WaistCm), HipCm: nd(in.HipCm), BodyFatPct: nd(in.BodyFatPct), Notes: in.Notes, CreatedBy: a.ID,
+		FatMassKg: nd(in.FatMassKg), MusclePct: nd(in.MusclePct), MuscleMassKg: nd(in.MuscleMassKg), VisceralFat: nd(in.VisceralFat),
+		BoneKg: nd(in.BoneKg), ObesityPct: nd(in.ObesityPct), Girths: girthsJSON,
 	})
 	if err != nil {
 		return db.PatientMeasurement{}, err

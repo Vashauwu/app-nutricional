@@ -18,14 +18,16 @@ import { Ring } from '../../shared/components/charts';
 import { ageFrom, formatBytes, formatDate, initials } from '../../shared/utils/format';
 import { TrackingCard } from '../tracking/tracking-card';
 import { ClinicalTab, MeasurementsTab, PreferencesTab } from './patient-clinical-tabs';
+import { LabsTab } from './patient-labs-tab';
 import { ConsentsTab, DocumentsTab, NotesTab } from './patient-admin-tabs';
 
-type TabId = 'resumen' | 'antropometria' | 'clinico' | 'preferencias' | 'notas' | 'documentos' | 'consentimientos' | 'planes' | 'seguimiento';
+type TabId = 'resumen' | 'antropometria' | 'clinico' | 'laboratorios' | 'preferencias' | 'notas' | 'documentos' | 'consentimientos' | 'planes' | 'seguimiento';
 
 const TABS: { id: TabId; label: string; clinical: boolean }[] = [
   { id: 'resumen', label: 'Resumen', clinical: false },
   { id: 'antropometria', label: 'Antropometría', clinical: true },
   { id: 'clinico', label: 'Clínico', clinical: true },
+  { id: 'laboratorios', label: 'Laboratorios', clinical: true },
   { id: 'preferencias', label: 'Preferencias', clinical: true },
   { id: 'notas', label: 'Notas privadas', clinical: true },
   { id: 'documentos', label: 'Documentos', clinical: true },
@@ -38,7 +40,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
   selector: 'app-patient-detail',
   imports: [InviteLink, 
     RouterLink, ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, Ring, FieldError, TrackingCard,
-    MeasurementsTab, ClinicalTab, PreferencesTab, NotesTab, DocumentsTab, ConsentsTab,
+    MeasurementsTab, ClinicalTab, LabsTab, PreferencesTab, NotesTab, DocumentsTab, ConsentsTab,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
@@ -69,6 +71,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
           <div class="actions row">
             @if (!p.deletedAt) {
               <a tuiButton size="m" routerLink="/planes/nuevo" [queryParams]="{ paciente: p.id }" [attr.aria-disabled]="!consentOk()"><app-icon name="calendar" [size]="18" /> Nuevo plan</a>
+              <a tuiButton size="m" appearance="secondary" routerLink="/consultas" [queryParams]="{ paciente: p.id }"><app-icon name="clock" [size]="18" /> Agendar consulta</a>
               <button tuiButton type="button" size="m" appearance="secondary" (click)="openEdit()"><app-icon name="edit" [size]="18" /> Editar datos</button>
               @if (patients.apiMode && !p.userId) { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Invitar al paciente</button> }
               @else if (p.status === 'invited') { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Reenviar invitación</button> }
@@ -155,6 +158,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
               } }
               @case ('antropometria') { <app-measurements-tab [patient]="p" /> }
               @case ('clinico') { <app-clinical-tab [patient]="p" /> }
+              @case ('laboratorios') { <app-labs-tab [patient]="p" (openDocuments)="go('documentos')" /> }
               @case ('preferencias') { <app-preferences-tab [patient]="p" /> }
               @case ('notas') { <app-notes-tab [patient]="p" /> }
               @case ('documentos') { <app-documents-tab [patient]="p" /> }

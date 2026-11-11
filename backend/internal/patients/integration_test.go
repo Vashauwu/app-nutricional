@@ -677,3 +677,109 @@ func TestInviteManualPatient(t *testing.T) {
 		require.GreaterOrEqual(t, n, 3)
 	})
 }
+
+func TestBodyCompositionAndMedicationKind(t *testing.T) {
+	e := start(t)
+	nutri := e.staff(t, "nutri@demo.mx")
+	pid := nutri.createPatient("comp@demo.mx", "Carla", "Composición")
+	nutri.acceptAll(pid)
+	base := "/api/v1/patients/" + pid + "/measurements"
+
+	code, b := nutri.do("POST", base, map[string]any{
+		"measured_at": "2026-01-10", "weight_kg": "96.05", "height_cm": "177",
+		"body_fat_pct": "29.5", "fat_mass_kg": "28.3", "muscle_pct": "67.9", "muscle_mass_kg": "65.2",
+		"visceral_fat": "16.5", "bone_kg": "2.57", "obesity_pct": "41.5",
+		"girths": map[string]string{"shoulders": "120", "bicep_relaxed_l": "35.5", "bicep_relaxed_r": "36", "calf_flexed_r": "41", "wrist_l": ""},
+	})
+	require.Equal(t, 201, code, fmt.Sprint(b))
+	require.Equal(t, "28.3", b["fat_mass_kg"])
+	require.Equal(t, "2.57", b["bone_kg"])
+	g := b["girths"].(map[string]any)
+	require.Equal(t, "35.5", g["bicep_relaxed_l"])
+	require.NotContains(t, g, "wrist_l", "un campo vacío no se guarda")
+
+	_, list := nutri.do("GET", base, nil)
+	first := list["items"].([]any)[0].(map[string]any)
+	require.Equal(t, "120", first["girths"].(map[string]any)["shoulders"])
+
+	code, b = nutri.do("POST", base, map[string]any{"measured_at": "2026-02-10", "weight_kg": "70", "height_cm": "170", "girths": map[string]string{"cuello": "40"}})
+	require.Equal(t, 422, code)
+	require.Contains(t, fields(b), "girths")
+	code, b = nutri.do("POST", base, map[string]any{"measured_at": "2026-02-10", "weight_kg": "70", "height_cm": "170", "muscle_pct": "140"})
+	require.Equal(t, 422, code)
+	require.Contains(t, fields(b), "muscle_pct")
+	code, b = nutri.do("POST", base, map[string]any{"measured_at": "2026-02-10", "weight_kg": "70", "height_cm": "170", "girths": map[string]string{"chest": "abc"}})
+	require.Equal(t, 422, code)
+	require.Contains(t, fields(b), "girths.chest")
+
+	code, b = nutri.do("POST", base, map[string]any{"measured_at": "2026-02-10", "weight_kg": "70", "height_cm": "170"})
+	require.Equal(t, 201, code, "una medición solo con peso y talla sigue siendo válida")
+	require.Empty(t, b["girths"].(map[string]any))
+
+	code, med := nutri.do("POST", "/api/v1/patients/"+pid+"/medications", map[string]any{"name": "Metformina", "dose": "850 mg", "kind": "Antidiabético"})
+	require.Equal(t, 201, code, fmt.Sprint(med))
+	require.Equal(t, "Antidiabético", med["kind"])
+	_, clin := nutri.do("GET", "/api/v1/patients/"+pid+"/clinical", nil)
+	require.Equal(t, "Antidiabético", clin["medications"].([]any)[0].(map[string]any)["kind"])
+}
+
+func TestLabs(t *testing.T) {
+	e := start(t)
+	nutri := e.staff(t, "nutri@demo.mx")
+	pid := nutri.createPatient("lab@demo.mx", "Lola", "Laboratorio")
+	base := "/api/v1/patients/" + pid + "/labs"
+
+	code, _ := nutri.do("GET", base, nil)
+	require.Equal(t, 423, code, "sin consentimientos el expediente está bloqueado")
+	nutri.acceptAll(pid)
+
+	_, none := nutri.do("GET", base, nil)
+	require.Empty(t, none["items"])
+
+	code, b := nutri.do("POST", base, map[string]any{
+		"taken_at": "2026-05-02", "lab_name": "Laboratorio Azteca", "notes": "En ayuno de 12 h",
+		"results": []map[string]any{
+			{"name": "Glucosa", "value": "112.5", "unit": "mg/dL", "ref_min": "70", "ref_max": "99"},
+			{"name": "Colesterol total", "value": "185", "unit": "mg/dL", "ref_max": "200"},
+			{"name": "Hemoglobina glucosilada", "value": "5.4", "unit": "%"},
+		}})
+	require.Equal(t, 201, code, fmt.Sprint(b))
+	res := b["results"].([]any)
+	require.Len(t, res, 3)
+	require.Equal(t, "112.5", res[0].(map[string]any)["value"], "los decimales viajan como texto")
+	require.Nil(t, res[1].(map[string]any)["ref_min"], "el rango es opcional")
+
+	code, _ = nutri.do("POST", base, map[string]any{"taken_at": "2026-03-01", "results": []map[string]any{{"name": "Glucosa", "value": "90", "unit": "mg/dL"}}})
+	require.Equal(t, 201, code)
+	_, list := nutri.do("GET", base, nil)
+	items := list["items"].([]any)
+	require.Len(t, items, 2)
+	require.Equal(t, "2026-05-02", items[0].(map[string]any)["taken_at"], "más reciente primero")
+	require.Len(t, items[0].(map[string]any)["results"], 3)
+	require.Len(t, items[1].(map[string]any)["results"], 1)
+
+	one := func(name, value string) map[string]any { return map[string]any{"name": name, "value": value} }
+	for name, body := range map[string]map[string]any{
+		"vacío":             {"taken_at": "2026-05-02", "results": []map[string]any{}},
+		"valor inválido":    {"taken_at": "2026-05-02", "results": []map[string]any{one("Glucosa", "abc")}},
+		"sin nombre":        {"taken_at": "2026-05-02", "results": []map[string]any{one(" ", "1")}},
+		"repetido":          {"taken_at": "2026-05-02", "results": []map[string]any{one("Glucosa", "1"), one("Glucosa", "2")}},
+		"rango invertido":   {"taken_at": "2026-05-02", "results": []map[string]any{{"name": "Glucosa", "value": "1", "ref_min": "100", "ref_max": "70"}}},
+		"fecha futura":      {"taken_at": "2999-01-01", "results": []map[string]any{one("Glucosa", "1")}},
+		"valor negativo":    {"taken_at": "2026-05-02", "results": []map[string]any{one("Glucosa", "-1")}},
+		"fecha mal escrita": {"taken_at": "02/05/2026", "results": []map[string]any{one("Glucosa", "1")}},
+	} {
+		code, _ := nutri.do("POST", base, body)
+		require.Equal(t, 422, code, name)
+	}
+
+	code, _ = nutri.do("DELETE", base+"/"+items[1].(map[string]any)["id"].(string), nil)
+	require.Equal(t, 204, code)
+	_, list = nutri.do("GET", base, nil)
+	require.Len(t, list["items"], 1)
+	var left int
+	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM patient_lab_results`).Scan(&left))
+	require.Equal(t, 3, left, "al borrar un estudio se borran sus resultados")
+	code, _ = nutri.do("DELETE", base+"/"+items[1].(map[string]any)["id"].(string), nil)
+	require.Equal(t, 404, code)
+}

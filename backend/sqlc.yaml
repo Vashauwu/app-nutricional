@@ -17,6 +17,8 @@ sql:
           - db_type: pg_catalog.numeric
             nullable: true
             go_type: github.com/shopspring/decimal.NullDecimal
+          - column: patient_measurements.girths
+            go_type: encoding/json.RawMessage
           - db_type: uuid
             go_type: github.com/google/uuid.UUID
           - db_type: uuid

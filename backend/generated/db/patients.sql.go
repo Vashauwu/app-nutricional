@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -306,22 +307,30 @@ func (q *Queries) InsertCondition(ctx context.Context, arg InsertConditionParams
 }
 
 const insertMeasurement = `-- name: InsertMeasurement :one
-INSERT INTO patient_measurements (patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by, created_at
+INSERT INTO patient_measurements (patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by,
+                                  fat_mass_kg, muscle_pct, muscle_mass_kg, visceral_fat, bone_kg, obesity_pct, girths)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+RETURNING id, patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by, created_at, fat_mass_kg, muscle_pct, muscle_mass_kg, visceral_fat, bone_kg, obesity_pct, girths
 `
 
 type InsertMeasurementParams struct {
-	PatientID  uuid.UUID           `json:"patient_id"`
-	MeasuredAt pgtype.Date         `json:"measured_at"`
-	WeightKg   decimal.Decimal     `json:"weight_kg"`
-	HeightCm   decimal.Decimal     `json:"height_cm"`
-	Bmi        decimal.Decimal     `json:"bmi"`
-	WaistCm    decimal.NullDecimal `json:"waist_cm"`
-	HipCm      decimal.NullDecimal `json:"hip_cm"`
-	BodyFatPct decimal.NullDecimal `json:"body_fat_pct"`
-	Notes      string              `json:"notes"`
-	CreatedBy  uuid.UUID           `json:"created_by"`
+	PatientID    uuid.UUID           `json:"patient_id"`
+	MeasuredAt   pgtype.Date         `json:"measured_at"`
+	WeightKg     decimal.Decimal     `json:"weight_kg"`
+	HeightCm     decimal.Decimal     `json:"height_cm"`
+	Bmi          decimal.Decimal     `json:"bmi"`
+	WaistCm      decimal.NullDecimal `json:"waist_cm"`
+	HipCm        decimal.NullDecimal `json:"hip_cm"`
+	BodyFatPct   decimal.NullDecimal `json:"body_fat_pct"`
+	Notes        string              `json:"notes"`
+	CreatedBy    uuid.UUID           `json:"created_by"`
+	FatMassKg    decimal.NullDecimal `json:"fat_mass_kg"`
+	MusclePct    decimal.NullDecimal `json:"muscle_pct"`
+	MuscleMassKg decimal.NullDecimal `json:"muscle_mass_kg"`
+	VisceralFat  decimal.NullDecimal `json:"visceral_fat"`
+	BoneKg       decimal.NullDecimal `json:"bone_kg"`
+	ObesityPct   decimal.NullDecimal `json:"obesity_pct"`
+	Girths       json.RawMessage     `json:"girths"`
 }
 
 // ---------- Mediciones (append-only) ----------
@@ -337,6 +346,13 @@ func (q *Queries) InsertMeasurement(ctx context.Context, arg InsertMeasurementPa
 		arg.BodyFatPct,
 		arg.Notes,
 		arg.CreatedBy,
+		arg.FatMassKg,
+		arg.MusclePct,
+		arg.MuscleMassKg,
+		arg.VisceralFat,
+		arg.BoneKg,
+		arg.ObesityPct,
+		arg.Girths,
 	)
 	var i PatientMeasurement
 	err := row.Scan(
@@ -352,12 +368,19 @@ func (q *Queries) InsertMeasurement(ctx context.Context, arg InsertMeasurementPa
 		&i.Notes,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.FatMassKg,
+		&i.MusclePct,
+		&i.MuscleMassKg,
+		&i.VisceralFat,
+		&i.BoneKg,
+		&i.ObesityPct,
+		&i.Girths,
 	)
 	return i, err
 }
 
 const insertMedication = `-- name: InsertMedication :one
-INSERT INTO patient_medications (patient_id, name, dose, frequency, start_date, end_date, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, patient_id, name, dose, frequency, start_date, end_date, status, created_at
+INSERT INTO patient_medications (patient_id, name, dose, frequency, start_date, end_date, status, kind) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, patient_id, name, dose, frequency, start_date, end_date, status, created_at, kind
 `
 
 type InsertMedicationParams struct {
@@ -368,6 +391,7 @@ type InsertMedicationParams struct {
 	StartDate pgtype.Date `json:"start_date"`
 	EndDate   pgtype.Date `json:"end_date"`
 	Status    string      `json:"status"`
+	Kind      string      `json:"kind"`
 }
 
 func (q *Queries) InsertMedication(ctx context.Context, arg InsertMedicationParams) (PatientMedication, error) {
@@ -379,6 +403,7 @@ func (q *Queries) InsertMedication(ctx context.Context, arg InsertMedicationPara
 		arg.StartDate,
 		arg.EndDate,
 		arg.Status,
+		arg.Kind,
 	)
 	var i PatientMedication
 	err := row.Scan(
@@ -391,6 +416,7 @@ func (q *Queries) InsertMedication(ctx context.Context, arg InsertMedicationPara
 		&i.EndDate,
 		&i.Status,
 		&i.CreatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -616,7 +642,7 @@ func (q *Queries) ListConditions(ctx context.Context, patientID uuid.UUID) ([]Pa
 }
 
 const listMeasurements = `-- name: ListMeasurements :many
-SELECT id, patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by, created_at FROM patient_measurements WHERE patient_id = $1 ORDER BY measured_at DESC, created_at DESC
+SELECT id, patient_id, measured_at, weight_kg, height_cm, bmi, waist_cm, hip_cm, body_fat_pct, notes, created_by, created_at, fat_mass_kg, muscle_pct, muscle_mass_kg, visceral_fat, bone_kg, obesity_pct, girths FROM patient_measurements WHERE patient_id = $1 ORDER BY measured_at DESC, created_at DESC
 `
 
 func (q *Queries) ListMeasurements(ctx context.Context, patientID uuid.UUID) ([]PatientMeasurement, error) {
@@ -641,6 +667,13 @@ func (q *Queries) ListMeasurements(ctx context.Context, patientID uuid.UUID) ([]
 			&i.Notes,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.FatMassKg,
+			&i.MusclePct,
+			&i.MuscleMassKg,
+			&i.VisceralFat,
+			&i.BoneKg,
+			&i.ObesityPct,
+			&i.Girths,
 		); err != nil {
 			return nil, err
 		}
@@ -653,7 +686,7 @@ func (q *Queries) ListMeasurements(ctx context.Context, patientID uuid.UUID) ([]
 }
 
 const listMedications = `-- name: ListMedications :many
-SELECT id, patient_id, name, dose, frequency, start_date, end_date, status, created_at FROM patient_medications WHERE patient_id = $1 ORDER BY created_at
+SELECT id, patient_id, name, dose, frequency, start_date, end_date, status, created_at, kind FROM patient_medications WHERE patient_id = $1 ORDER BY created_at
 `
 
 // ---------- Medicamentos ----------
@@ -676,6 +709,7 @@ func (q *Queries) ListMedications(ctx context.Context, patientID uuid.UUID) ([]P
 			&i.EndDate,
 			&i.Status,
 			&i.CreatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -1061,7 +1095,7 @@ func (q *Queries) UpdateCondition(ctx context.Context, arg UpdateConditionParams
 }
 
 const updateMedication = `-- name: UpdateMedication :one
-UPDATE patient_medications SET name = $3, dose = $4, frequency = $5, start_date = $6, end_date = $7, status = $8 WHERE id = $1 AND patient_id = $2 RETURNING id, patient_id, name, dose, frequency, start_date, end_date, status, created_at
+UPDATE patient_medications SET name = $3, dose = $4, frequency = $5, start_date = $6, end_date = $7, status = $8, kind = $9 WHERE id = $1 AND patient_id = $2 RETURNING id, patient_id, name, dose, frequency, start_date, end_date, status, created_at, kind
 `
 
 type UpdateMedicationParams struct {
@@ -1073,6 +1107,7 @@ type UpdateMedicationParams struct {
 	StartDate pgtype.Date `json:"start_date"`
 	EndDate   pgtype.Date `json:"end_date"`
 	Status    string      `json:"status"`
+	Kind      string      `json:"kind"`
 }
 
 func (q *Queries) UpdateMedication(ctx context.Context, arg UpdateMedicationParams) (PatientMedication, error) {
@@ -1085,6 +1120,7 @@ func (q *Queries) UpdateMedication(ctx context.Context, arg UpdateMedicationPara
 		arg.StartDate,
 		arg.EndDate,
 		arg.Status,
+		arg.Kind,
 	)
 	var i PatientMedication
 	err := row.Scan(
@@ -1097,6 +1133,7 @@ func (q *Queries) UpdateMedication(ctx context.Context, arg UpdateMedicationPara
 		&i.EndDate,
 		&i.Status,
 		&i.CreatedAt,
+		&i.Kind,
 	)
 	return i, err
 }

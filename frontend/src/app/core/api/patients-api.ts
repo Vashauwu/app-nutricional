@@ -1,11 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import {
-  Allergy, Condition, ConsentAcceptance, ConsentDocument, FoodPreference, Goal, Measurement, Medication, Patient, PatientDocument, PatientNote, PatientProfile, PatientStatus, Sex,
+  Allergy, Condition, ConsentAcceptance, ConsentDocument, FoodPreference, Goal, Medication, Patient, PatientDocument, PatientNote, PatientProfile, PatientStatus, Sex,
 } from '../../shared/models/domain';
 import { Page } from '../../shared/utils/loadable';
 import { DbService } from '../data/db.service';
 import { ApiClient } from './api-client';
+import { ApiMeasurement, MeasurementInput, measurementBody, toMeasurement } from './measurement-map';
 
 // ---------- Formas de la API (backend/internal/patients) ----------
 export interface ApiPatient {
@@ -13,11 +14,10 @@ export interface ApiPatient {
   goal: Goal; goal_notes: string; clinical_indications: string; measurements_visible: boolean; quota_override_bytes: number | null;
   created_at: string; updated_at: string; deleted_at: string | null; consent_complete?: boolean;
 }
-interface ApiMeasurement { id: string; measured_at: string; weight_kg: string; height_cm: string; bmi: string; waist_cm: string | null; hip_cm: string | null; body_fat_pct: string | null; notes: string }
 interface ApiClinical {
   conditions: { id: string; name: string; details: string; status: Condition['status'] }[];
   allergies: { id: string; allergen: string; aliases: string[] | null; reaction: string; severity: Allergy['severity']; status: Allergy['status'] }[];
-  medications: { id: string; name: string; dose: string; frequency: string; start_date: string | null; end_date: string | null; status: Medication['status'] }[];
+  medications: { id: string; name: string; dose: string; frequency: string; kind?: string; start_date: string | null; end_date: string | null; status: Medication['status'] }[];
   preferences: { id: string; food_name: string; preference_type: FoodPreference['type']; notes: string }[];
 }
 interface ApiDocument { id: string; name: string; category: PatientDocument['category']; description: string; document_date: string; visible_to_patient: boolean; scan_status: string; size_bytes: number; uploaded_at: string; url: string }
@@ -90,13 +90,13 @@ export class PatientsApi {
           if (r.clinical) {
             patient.conditions = (r.clinical.conditions ?? []).map((c) => ({ id: c.id, name: c.name, details: c.details, status: c.status }));
             patient.allergies = (r.clinical.allergies ?? []).map((a) => ({ id: a.id, allergen: a.allergen, aliases: a.aliases ?? [], reaction: a.reaction, severity: a.severity, status: a.status }));
-            patient.medications = (r.clinical.medications ?? []).map((m) => ({ id: m.id, name: m.name, dose: m.dose, frequency: m.frequency, startDate: opt(m.start_date), endDate: opt(m.end_date), status: m.status }));
+            patient.medications = (r.clinical.medications ?? []).map((m) => ({ id: m.id, name: m.name, dose: m.dose, frequency: m.frequency, kind: opt(m.kind), startDate: opt(m.start_date), endDate: opt(m.end_date), status: m.status }));
             patient.preferences = (r.clinical.preferences ?? []).map((f) => ({ id: f.id, foodName: f.food_name, type: f.preference_type, notes: f.notes }));
           } else {
             patient.conditions = patient.allergies = patient.medications = patient.preferences = [];
           }
           patient.measurements = (r.measurements?.items ?? []).map(
-            (m): Measurement => ({ id: m.id, measuredAt: m.measured_at, weightKg: m.weight_kg, heightCm: m.height_cm, bmi: m.bmi, waistCm: opt(m.waist_cm), hipCm: opt(m.hip_cm), bodyFatPct: opt(m.body_fat_pct), notes: opt(m.notes), createdBy: '' }),
+            toMeasurement,
           );
           patient.notes = (r.notes?.items ?? []).map((n): PatientNote => ({ id: n.id, body: n.body, createdAt: n.created_at, authorName: '' }));
           const at = d.patients.findIndex((x) => x.id === id);
@@ -144,11 +144,8 @@ export class PatientsApi {
     return this.api.post(`/patients/${id}/${active ? 'restore' : 'deactivate'}`);
   }
 
-  addMeasurement(id: string, m: { measuredAt: string; weightKg: string; heightCm: string; waistCm?: string; hipCm?: string; bodyFatPct?: string; notes?: string }): Observable<unknown> {
-    return this.api.post(`/patients/${id}/measurements`, {
-      measured_at: m.measuredAt, weight_kg: m.weightKg, height_cm: m.heightCm,
-      waist_cm: m.waistCm || undefined, hip_cm: m.hipCm || undefined, body_fat_pct: m.bodyFatPct || undefined, notes: m.notes ?? '',
-    });
+  addMeasurement(id: string, m: MeasurementInput): Observable<unknown> {
+    return this.api.post(`/patients/${id}/measurements`, measurementBody(m));
   }
 
   /** Alta o edición de condiciones, alergias, medicamentos y preferencias. */
