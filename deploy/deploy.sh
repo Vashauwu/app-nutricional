@@ -69,18 +69,10 @@ fi
 
 # --- Caddy de entrada: un bloque por ambiente existente ---
 cp -r edge/. /opt/nutri/edge/ 2>/dev/null || true
-CF=/opt/nutri/edge/Caddyfile; : > "$CF"
-for e in prod staging; do
-  f=/opt/nutri/$e/deploy/.env.$e; [ -f "$f" ] || continue
-  host=$(grep '^SITE_ADDRESS=' "$f" | cut -d= -f2-)
-  { echo "$host {"; echo "	encode zstd gzip"
-    [ "$e" = staging ] && echo '	header X-Robots-Tag "noindex, nofollow"'
-    echo "	reverse_proxy web-$e:80"; echo "}"; echo; } >> "$CF"
-done
+./edge.sh   # genera el Caddyfile de entrada con un bloque por ambiente y lo recarga
 
 # --- Levantar el ambiente y luego el de entrada ---
 ./dc.sh "$ENVN" up -d --build
-(cd /opt/nutri/edge && docker compose up -d && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile >/dev/null 2>&1 || true)
 
 if [ "$ENVN" = prod ]; then
   # El respaldo corre con el usuario que opera el ambiente: «deploy» si existe (así los archivos no quedan de root), si no, root.

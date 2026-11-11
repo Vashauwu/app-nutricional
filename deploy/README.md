@@ -72,9 +72,9 @@ cd /opt/nutri/prod/deploy
 ```
 
 ## Cambiar de dominio
-Edita `SITE_ADDRESS` y `PUBLIC_URL` en `.env.<ambiente>` y vuelve a ejecutar `deploy.sh` de ese ambiente (regenera el
-Caddy de entrada). Las sesiones abiertas y las invitaciones pendientes con el enlace viejo dejan de servir.
-
+Edita `SITE_ADDRESS` y `PUBLIC_URL` en `.env.<ambiente>` y ejecuta `./edge.sh` (regenera el Caddy de entrada y pide el certificado nuevo).
+Actualiza también la variable `SITE_URL` del ambiente en GitHub. Las sesiones abiertas y las invitaciones pendientes con el enlace
+viejo dejan de servir. Con correo: ver [`docs/correo-produccion.md`](../docs/correo-produccion.md).
 ## Antes de usar datos reales de pacientes
 Textos legales revisados por la nutrióloga, catálogo SMAE con licencia (la muestra es sintética), política de retención
 definida, y respaldos probados al restaurar.
