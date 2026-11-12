@@ -23,6 +23,7 @@ type Querier interface {
 	ComplianceCounts(ctx context.Context, arg ComplianceCountsParams) (ComplianceCountsRow, error)
 	// Consume el token de un solo uso de forma atómica; devuelve el usuario si era válido.
 	ConsumeResetToken(ctx context.Context, tokenHash []byte) (uuid.UUID, error)
+	CountAppointmentOverlap(ctx context.Context, arg CountAppointmentOverlapParams) (int64, error)
 	CountEntryPhotos(ctx context.Context, entryID uuid.UUID) (int32, error)
 	// Pendientes de revisión (para el dashboard).
 	CountPendingReview(ctx context.Context) (int32, error)
@@ -44,15 +45,19 @@ type Querier interface {
 	DeleteCustomPortions(ctx context.Context, customFoodID uuid.UUID) error
 	// Solo se puede borrar un registro sin fotografías ni comentarios de la nutrióloga (conserva trazabilidad).
 	DeleteEntryIfEmpty(ctx context.Context, arg DeleteEntryIfEmptyParams) (int64, error)
+	DeleteLabReport(ctx context.Context, arg DeleteLabReportParams) (int64, error)
 	DeleteMedication(ctx context.Context, arg DeleteMedicationParams) (int64, error)
 	DeletePreference(ctx context.Context, arg DeletePreferenceParams) (int64, error)
 	// Un platillo solo es visible para la paciente si aparece en SU plan publicado.
 	DishInPatientPublishedPlan(ctx context.Context, arg DishInPatientPublishedPlanParams) (bool, error)
 	// Autorización de descarga: ¿de quién es el archivo y quién puede verlo?
 	DocumentAccessByFile(ctx context.Context, fileObjectID uuid.UUID) (DocumentAccessByFileRow, error)
+	FeedByToken(ctx context.Context, token string) (CalendarFeed, error)
 	// Al terminar el periodo el plan pasa a finalizado (§11).
 	FinalizeExpiredPlans(ctx context.Context, endDate pgtype.Date) ([]FinalizeExpiredPlansRow, error)
 	GetActiveEdition(ctx context.Context) (SmaeEdition, error)
+	GetAppointment(ctx context.Context, id uuid.UUID) (Appointment, error)
+	GetCalendarFeed(ctx context.Context, userID uuid.UUID) (CalendarFeed, error)
 	GetCustomFood(ctx context.Context, id uuid.UUID) (CustomFood, error)
 	GetDish(ctx context.Context, id uuid.UUID) (Dish, error)
 	GetDishForPlan(ctx context.Context, id uuid.UUID) (GetDishForPlanRow, error)
@@ -82,6 +87,8 @@ type Querier interface {
 	IngredientNames(ctx context.Context, arg IngredientNamesParams) ([]string, error)
 	InsertAcceptance(ctx context.Context, arg InsertAcceptanceParams) (ConsentAcceptance, error)
 	InsertAllergy(ctx context.Context, arg InsertAllergyParams) (PatientAllergy, error)
+	// ---------- Consultas ----------
+	InsertAppointment(ctx context.Context, arg InsertAppointmentParams) (Appointment, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InsertComment(ctx context.Context, arg InsertCommentParams) (MealComment, error)
 	InsertCondition(ctx context.Context, arg InsertConditionParams) (PatientCondition, error)
@@ -99,6 +106,9 @@ type Querier interface {
 	InsertImportBatch(ctx context.Context, arg InsertImportBatchParams) (SmaeImportBatch, error)
 	InsertIngredient(ctx context.Context, arg InsertIngredientParams) error
 	InsertItem(ctx context.Context, arg InsertItemParams) error
+	// ---------- Laboratorios ----------
+	InsertLabReport(ctx context.Context, arg InsertLabReportParams) (PatientLabReport, error)
+	InsertLabResult(ctx context.Context, arg InsertLabResultParams) (PatientLabResult, error)
 	// ---------- Mediciones (append-only) ----------
 	InsertMeasurement(ctx context.Context, arg InsertMeasurementParams) (PatientMeasurement, error)
 	InsertMedication(ctx context.Context, arg InsertMedicationParams) (PatientMedication, error)
@@ -130,6 +140,7 @@ type Querier interface {
 	ListActiveSessions(ctx context.Context, userID uuid.UUID) ([]UserSession, error)
 	// ---------- Alergias ----------
 	ListAllergies(ctx context.Context, patientID uuid.UUID) ([]PatientAllergy, error)
+	ListAppointmentsRange(ctx context.Context, arg ListAppointmentsRangeParams) ([]ListAppointmentsRangeRow, error)
 	// Consulta de la bitácora de auditoría (solo lectura; la escritura es del módulo audit).
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]ListAuditLogsRow, error)
 	ListCommentsForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]ListCommentsForEntriesRow, error)
@@ -153,11 +164,14 @@ type Querier interface {
 	ListFoods(ctx context.Context, arg ListFoodsParams) ([]ListFoodsRow, error)
 	ListGroups(ctx context.Context, editionID uuid.UUID) ([]SmaeFoodGroup, error)
 	ListIngredients(ctx context.Context, dishVersionID uuid.UUID) ([]DishIngredient, error)
+	ListLabReports(ctx context.Context, patientID uuid.UUID) ([]PatientLabReport, error)
+	ListLabResults(ctx context.Context, patientID uuid.UUID) ([]PatientLabResult, error)
 	ListMeasurements(ctx context.Context, patientID uuid.UUID) ([]PatientMeasurement, error)
 	// ---------- Medicamentos ----------
 	ListMedications(ctx context.Context, patientID uuid.UUID) ([]PatientMedication, error)
 	// ---------- Notas privadas ----------
 	ListNotes(ctx context.Context, patientID uuid.UUID) ([]PatientNote, error)
+	ListPatientAppointments(ctx context.Context, arg ListPatientAppointmentsParams) ([]Appointment, error)
 	// Filtros en el servidor y paginación (§16, §20.2). Búsqueda sin acentos.
 	ListPatients(ctx context.Context, arg ListPatientsParams) ([]ListPatientsRow, error)
 	// Documentos vigentes que el paciente todavía no acepta.
@@ -219,6 +233,7 @@ type Querier interface {
 	TrackableItem(ctx context.Context, arg TrackableItemParams) (TrackableItemRow, error)
 	TrackingPhotoOwner(ctx context.Context, fileObjectID uuid.UUID) (uuid.UUID, error)
 	UpdateAllergy(ctx context.Context, arg UpdateAllergyParams) (PatientAllergy, error)
+	UpdateAppointment(ctx context.Context, arg UpdateAppointmentParams) (Appointment, error)
 	UpdateCondition(ctx context.Context, arg UpdateConditionParams) (PatientCondition, error)
 	// Al editar los valores se invalida la validación previa.
 	UpdateCustomFood(ctx context.Context, arg UpdateCustomFoodParams) (CustomFood, error)
@@ -231,6 +246,7 @@ type Querier interface {
 	UpdatePreference(ctx context.Context, arg UpdatePreferenceParams) (PatientFoodPreference, error)
 	// Establecer contraseña también activa cuentas invitadas.
 	UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error
+	UpsertCalendarFeed(ctx context.Context, arg UpsertCalendarFeedParams) (CalendarFeed, error)
 	// ---------- Documento: días, tiempos y platillos ----------
 	UpsertDay(ctx context.Context, arg UpsertDayParams) (uuid.UUID, error)
 	UpsertEntry(ctx context.Context, arg UpsertEntryParams) (TrackingEntry, error)

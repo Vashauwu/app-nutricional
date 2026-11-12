@@ -46,9 +46,48 @@ export interface Measurement {
   waistCm?: DecimalStr;
   hipCm?: DecimalStr;
   bodyFatPct?: DecimalStr;
+  /** Composición corporal (báscula de bioimpedancia). */
+  fatMassKg?: DecimalStr;
+  musclePct?: DecimalStr;
+  muscleMassKg?: DecimalStr;
+  visceralFat?: DecimalStr;
+  boneKg?: DecimalStr;
+  obesityPct?: DecimalStr;
+  /** Perímetros en cm por clave (ver GIRTH_GROUPS). */
+  girths?: Record<string, DecimalStr>;
   notes?: string;
   createdBy: string;
 }
+
+export type CompositionKey = 'bodyFatPct' | 'fatMassKg' | 'musclePct' | 'muscleMassKg' | 'visceralFat' | 'boneKg' | 'obesityPct';
+
+/** Campos de composición corporal: `api` es el nombre en el servidor; `max` y `min` acotan el valor que se considera razonable. */
+export const COMPOSITION_FIELDS: readonly { key: CompositionKey; api: string; label: string; unit: string; min: number; max: number }[] = [
+  { key: 'bodyFatPct', api: 'body_fat_pct', label: 'Grasa corporal', unit: '%', min: 2, max: 70 },
+  { key: 'fatMassKg', api: 'fat_mass_kg', label: 'Peso de la grasa', unit: 'kg', min: 1, max: 250 },
+  { key: 'musclePct', api: 'muscle_pct', label: 'Músculo', unit: '%', min: 10, max: 90 },
+  { key: 'muscleMassKg', api: 'muscle_mass_kg', label: 'Peso de la masa muscular', unit: 'kg', min: 10, max: 200 },
+  { key: 'visceralFat', api: 'visceral_fat', label: 'Grasa visceral', unit: '', min: 0, max: 60 },
+  { key: 'boneKg', api: 'bone_kg', label: 'Huesos', unit: 'kg', min: 0.5, max: 10 },
+  { key: 'obesityPct', api: 'obesity_pct', label: 'Grado de obesidad', unit: '%', min: 0, max: 300 },
+];
+
+export interface GirthField { key: string; label: string }
+export interface GirthGroup { title: string; fields: GirthField[] }
+
+const pair = (key: string, label: string): GirthField[] => [
+  { key: `${key}_l`, label: `${label} izquierdo` },
+  { key: `${key}_r`, label: `${label} derecho` },
+];
+
+/** Perímetros o circunferencias (cm). Cintura y cadera viajan aparte (waistCm, hipCm). */
+export const GIRTH_GROUPS: readonly GirthGroup[] = [
+  { title: 'Tronco', fields: [{ key: 'shoulders', label: 'Hombros' }, { key: 'chest', label: 'Pecho' }, { key: 'abdomen', label: 'Abdomen' }] },
+  { title: 'Brazo', fields: [...pair('bicep_relaxed', 'Bíceps relajado'), ...pair('bicep_flexed', 'Bíceps contraído')] },
+  { title: 'Antebrazo y muñeca', fields: [...pair('forearm_relaxed', 'Antebrazo relajado'), ...pair('forearm_flexed', 'Antebrazo contraído'), ...pair('wrist', 'Muñeca')] },
+  { title: 'Pierna', fields: [...pair('thigh_relaxed', 'Muslo relajado'), ...pair('thigh_flexed', 'Muslo contraído'), ...pair('calf_relaxed', 'Gemelo relajado'), ...pair('calf_flexed', 'Gemelo contraído')] },
+];
+export const GIRTH_FIELDS: readonly GirthField[] = GIRTH_GROUPS.flatMap((g) => g.fields);
 
 export interface Condition {
   id: Id;
@@ -72,6 +111,8 @@ export interface Medication {
   name: string;
   dose: string;
   frequency: string;
+  /** Tipo de medicamento (p. ej. antihipertensivo, antidiabético). Texto libre. */
+  kind?: string;
   startDate?: IsoDate;
   endDate?: IsoDate;
   status: 'active' | 'ended';
@@ -622,3 +663,93 @@ export const PREFERENCE_LABEL: Record<PreferenceType, string> = {
 };
 
 export const DEFAULT_SLOTS = ['Desayuno', 'Colación matutina', 'Comida', 'Colación vespertina', 'Cena'] as const;
+
+// ---------- Laboratorios (química sanguínea) ----------
+export interface LabResult {
+  name: string;
+  value: DecimalStr;
+  unit: string;
+  refMin?: DecimalStr;
+  refMax?: DecimalStr;
+}
+
+export interface LabReport {
+  id: Id;
+  takenAt: IsoDate;
+  labName: string;
+  notes: string;
+  results: LabResult[];
+}
+
+/** Análisis frecuentes con su unidad y rango de referencia típico de un adulto. Son orientativos: cada resultado
+ *  guarda su propio rango, que la nutrióloga ajusta según el laboratorio y el sexo del paciente. */
+export const LAB_CATALOG: readonly { name: string; unit: string; refMin?: string; refMax?: string }[] = [
+  { name: 'Glucosa en ayuno', unit: 'mg/dL', refMin: '70', refMax: '99' },
+  { name: 'Hemoglobina glucosilada (HbA1c)', unit: '%', refMin: '4', refMax: '5.6' },
+  { name: 'Insulina en ayuno', unit: 'µUI/mL', refMin: '2', refMax: '25' },
+  { name: 'Colesterol total', unit: 'mg/dL', refMax: '200' },
+  { name: 'Colesterol LDL', unit: 'mg/dL', refMax: '100' },
+  { name: 'Colesterol HDL', unit: 'mg/dL', refMin: '40' },
+  { name: 'Triglicéridos', unit: 'mg/dL', refMax: '150' },
+  { name: 'Urea', unit: 'mg/dL', refMin: '15', refMax: '45' },
+  { name: 'Nitrógeno ureico (BUN)', unit: 'mg/dL', refMin: '7', refMax: '20' },
+  { name: 'Creatinina', unit: 'mg/dL', refMin: '0.6', refMax: '1.3' },
+  { name: 'Ácido úrico', unit: 'mg/dL', refMin: '3.5', refMax: '7.2' },
+  { name: 'TGO (AST)', unit: 'U/L', refMin: '5', refMax: '40' },
+  { name: 'TGP (ALT)', unit: 'U/L', refMin: '7', refMax: '56' },
+  { name: 'Bilirrubina total', unit: 'mg/dL', refMin: '0.1', refMax: '1.2' },
+  { name: 'Hemoglobina', unit: 'g/dL', refMin: '12', refMax: '17.5' },
+  { name: 'Hematocrito', unit: '%', refMin: '36', refMax: '50' },
+  { name: 'Leucocitos', unit: '×10³/µL', refMin: '4.5', refMax: '11' },
+  { name: 'Plaquetas', unit: '×10³/µL', refMin: '150', refMax: '450' },
+  { name: 'Sodio', unit: 'mmol/L', refMin: '135', refMax: '145' },
+  { name: 'Potasio', unit: 'mmol/L', refMin: '3.5', refMax: '5.1' },
+  { name: 'Calcio', unit: 'mg/dL', refMin: '8.6', refMax: '10.2' },
+  { name: 'Magnesio', unit: 'mg/dL', refMin: '1.7', refMax: '2.2' },
+  { name: 'Fósforo', unit: 'mg/dL', refMin: '2.5', refMax: '4.5' },
+  { name: 'Hierro sérico', unit: 'µg/dL', refMin: '60', refMax: '170' },
+  { name: 'Ferritina', unit: 'ng/mL', refMin: '15', refMax: '300' },
+  { name: 'Vitamina D (25-OH)', unit: 'ng/mL', refMin: '30', refMax: '100' },
+  { name: 'Vitamina B12', unit: 'pg/mL', refMin: '200', refMax: '900' },
+  { name: 'TSH', unit: 'µUI/mL', refMin: '0.4', refMax: '4' },
+  { name: 'T4 libre', unit: 'ng/dL', refMin: '0.8', refMax: '1.8' },
+  { name: 'PCR ultrasensible', unit: 'mg/L', refMax: '3' },
+];
+
+export type LabLevel = 'normal' | 'low' | 'high' | 'unknown';
+export interface LabStatus { level: LabLevel; tone: 'ok' | 'warn' | 'crit' | 'neutral'; label: string }
+
+/** Semáforo: verde dentro del rango; amarillo si se pasa hasta 10 % del límite; rojo si se pasa más. Sin rango, sin juicio. */
+export function labStatus(r: Pick<LabResult, 'value' | 'refMin' | 'refMax'>): LabStatus {
+  const v = Number(r.value);
+  const min = r.refMin !== undefined && r.refMin !== '' ? Number(r.refMin) : undefined;
+  const max = r.refMax !== undefined && r.refMax !== '' ? Number(r.refMax) : undefined;
+  if (Number.isNaN(v) || (min === undefined && max === undefined)) return { level: 'unknown', tone: 'neutral', label: 'Sin rango' };
+  if (max !== undefined && v > max) return { level: 'high', tone: (v - max) / Math.abs(max || 1) <= 0.1 ? 'warn' : 'crit', label: 'Alto' };
+  if (min !== undefined && v < min) return { level: 'low', tone: (min - v) / Math.abs(min || 1) <= 0.1 ? 'warn' : 'crit', label: 'Bajo' };
+  return { level: 'normal', tone: 'ok', label: 'Normal' };
+}
+
+// ---------- Consultas (citas) ----------
+export type AppointmentKind = 'first' | 'follow_up' | 'other';
+export type AppointmentMode = 'in_person' | 'online';
+export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show';
+
+export interface Appointment {
+  id: Id;
+  patientId: Id;
+  patientName: string;
+  /** Instantes en ISO 8601 (UTC); la interfaz los muestra en la zona horaria del navegador. */
+  startsAt: string;
+  endsAt: string;
+  kind: AppointmentKind;
+  mode: AppointmentMode;
+  place: string;
+  /** Notas internas: nunca se muestran al paciente. */
+  notes: string;
+  status: AppointmentStatus;
+}
+
+export const APPOINTMENT_KIND_LABEL: Record<AppointmentKind, string> = { first: 'Primera consulta', follow_up: 'Seguimiento', other: 'Otra' };
+export const APPOINTMENT_MODE_LABEL: Record<AppointmentMode, string> = { in_person: 'Presencial', online: 'En línea' };
+export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = { scheduled: 'Programada', completed: 'Realizada', cancelled: 'Cancelada', no_show: 'No asistió' };

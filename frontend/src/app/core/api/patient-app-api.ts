@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
-import { Dish, DishVersion, Goal, Measurement, Patient, PatientDocument } from '../../shared/models/domain';
+import { ApiMeasurement, toMeasurement } from './measurement-map';
+import { Dish, DishVersion, Goal, Patient, PatientDocument } from '../../shared/models/domain';
 import { DbService } from '../data/db.service';
 import { ApiClient, ApiError } from './api-client';
 import { ApiNutrients, toNutrients } from './catalog-api';
@@ -10,7 +11,6 @@ import { TrackingApi } from './tracking-api';
 // ---------- Formas de la API ----------
 interface ApiMe { id: string; first_name: string; last_name: string; email: string; goal: Goal; goal_notes: string; birth_date?: string; sex?: 'F' | 'M' | 'O'; phone?: string; measurements_visible: boolean; consent_complete: boolean }
 interface ApiAcceptance { id: string; document_id: string; accepted_at: string; method: 'web_checkbox' | 'in_person'; revoked_at: string | null; document_type: 'privacy' | 'informed'; version: number; title: string }
-interface ApiMeasurement { id: string; measured_at: string; weight_kg: string; height_cm: string; bmi: string; waist_cm: string | null; hip_cm: string | null; body_fat_pct: string | null; notes: string }
 interface ApiDoc { id: string; name: string; category: PatientDocument['category']; description: string; document_date: string; size_bytes: number; uploaded_at: string; url: string }
 interface ApiPatientDish {
   id: string; name: string; category: string; version: number; description: string; recipe_mode: 'structured' | 'free'; instructions_text: string; steps: string[] | null; servings: string;
@@ -49,7 +49,7 @@ export class PatientAppApi {
               }),
             ),
             measurements: measurements.items.map(
-              (m): Measurement => ({ id: m.id, measuredAt: m.measured_at.slice(0, 10), weightKg: m.weight_kg, heightCm: m.height_cm, bmi: m.bmi, waistCm: opt(m.waist_cm), hipCm: opt(m.hip_cm), bodyFatPct: opt(m.body_fat_pct), notes: opt(m.notes), createdBy: '' }),
+              toMeasurement,
             ),
             createdAt: '', createdBy: '', consentComplete: me.consent_complete,
           };

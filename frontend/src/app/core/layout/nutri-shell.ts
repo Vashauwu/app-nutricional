@@ -87,6 +87,7 @@ export class NutriShell {
     { path: '/pacientes', label: 'Pacientes', icon: 'users' },
     { path: '/platillos', label: 'Platillos', icon: 'dish' },
     { path: '/catalogo', label: 'Catálogo SMAE', icon: 'book' },
+    { path: '/consultas', label: 'Consultas', icon: 'clock' },
     { path: '/planes', label: 'Planes', icon: 'calendar' },
     { path: '/seguimiento', label: 'Seguimiento', icon: 'activity', badge: () => this.toReview() },
     { path: '/reportes', label: 'Reportes', icon: 'chart' },

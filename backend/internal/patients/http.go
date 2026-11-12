@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -101,6 +102,9 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	clin.POST("/preferences", ct.savePreference)
 	clin.PUT("/preferences/:cid", ct.savePreference)
 	clin.DELETE("/preferences/:cid", ct.deletePreference)
+	clin.GET("/labs", ct.labs)
+	clin.POST("/labs", ct.addLab)
+	clin.DELETE("/labs/:cid", ct.deleteLab)
 	clin.GET("/notes", ct.notes)
 	clin.POST("/notes", ct.addNote)
 	clin.DELETE("/notes/:cid", ct.deleteNote)
@@ -450,6 +454,14 @@ type measurementReq struct {
 	HipCm      *string `json:"hip_cm"`
 	BodyFatPct *string `json:"body_fat_pct"`
 	Notes      string  `json:"notes" binding:"max=1000"`
+
+	FatMassKg    *string           `json:"fat_mass_kg"`
+	MusclePct    *string           `json:"muscle_pct"`
+	MuscleMassKg *string           `json:"muscle_mass_kg"`
+	VisceralFat  *string           `json:"visceral_fat"`
+	BoneKg       *string           `json:"bone_kg"`
+	ObesityPct   *string           `json:"obesity_pct"`
+	Girths       map[string]string `json:"girths"`
 }
 
 func optDec(field string, s *string, errs ValidationError) *decimal.Decimal {
@@ -484,7 +496,23 @@ func (ct *Controller) addMeasurement(c *gin.Context) {
 		errs["height_cm"] = "escribe un número válido (con punto decimal)"
 	}
 	m := MeasurementInput{MeasuredAt: at, WeightKg: w, HeightCm: h, Notes: in.Notes,
-		WaistCm: optDec("waist_cm", in.WaistCm, errs), HipCm: optDec("hip_cm", in.HipCm, errs), BodyFatPct: optDec("body_fat_pct", in.BodyFatPct, errs)}
+		WaistCm: optDec("waist_cm", in.WaistCm, errs), HipCm: optDec("hip_cm", in.HipCm, errs), BodyFatPct: optDec("body_fat_pct", in.BodyFatPct, errs),
+		FatMassKg: optDec("fat_mass_kg", in.FatMassKg, errs), MusclePct: optDec("muscle_pct", in.MusclePct, errs), MuscleMassKg: optDec("muscle_mass_kg", in.MuscleMassKg, errs),
+		VisceralFat: optDec("visceral_fat", in.VisceralFat, errs), BoneKg: optDec("bone_kg", in.BoneKg, errs), ObesityPct: optDec("obesity_pct", in.ObesityPct, errs)}
+	for k, v := range in.Girths {
+		if v = strings.TrimSpace(v); v == "" {
+			continue
+		}
+		d, err := decimal.NewFromString(v)
+		if err != nil {
+			errs["girths."+k] = "escribe un número válido (con punto decimal)"
+			continue
+		}
+		if m.Girths == nil {
+			m.Girths = map[string]decimal.Decimal{}
+		}
+		m.Girths[k] = d
+	}
 	if len(errs) > 0 {
 		bad(c, errs)
 		return
@@ -603,6 +631,7 @@ func (ct *Controller) saveMedication(c *gin.Context) {
 		Name      string  `json:"name"`
 		Dose      string  `json:"dose"`
 		Frequency string  `json:"frequency"`
+		Kind      string  `json:"kind"`
 		StartDate *string `json:"start_date"`
 		EndDate   *string `json:"end_date"`
 		Status    string  `json:"status"`
@@ -613,7 +642,7 @@ func (ct *Controller) saveMedication(c *gin.Context) {
 	if in.Status == "" {
 		in.Status = "active"
 	}
-	m := MedicationInput{Name: in.Name, Dose: in.Dose, Frequency: in.Frequency, Status: in.Status}
+	m := MedicationInput{Name: in.Name, Dose: in.Dose, Frequency: in.Frequency, Kind: in.Kind, Status: in.Status}
 	errs := ValidationError{}
 	for f, p := range map[string]struct {
 		s   *string

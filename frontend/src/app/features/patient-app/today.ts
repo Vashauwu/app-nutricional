@@ -11,12 +11,14 @@ import { DishThumb } from '../../shared/components/nutrition-bits';
 import { EmptyState } from '../../shared/components/ui';
 import { addDays, fmtCompact, longDate, startOfWeek } from '../../shared/utils/format';
 import { PatientContext, PatientItemVM } from './patient-context';
+import { NextAppointment } from '../agenda/agenda-widgets';
 
 @Component({
   selector: 'app-patient-today',
-  imports: [RouterLink, TuiButton, Icon, Ring, DishThumb, EmptyState],
+  imports: [RouterLink, TuiButton, Icon, Ring, DishThumb, EmptyState, NextAppointment],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
+    :host { display: grid; gap: var(--space-4); }
     .day-nav { display: flex; align-items: center; gap: var(--space-2); }
     .day-nav h1 { flex: 1; font-size: 1.375rem; text-align: center; }
     .hero { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5); border-radius: var(--radius-l); background: var(--nutri-salvia); color: var(--nutri-texto-fuerte); }
@@ -29,6 +31,7 @@ import { PatientContext, PatientItemVM } from './patient-context';
     .reply { display: inline-flex; gap: .25rem; align-items: center; padding: 0 .5rem; border-radius: 999px; background: var(--nutri-lavanda); font-size: .75rem; font-weight: 600; }
   `,
   template: `
+    <app-next-appointment />
     @if (ctx.plan(); as plan) {
       <div class="stack">
         <div class="day-nav">

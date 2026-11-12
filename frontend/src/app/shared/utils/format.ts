@@ -135,3 +135,9 @@ export function toCsv(rows: (string | number | undefined | null)[][]): string {
     .map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
     .join('\r\n');
 }
+
+/** Hora local `HH:mm` de un instante ISO 8601. */
+export const timeLabel = (iso: string): string => new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+
+/** Día local (`YYYY-MM-DD`) de un instante ISO 8601. */
+export const isoDay = (iso: string): IsoDate => toIsoDate(new Date(iso));

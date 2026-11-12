@@ -186,8 +186,11 @@ func TestMealPlansIntegration(t *testing.T) {
 	arroz := newDish(t, nutri, "Arroz", "arroz", "1", "taza")  // 208 kcal
 	atun := newDish(t, nutri, "Atún", "atun", "1", "lata")     // 162.4 kcal
 	pa := newPatient(t, e, nutri, "ana@demo.mx", true)
-	today := time.Now().Format("2006-01-02")
-	in := func(d int) string { return time.Now().AddDate(0, 0, d).Format("2006-01-02") }
+	// Mismo huso que el servicio (cfg.Timezone): entre las 18:00 y las 24:00 (hora de México)
+	// el día en UTC ya es el siguiente y el plan «de hoy» dejaba de ser el vigente.
+	mx, _ := time.LoadLocation("America/Mexico_City")
+	today := time.Now().In(mx).Format("2006-01-02")
+	in := func(d int) string { return time.Now().In(mx).AddDate(0, 0, d).Format("2006-01-02") }
 
 	t.Run("crear exige consentimiento y valida fechas", func(t *testing.T) {
 		locked := newPatient(t, e, nutri, "lock@demo.mx", false)
