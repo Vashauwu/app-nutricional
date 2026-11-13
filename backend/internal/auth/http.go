@@ -40,9 +40,9 @@ func meta(c *gin.Context) Meta {
 // Register monta /auth bajo el grupo /api/v1.
 func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g := v1.Group("/auth")
-	g.POST("/login", ct.login)
-	g.POST("/password/forgot", ct.forgot)
-	g.POST("/password/reset", ct.reset)
+	g.POST("/login", middleware.RateLimit(30, 15*time.Minute), ct.login)
+	g.POST("/password/forgot", middleware.RateLimit(10, 15*time.Minute), ct.forgot)
+	g.POST("/password/reset", middleware.RateLimit(20, 15*time.Minute), ct.reset)
 	g.POST("/refresh", CSRF(), ct.refresh)
 	g.POST("/logout", CSRF(), ct.logout)
 

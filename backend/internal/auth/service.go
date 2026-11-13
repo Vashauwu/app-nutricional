@@ -485,3 +485,45 @@ func deviceLabel(ua string) string {
 	}
 	return os + " · " + br
 }
+
+// CheckPassword confirma la contraseña actual de la persona (para acciones delicadas, p. ej. dar de baja su cuenta).
+// Respeta el mismo límite de intentos fallidos que el inicio de sesión.
+func (s *Service) CheckPassword(ctx context.Context, userID uuid.UUID, password string, m Meta) error {
+	key := m.IP + "|pw|" + userID.String()
+	if !s.limiter.Allowed(key) {
+		return ErrRateLimited
+	}
+	u, err := s.q.GetUserByID(ctx, userID)
+	if err != nil {
+		return ErrInvalidCredentials
+	}
+	if !VerifyPassword(password, u.PasswordHash) {
+		s.limiter.Fail(key)
+		s.audit(ctx, nu(u.ID), "auth.password_check_failed", "user", nu(u.ID), m, nil)
+		return ErrInvalidCredentials
+	}
+	s.limiter.Reset(key)
+	return nil
+}
+
+// DisableAccount inhabilita la cuenta (ya no puede iniciar sesión) y cierra todas sus sesiones. No borra datos:
+// el expediente clínico se conserva por obligación legal (NOM-004-SSA3-2012).
+func (s *Service) DisableAccount(ctx context.Context, userID uuid.UUID, m Meta) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	q := s.q.WithTx(tx)
+	if err := q.SetUserStatus(ctx, db.SetUserStatusParams{ID: userID, Status: "disabled"}); err != nil {
+		return err
+	}
+	if err := q.RevokeAllUserSessions(ctx, userID); err != nil {
+		return err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return err
+	}
+	s.audit(ctx, nu(userID), "auth.account_disabled", "user", nu(userID), m, nil)
+	return nil
+}

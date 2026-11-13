@@ -1,5 +1,6 @@
 import {
   ApplicationConfig,
+  ErrorHandler,
   inject,
   provideAppInitializer,
   LOCALE_ID,
@@ -17,6 +18,7 @@ import { routes } from './app.routes';
 import { credentialsInterceptor } from './core/interceptors/credentials.interceptor';
 import { refreshInterceptor } from './core/interceptors/refresh.interceptor';
 import { AuthService } from './core/auth/auth.service';
+import { ReportingErrorHandler } from './core/services/error-reporter';
 
 registerLocaleData(localeEsMx);
 
@@ -31,6 +33,7 @@ export const appConfig: ApplicationConfig = {
       withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
     ),
     provideTaiga(),
+    { provide: ErrorHandler, useClass: ReportingErrorHandler },
     // Modo API: recupera la sesión (cookies HttpOnly) antes de resolver las rutas protegidas.
     provideAppInitializer(() => inject(AuthService).restore()),
     { provide: LOCALE_ID, useValue: 'es-MX' },

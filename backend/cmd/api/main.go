@@ -21,6 +21,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/alerts"
 	"github.com/nutri/app-nutricional/backend/internal/auditlog"
 	"github.com/nutri/app-nutricional/backend/internal/auth"
+	"github.com/nutri/app-nutricional/backend/internal/clienterrors"
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/dashboard"
 	"github.com/nutri/app-nutricional/backend/internal/dishes"
@@ -138,6 +139,9 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) *gin.
 	})
 
 	v1 := r.Group("/api/v1")
+	// Tope general por IP (§5): frena abuso y scripts sin estorbar el uso normal de la app.
+	v1.Use(middleware.RateLimit(600, time.Minute))
+	clienterrors.NewController(logger).Register(v1)
 	v1.GET("/meta", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"api_version":      "v1",

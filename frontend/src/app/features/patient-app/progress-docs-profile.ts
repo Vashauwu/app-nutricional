@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
 import { AuthService } from '../../core/auth/auth.service';
 import { DbService } from '../../core/data/db.service';
@@ -10,6 +11,8 @@ import { ToastService } from '../../core/services/ui.services';
 import { DOC_CATEGORY_LABEL, GOAL_LABEL, PatientDocument } from '../../shared/models/domain';
 import { BarChart, LineChart, Ring } from '../../shared/components/charts';
 import { Icon } from '../../shared/components/icon';
+import { FieldError } from '../../shared/components/forms';
+import { Modal } from '../../shared/components/modal';
 import { EmptyState } from '../../shared/components/ui';
 import { addDays, ageFrom, downloadBlob, formatBytes, formatDate, formatDateTime, shortDate, startOfWeek } from '../../shared/utils/format';
 import { PatientContext } from './patient-context';
@@ -98,7 +101,7 @@ export class PatientDocuments {
 
 @Component({
   selector: 'app-patient-profile',
-  imports: [TuiButton, Icon],
+  imports: [TuiButton, Icon, Modal, ReactiveFormsModule, FieldError, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="stack">
@@ -123,6 +126,30 @@ export class PatientDocuments {
           <p class="small muted">Al cerrar sesión se borra la información guardada para uso sin conexión.</p>
           <div class="row"><button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="logout()"><app-icon name="log-out" [size]="18" /> Cerrar sesión</button></div>
         </section>
+        <section class="panel" aria-labelledby="h-c">
+          <h2 id="h-c" class="panel-head" style="font-size: 1.0625rem">Privacidad y cuenta</h2>
+          <p class="small"><a routerLink="/privacidad">Aviso de privacidad</a> · <a routerLink="/terminos">Términos de uso</a></p>
+          <p class="small muted">Si ya no quieres usar la plataforma, puedes dar de baja tu cuenta. Tu expediente clínico se conserva bloqueado el tiempo que exige la ley.</p>
+          <div class="row"><button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="openDelete()"><app-icon name="trash" [size]="18" /> Eliminar mi cuenta</button></div>
+        </section>
+        <app-modal [(open)]="deleting" title="Eliminar mi cuenta" size="narrow">
+          <div class="callout callout--warn"><app-icon name="alert-circle" /><div class="callout-body">
+            <p><strong>Esta acción cierra tu acceso de inmediato.</strong></p>
+            <p class="small">No podrás volver a iniciar sesión ni ver tu plan. Tu expediente clínico no se borra: la NOM-004 obliga a conservarlo al menos cinco años, y queda desactivado. Si cambias de opinión, tu nutrióloga puede reactivar tu atención.</p>
+          </div></div>
+          @if (deleteError()) { <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body">{{ deleteError() }}</div></div> }
+          <form id="delete-form" [formGroup]="deleteForm" (ngSubmit)="confirmDelete()" novalidate>
+            <div class="field">
+              <label for="del-pw">Escribe tu contraseña para confirmar</label>
+              <input id="del-pw" class="input" type="password" formControlName="password" autocomplete="current-password" aria-describedby="del-pw-err" />
+              <app-field-error id="del-pw-err" [control]="deleteForm.controls.password" />
+            </div>
+          </form>
+          <ng-container modalFooter>
+            <button tuiButton type="button" size="m" appearance="secondary" (click)="deleting.set(false)">Cancelar</button>
+            <button tuiButton type="submit" form="delete-form" size="m" appearance="primary-destructive" [disabled]="deleteBusy()">{{ deleteBusy() ? 'Eliminando…' : 'Eliminar mi cuenta' }}</button>
+          </ng-container>
+        </app-modal>
       }
     </div>
   `,
@@ -154,6 +181,24 @@ export class PatientProfileView {
     });
   });
   protected readonly signal_ = signal(0);
+
+  private readonly fb = inject(FormBuilder);
+  protected readonly deleting = signal(false);
+  protected readonly deleteBusy = signal(false);
+  protected readonly deleteError = signal('');
+  protected readonly deleteForm = this.fb.nonNullable.group({ password: ['', Validators.required] });
+
+  protected openDelete(): void { this.deleteForm.reset(); this.deleteError.set(''); this.deleting.set(true); }
+  protected confirmDelete(): void {
+    this.deleteForm.markAllAsTouched();
+    if (this.deleteForm.invalid || this.deleteBusy()) return;
+    this.deleteBusy.set(true);
+    this.deleteError.set('');
+    this.auth.deleteOwnAccount(this.deleteForm.controls.password.value).subscribe({
+      next: () => { this.deleting.set(false); this.toast.ok('Tu cuenta se dio de baja.'); void this.router.navigate(['/ingresar']); },
+      error: (e: unknown) => { this.deleteBusy.set(false); this.deleteError.set(e instanceof Error ? e.message : 'No se pudo dar de baja la cuenta.'); },
+    });
+  }
 
   protected others(): void { this.auth.revokeOtherSessions(); this.toast.ok('Se cerraron las demás sesiones.'); }
   protected logout(): void { this.auth.logout(); void this.router.navigate(['/ingresar']); }

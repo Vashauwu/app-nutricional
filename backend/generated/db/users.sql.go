@@ -188,6 +188,20 @@ func (q *Queries) ListRoleCodesForUser(ctx context.Context, userID uuid.UUID) ([
 	return items, nil
 }
 
+const setUserStatus = `-- name: SetUserStatus :exec
+UPDATE users SET status = $2, updated_at = now() WHERE id = $1
+`
+
+type SetUserStatusParams struct {
+	ID     uuid.UUID `json:"id"`
+	Status string    `json:"status"`
+}
+
+func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) error {
+	_, err := q.db.Exec(ctx, setUserStatus, arg.ID, arg.Status)
+	return err
+}
+
 const touchUserLogin = `-- name: TouchUserLogin :exec
 UPDATE users SET last_login_at = now() WHERE id = $1
 `
