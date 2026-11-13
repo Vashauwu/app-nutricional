@@ -220,6 +220,25 @@ export class AuthService {
     if ('caches' in window) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => undefined);
   }
 
+  /**
+   * La paciente da de baja su propia cuenta (derecho de cancelación). El servidor pide su contraseña, cierra sus
+   * sesiones y desactiva el expediente; los datos clínicos se conservan por obligación legal (NOM-004).
+   */
+  deleteOwnAccount(password: string): Observable<void> {
+    if (this.apiMode) {
+      return this.api.post('/me/account/delete', { password }).pipe(
+        tap(() => this.logout()),
+        catchError((e: unknown) => throwError(() => new AuthError(e instanceof ApiError ? e.message : 'No se pudo dar de baja la cuenta.'))),
+      );
+    }
+    return this.data.respond(() => {
+      const me = this.user();
+      const user = this.data.db().users.find((u) => u.id === me?.id);
+      if (!user || user.password !== password) throw new AuthError('La contraseña no es correcta.');
+      this.logout();
+    }, 450);
+  }
+
   revokeSession(id: string): void {
     if (this.apiMode) {
       const wasCurrent = id === this.currentSessionId();

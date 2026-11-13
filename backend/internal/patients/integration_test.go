@@ -783,3 +783,45 @@ func TestLabs(t *testing.T) {
 	code, _ = nutri.do("DELETE", base+"/"+items[1].(map[string]any)["id"].(string), nil)
 	require.Equal(t, 404, code)
 }
+
+func TestPatientDeletesOwnAccount(t *testing.T) {
+	e := start(t)
+	nutri := e.staff(t, "nutri.baja@demo.mx")
+	pid := nutri.createPatient("baja@demo.mx", "Bea", "Baja")
+	nutri.acceptAll(pid)
+	code, _ := nutri.do("POST", "/api/v1/patients/"+pid+"/measurements", map[string]any{"measured_at": "2026-05-01", "weight_kg": "70", "height_cm": "165"})
+	require.Equal(t, 201, code)
+
+	// La paciente crea su contraseña con la invitación y entra.
+	code, _ = nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
+	require.Equal(t, 202, code)
+	token := strings.TrimPrefix(e.mail.lastInvitation(), "http://app.test/restablecer/")
+	pc := e.client(t)
+	code, _ = pc.do("POST", "/api/v1/auth/password/reset", map[string]string{"token": token, "password": "MiClave2026"})
+	require.Equal(t, 204, code)
+	pc.login("baja@demo.mx", "MiClave2026")
+
+	code, b := pc.do("POST", "/api/v1/me/account/delete", map[string]string{})
+	require.Equal(t, 422, code, "sin contraseña no procede")
+	code, b = pc.do("POST", "/api/v1/me/account/delete", map[string]string{"password": "incorrecta1"})
+	require.Equal(t, 403, code, fmt.Sprint(b))
+	require.Equal(t, "invalid_password", errCode(b))
+	code, _ = pc.do("GET", "/api/v1/me/patient", nil)
+	require.Equal(t, 200, code, "una contraseña errónea no cierra nada")
+
+	code, b = pc.do("POST", "/api/v1/me/account/delete", map[string]string{"password": "MiClave2026"})
+	require.Equal(t, 204, code, fmt.Sprint(b))
+	code, _ = pc.do("GET", "/api/v1/me/patient", nil)
+	require.Equal(t, 401, code, "sus sesiones se cierran al instante")
+	other := e.client(t)
+	code, _ = other.do("POST", "/api/v1/auth/login", map[string]string{"email": "baja@demo.mx", "password": "MiClave2026"})
+	require.Equal(t, 401, code, "ya no puede iniciar sesión")
+
+	_, seen := nutri.do("GET", "/api/v1/patients/"+pid, nil)
+	require.Equal(t, "inactive", seen["status"], "la nutrióloga lo ve desactivado")
+	var n int
+	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM patient_measurements WHERE patient_id = $1`, pid).Scan(&n))
+	require.Equal(t, 1, n, "el expediente clínico se conserva (NOM-004)")
+	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action = 'patient.self_delete' AND resource_id = $1`, pid).Scan(&n))
+	require.Equal(t, 1, n, "queda constancia en la auditoría")
+}

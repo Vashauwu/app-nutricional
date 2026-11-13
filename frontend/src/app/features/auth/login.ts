@@ -71,6 +71,7 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
             </div>
           </div>
           }
+          <p class="small muted legal"><a routerLink="/privacidad">Aviso de privacidad</a> · <a routerLink="/terminos">Términos de uso</a></p>
         </div>
       </main>
     </div>

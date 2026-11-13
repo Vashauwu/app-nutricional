@@ -8,11 +8,12 @@ import { PatientsService } from '../../core/services/patients.service';
 import { AlertItem, Badge, EmptyState } from '../../shared/components/ui';
 import { Icon } from '../../shared/components/icon';
 import { TodayAppointments } from '../agenda/agenda-widgets';
+import { GettingStarted } from './getting-started';
 import { formatDate, longDate, relativeTime, todayIso } from '../../shared/utils/format';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [RouterLink, TuiButton, Icon, AlertItem, Badge, EmptyState, TodayAppointments],
+  imports: [RouterLink, TuiButton, Icon, AlertItem, Badge, EmptyState, TodayAppointments, GettingStarted],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .cols { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
@@ -37,6 +38,8 @@ import { formatDate, longDate, relativeTime, todayIso } from '../../shared/utils
           <a tuiButton routerLink="/planes/nuevo" size="m" appearance="secondary"><app-icon name="calendar" [size]="18" /> Crear plan</a>
         </div>
       </header>
+
+      <app-getting-started [state]="onboarding()" />
 
       <section aria-label="Resumen" class="grid grid--4">
         <a class="stat tone-lavanda" routerLink="/pacientes"><span class="value">{{ s().patients.active }}</span><span class="label">Pacientes activos</span><span class="small">{{ s().patients.invited }} con invitación pendiente</span></a>
@@ -124,6 +127,16 @@ export class Dashboard {
   protected readonly s = computed(() => {
     this.data.version();
     return this.insights.dashboard();
+  });
+  /** Guía de primeros pasos: cada paso se da por hecho con datos que ya tiene el tablero. */
+  protected readonly onboarding = computed(() => {
+    const b = this.data.db().settings.brand;
+    const p = this.s().plans;
+    return {
+      profileDone: !!(b.phone?.trim() || b.email?.trim()),
+      hasPatient: this.s().patients.active + this.s().patients.invited > 0,
+      hasPlan: p.draft + p.published + p.finished + p.archived > 0,
+    };
   });
   protected readonly topAlerts = computed(() => this.s().alerts.all.slice(0, 5));
   constructor() {

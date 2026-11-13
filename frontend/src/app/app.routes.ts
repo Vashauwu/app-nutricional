@@ -7,6 +7,8 @@ import { unsavedChangesGuard } from './core/guards/unsaved.guard';
 export const routes: Routes = [
   { path: 'ingresar', title: 'Ingresar', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login').then((m) => m.Login) },
   { path: 'recuperar', title: 'Recuperar contraseña', canActivate: [guestGuard], loadComponent: () => import('./features/auth/recovery').then((m) => m.ForgotPassword) },
+  { path: 'privacidad', title: 'Aviso de privacidad', data: { doc: 'privacidad' }, loadComponent: () => import('./features/legal/legal').then((m) => m.Legal) },
+  { path: 'terminos', title: 'Términos de uso', data: { doc: 'terminos' }, loadComponent: () => import('./features/legal/legal').then((m) => m.Legal) },
   { path: 'restablecer/:token', title: 'Nueva contraseña', loadComponent: () => import('./features/auth/recovery').then((m) => m.ResetPassword) },
 
   {
@@ -53,5 +55,5 @@ export const routes: Routes = [
       { path: 'configuracion', title: 'Configuración', loadComponent: () => import('./features/settings/settings').then((m) => m.SettingsPage) },
     ],
   },
-  { path: '**', redirectTo: '' },
+  { path: '**', title: 'Página no encontrada', loadComponent: () => import('./features/misc/not-found').then((m) => m.NotFound) },
 ];

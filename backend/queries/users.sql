@@ -43,3 +43,6 @@ ORDER BY p.code;
 -- name: InsertAuditLog :exec
 INSERT INTO audit_logs (actor_user_id, action, resource_type, resource_id, request_id, metadata)
 VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: SetUserStatus :exec
+UPDATE users SET status = $2, updated_at = now() WHERE id = $1;

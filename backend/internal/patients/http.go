@@ -119,6 +119,7 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	me.GET("/consents/pending", ct.mePending)
 	me.POST("/consents/accept", ct.meAccept)
 	me.GET("/measurements", ct.meMeasurements)
+	me.POST("/account/delete", ct.meDeleteAccount)
 }
 
 // ---------- Middlewares ----------
@@ -857,4 +858,42 @@ func (ct *Controller) meMeasurements(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": nz(list)})
+}
+
+// meDeleteAccount da de baja la cuenta de la propia paciente (derecho de cancelación, LFPDPPP).
+// Pide su contraseña, inhabilita el acceso y desactiva el expediente; los datos clínicos NO se borran
+// porque deben conservarse (NOM-004-SSA3-2012). Ella puede solicitar a su nutrióloga ejercer los demás derechos ARCO.
+func (ct *Controller) meDeleteAccount(c *gin.Context) {
+	var in struct {
+		Password string `json:"password" binding:"required,max=200"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		shared.AbortWithError(c, http.StatusUnprocessableEntity, "validation_failed", "Escribe tu contraseña para confirmar.")
+		return
+	}
+	p, ok := ct.mePatient(c)
+	if !ok {
+		return
+	}
+	id := auth.IdentityFrom(c)
+	m := auth.Meta{IP: c.ClientIP(), UserAgent: c.Request.UserAgent(), RequestID: middleware.GetRequestID(c)}
+	if err := ct.auth.CheckPassword(c.Request.Context(), id.UserID, in.Password, m); err != nil {
+		if errors.Is(err, auth.ErrRateLimited) {
+			shared.AbortWithError(c, http.StatusTooManyRequests, "rate_limited", "Demasiados intentos. Inténtalo más tarde.")
+			return
+		}
+		shared.AbortWithError(c, http.StatusForbidden, "invalid_password", "La contraseña no es correcta.")
+		return
+	}
+	a := actor(c)
+	if _, err := ct.svc.SetDeleted(c.Request.Context(), a, p.ID, true); err != nil {
+		fail(c, ct.log, err)
+		return
+	}
+	ct.svc.rec(c.Request.Context(), a, "patient.self_delete", p.ID, nil)
+	if err := ct.auth.DisableAccount(c.Request.Context(), id.UserID, m); err != nil {
+		fail(c, ct.log, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
