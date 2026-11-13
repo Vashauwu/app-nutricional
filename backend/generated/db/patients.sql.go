@@ -26,7 +26,7 @@ func (q *Queries) ActivatePatientByUser(ctx context.Context, userID uuid.NullUUI
 const createPatient = `-- name: CreatePatient :one
 INSERT INTO patients (user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at, menarche_age, menarche_unknown
 `
 
 type CreatePatientParams struct {
@@ -75,6 +75,8 @@ func (q *Queries) CreatePatient(ctx context.Context, arg CreatePatientParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.MenarcheAge,
+		&i.MenarcheUnknown,
 	)
 	return i, err
 }
@@ -148,7 +150,7 @@ func (q *Queries) DeletePreference(ctx context.Context, arg DeletePreferencePara
 }
 
 const getPatient = `-- name: GetPatient :one
-SELECT id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at FROM patients WHERE id = $1
+SELECT id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at, menarche_age, menarche_unknown FROM patients WHERE id = $1
 `
 
 func (q *Queries) GetPatient(ctx context.Context, id uuid.UUID) (Patient, error) {
@@ -173,12 +175,14 @@ func (q *Queries) GetPatient(ctx context.Context, id uuid.UUID) (Patient, error)
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.MenarcheAge,
+		&i.MenarcheUnknown,
 	)
 	return i, err
 }
 
 const getPatientByUserID = `-- name: GetPatientByUserID :one
-SELECT id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at FROM patients WHERE user_id = $1 AND deleted_at IS NULL
+SELECT id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at, menarche_age, menarche_unknown FROM patients WHERE user_id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetPatientByUserID(ctx context.Context, userID uuid.NullUUID) (Patient, error) {
@@ -203,6 +207,8 @@ func (q *Queries) GetPatientByUserID(ctx context.Context, userID uuid.NullUUID) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.MenarcheAge,
+		&i.MenarcheUnknown,
 	)
 	return i, err
 }
@@ -754,7 +760,7 @@ func (q *Queries) ListNotes(ctx context.Context, patientID uuid.UUID) ([]Patient
 }
 
 const listPatients = `-- name: ListPatients :many
-SELECT p.id, p.user_id, p.status, p.first_name, p.last_name, p.birth_date, p.sex, p.email, p.phone, p.goal, p.goal_notes, p.clinical_indications, p.measurements_visible, p.quota_override_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, count(*) OVER () AS total,
+SELECT p.id, p.user_id, p.status, p.first_name, p.last_name, p.birth_date, p.sex, p.email, p.phone, p.goal, p.goal_notes, p.clinical_indications, p.measurements_visible, p.quota_override_bytes, p.created_by, p.created_at, p.updated_at, p.deleted_at, p.menarche_age, p.menarche_unknown, count(*) OVER () AS total,
        NOT EXISTS (
          SELECT 1 FROM consent_documents d
          WHERE d.is_active AND NOT EXISTS (
@@ -799,6 +805,8 @@ type ListPatientsRow struct {
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+	MenarcheAge         pgtype.Int2        `json:"menarche_age"`
+	MenarcheUnknown     bool               `json:"menarche_unknown"`
 	Total               int64              `json:"total"`
 	ConsentComplete     bool               `json:"consent_complete"`
 }
@@ -839,6 +847,8 @@ func (q *Queries) ListPatients(ctx context.Context, arg ListPatientsParams) ([]L
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.MenarcheAge,
+			&i.MenarcheUnknown,
 			&i.Total,
 			&i.ConsentComplete,
 		); err != nil {
@@ -963,7 +973,7 @@ UPDATE patients SET
                   ELSE 'active' END,
     updated_at = now()
 WHERE patients.id = $2
-RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at, menarche_age, menarche_unknown
 `
 
 type SetPatientDeletedParams struct {
@@ -993,6 +1003,8 @@ func (q *Queries) SetPatientDeleted(ctx context.Context, arg SetPatientDeletedPa
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.MenarcheAge,
+		&i.MenarcheUnknown,
 	)
 	return i, err
 }
@@ -1144,7 +1156,7 @@ UPDATE patients SET
     goal = $8, goal_notes = $9, clinical_indications = $10, measurements_visible = $11,
     quota_override_bytes = $12, updated_at = now()
 WHERE id = $1
-RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at
+RETURNING id, user_id, status, first_name, last_name, birth_date, sex, email, phone, goal, goal_notes, clinical_indications, measurements_visible, quota_override_bytes, created_by, created_at, updated_at, deleted_at, menarche_age, menarche_unknown
 `
 
 type UpdatePatientParams struct {
@@ -1197,6 +1209,8 @@ func (q *Queries) UpdatePatient(ctx context.Context, arg UpdatePatientParams) (P
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.MenarcheAge,
+		&i.MenarcheUnknown,
 	)
 	return i, err
 }

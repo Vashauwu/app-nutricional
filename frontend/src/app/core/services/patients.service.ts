@@ -2,12 +2,13 @@ import { Injectable, inject, signal } from '@angular/core';
 import { Observable, map, of, switchMap, tap } from 'rxjs';
 import { ApiClient } from '../api/api-client';
 import { PatientsApi } from '../api/patients-api';
+import { ReproductiveService } from './reproductive.service';
 import type { MeasurementInput } from '../api/measurement-map';
 import { ToastService } from './ui.services';
 import { DbService } from '../data/db.service';
 import {
   Allergy, COMPOSITION_FIELDS, Condition, ConsentAcceptance, ConsentDocument, DocumentCategory, FoodPreference, Goal, Measurement, Medication,
-  Patient, PatientDocument, PatientProfile, PatientStatus,
+  Patient, PatientDocument, PatientProfile, PatientStatus, ReproductiveInitial,
 } from '../../shared/models/domain';
 import { Page, paginate } from '../../shared/utils/loadable';
 import { ageFrom, normalizeText, uid } from '../../shared/utils/format';
@@ -42,6 +43,7 @@ const MB = 1024 * 1024;
 export class PatientsService {
   private readonly data = inject(DbService);
   private readonly remote = inject(PatientsApi);
+  private readonly reproductive = inject(ReproductiveService);
   private readonly toast = inject(ToastService);
   readonly apiMode = inject(ApiClient).enabled;
 
@@ -160,10 +162,11 @@ export class PatientsService {
   }
 
   // ---------- Alta y edición ----------
-  create(profile: PatientProfile, goal: Goal, mode: 'manual' | 'invite'): Observable<string> {
+  /** `repro` es opcional y solo aplica a mujeres (y «Otro»); también se puede capturar después en el expediente. */
+  create(profile: PatientProfile, goal: Goal, mode: 'manual' | 'invite', repro?: ReproductiveInitial): Observable<string> {
     if (this.apiMode) {
       this.inviteLink.set(null);
-      return this.remote.create(profile, goal, mode === 'invite').pipe(
+      return this.remote.create(profile, goal, mode === 'invite', repro).pipe(
         tap((r) => this.inviteLink.set(r.inviteLink ?? null)),
         map((r) => r.id),
       );
@@ -177,6 +180,7 @@ export class PatientsService {
       });
       this.data.audit(d, 'patient.create', 'patient', id, `${mode === 'invite' ? 'Invitó a' : 'Registró a'} ${profile.firstName} ${profile.lastName}`);
     });
+    if (repro) this.reproductive.seed(id, repro);
     return of(id);
   }
 
