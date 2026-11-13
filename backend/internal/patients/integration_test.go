@@ -825,3 +825,109 @@ func TestPatientDeletesOwnAccount(t *testing.T) {
 	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action = 'patient.self_delete' AND resource_id = $1`, pid).Scan(&n))
 	require.Equal(t, 1, n, "queda constancia en la auditoría")
 }
+
+func TestReproductiveHealth(t *testing.T) {
+	e := start(t)
+	nutri := e.staff(t, "nutri.repro@demo.mx")
+	recent := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
+
+	// Opcional al registrar: se guarda junto con el alta.
+	body := newPatient("rita@demo.mx", "Rita", "Repro")
+	body["menarche_age"] = 12
+	body["last_period_date"] = "2026-10-20"
+	body["pregnancy_weeks"] = 10
+	code, b := nutri.do("POST", "/api/v1/patients", body)
+	require.Equal(t, 201, code, fmt.Sprint(b))
+	pid := b["id"].(string)
+	require.NotContains(t, b, "menarche_age", "el DTO del paciente no incluye datos reproductivos")
+
+	code, _ = nutri.do("GET", "/api/v1/patients/"+pid+"/reproductive", nil)
+	require.Equal(t, 423, code, "queda tras el consentimiento, como el resto del expediente clínico")
+	nutri.acceptAll(pid)
+
+	base := "/api/v1/patients/" + pid + "/reproductive"
+	code, r := nutri.do("GET", base, nil)
+	require.Equal(t, 200, code, fmt.Sprint(r))
+	require.EqualValues(t, 12, r["menarche_age"])
+	require.Len(t, r["periods"], 1)
+	require.Equal(t, "2026-10-20", r["periods"].([]any)[0].(map[string]any)["last_period_date"])
+	preg := r["pregnancy"].(map[string]any)
+	require.EqualValues(t, 10, preg["weeks_at_start"])
+	require.EqualValues(t, 10, preg["current_weeks"])
+	require.Equal(t, true, preg["active"])
+	require.NotEmpty(t, preg["due_date"])
+
+	// Agregar más adelante: la última menstruación acumula historial.
+	code, _ = nutri.do("POST", base+"/periods", map[string]any{"last_period_date": recent})
+	require.Equal(t, 201, code)
+	_, r = nutri.do("GET", base, nil)
+	periods := r["periods"].([]any)
+	require.Len(t, periods, 2)
+	require.Equal(t, recent, periods[0].(map[string]any)["last_period_date"], "la más reciente primero")
+
+	// La menarca se puede corregir y también marcar como «no recuerda».
+	code, _ = nutri.do("PUT", base+"/menarche", map[string]any{"unknown": true})
+	require.Equal(t, 204, code)
+	_, r = nutri.do("GET", base, nil)
+	require.Nil(t, r["menarche_age"])
+	require.Equal(t, true, r["menarche_unknown"])
+	code, _ = nutri.do("PUT", base+"/menarche", map[string]any{"age": 13})
+	require.Equal(t, 204, code)
+	_, r = nutri.do("GET", base, nil)
+	require.EqualValues(t, 13, r["menarche_age"])
+	require.Equal(t, false, r["menarche_unknown"])
+
+	// Validaciones.
+	for name, c := range map[string]struct {
+		method, path string
+		body         map[string]any
+	}{
+		"menarca muy temprana":   {"PUT", base + "/menarche", map[string]any{"age": 5}},
+		"menarca tardía":         {"PUT", base + "/menarche", map[string]any{"age": 25}},
+		"edad y «no recuerda»":   {"PUT", base + "/menarche", map[string]any{"age": 12, "unknown": true}},
+		"fecha futura":           {"POST", base + "/periods", map[string]any{"last_period_date": "2999-01-01"}},
+		"fecha mal escrita":      {"POST", base + "/periods", map[string]any{"last_period_date": "18/11/2026"}},
+		"sin fecha":              {"POST", base + "/periods", map[string]any{}},
+		"fecha antes de menarca": {"POST", base + "/periods", map[string]any{"last_period_date": "1995-01-01"}},
+		"semanas en cero":        {"POST", base + "/pregnancies", map[string]any{"weeks": 0}},
+		"semanas de más":         {"POST", base + "/pregnancies", map[string]any{"weeks": 43}},
+	} {
+		code, _ := nutri.do(c.method, c.path, c.body)
+		require.Equal(t, 422, code, name)
+	}
+
+	// Un solo embarazo vigente a la vez.
+	code, bb := nutri.do("POST", base+"/pregnancies", map[string]any{"weeks": 12})
+	require.Equal(t, 422, code, fmt.Sprint(bb))
+	require.Contains(t, fmt.Sprint(bb), "embarazo vigente")
+	code, _ = nutri.do("POST", base+"/pregnancies/"+preg["id"].(string)+"/end", map[string]any{})
+	require.Equal(t, 204, code)
+	code, _ = nutri.do("POST", base+"/pregnancies/"+preg["id"].(string)+"/end", map[string]any{})
+	require.Equal(t, 404, code, "ya estaba finalizado")
+	_, r = nutri.do("GET", base, nil)
+	require.Nil(t, r["pregnancy"], "ya no hay embarazo vigente")
+	require.Len(t, r["pregnancies"], 1, "queda en el historial")
+	code, _ = nutri.do("POST", base+"/pregnancies", map[string]any{"weeks": 6, "notes": "Primer trimestre"})
+	require.Equal(t, 201, code)
+	_, r = nutri.do("GET", base, nil)
+	require.EqualValues(t, 6, r["pregnancy"].(map[string]any)["weeks_at_start"])
+	require.Len(t, r["pregnancies"], 2)
+
+	// Solo aplica a mujeres (y «Otro»): a un hombre se le rechaza, también al registrarlo.
+	man := newPatient("manuel@demo.mx", "Manuel", "Varon")
+	man["sex"] = "M"
+	man["menarche_age"] = 12
+	code, _ = nutri.do("POST", "/api/v1/patients", man)
+	require.Equal(t, 422, code)
+	delete(man, "menarche_age")
+	code, mb := nutri.do("POST", "/api/v1/patients", man)
+	require.Equal(t, 201, code)
+	mid := mb["id"].(string)
+	nutri.acceptAll(mid)
+	code, _ = nutri.do("POST", "/api/v1/patients/"+mid+"/reproductive/periods", map[string]any{"last_period_date": recent})
+	require.Equal(t, 422, code)
+
+	// Registrar sin datos reproductivos sigue siendo válido.
+	code, _ = nutri.do("POST", "/api/v1/patients", newPatient("sin@demo.mx", "Sin", "Datos"))
+	require.Equal(t, 201, code)
+}

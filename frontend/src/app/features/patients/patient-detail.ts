@@ -5,6 +5,7 @@ import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { PlansService } from '../../core/services/plans.service';
+import { ReproductiveService } from '../../core/services/reproductive.service';
 import { TrackingService } from '../../core/services/tracking.service';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { latestMeasurement } from '../../core/nutrition/engine';
@@ -66,6 +67,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
               <app-badge [tone]="tone[p.status]">{{ statusLabel[p.status] }}</app-badge>
               <span class="small muted">{{ age() }} años · {{ sexLabel[p.profile.sex] }} · {{ goalLabel[p.goal] }}</span>
               @if (!consentOk()) { <app-badge tone="warn" icon="lock">Expediente restringido</app-badge> }
+              @if (pregnancy(); as g) { <app-badge tone="accent" icon="info">Embarazada · {{ g.currentWeeks }} sem.</app-badge> }
             </div>
           </div>
           <div class="actions row">
@@ -216,6 +218,7 @@ export class PatientDetail {
   private readonly confirm = inject(ConfirmService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
+  private readonly reproductive = inject(ReproductiveService);
   private readonly fb = inject(FormBuilder);
 
   readonly id = input.required<string>();
@@ -235,6 +238,8 @@ export class PatientDetail {
   protected readonly loading = signal(false);
 
   protected readonly patient = computed(() => this.patients.get(this.id()));
+  /** Embarazo vigente (la salud reproductiva se carga al abrir el expediente de una paciente mujer, con consentimiento). */
+  protected readonly pregnancy = computed(() => this.reproductive.of(this.id()).pregnancy);
   protected readonly name = computed(() => (this.patient() ? this.patients.fullName(this.patient()!) : ''));
   protected readonly ini = computed(() => initials(this.patient()?.profile.firstName ?? '', this.patient()?.profile.lastName ?? ''));
   protected readonly age = computed(() => (this.patient() ? ageFrom(this.patient()!.profile.birthDate) : 0));
@@ -271,6 +276,10 @@ export class PatientDetail {
   });
 
   constructor() {
+    effect(() => {
+      const p = this.patient();
+      if (p && p.profile.sex !== 'M' && this.consentOk()) untracked(() => this.reproductive.load(p.id).subscribe({ error: () => undefined }));
+    });
     // Modo API: el expediente se pide al servidor al abrir (y al cambiar de paciente).
     effect(() => {
       const id = this.id();

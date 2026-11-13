@@ -105,6 +105,11 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	clin.GET("/labs", ct.labs)
 	clin.POST("/labs", ct.addLab)
 	clin.DELETE("/labs/:cid", ct.deleteLab)
+	clin.GET("/reproductive", ct.reproductive)
+	clin.PUT("/reproductive/menarche", ct.setMenarche)
+	clin.POST("/reproductive/periods", ct.addPeriod)
+	clin.POST("/reproductive/pregnancies", ct.addPregnancy)
+	clin.POST("/reproductive/pregnancies/:cid/end", ct.endPregnancy)
 	clin.GET("/notes", ct.notes)
 	clin.POST("/notes", ct.addNote)
 	clin.DELETE("/notes/:cid", ct.deleteNote)
@@ -243,6 +248,11 @@ type createReq struct {
 	Phone     string `json:"phone" binding:"max=30"`
 	Goal      string `json:"goal" binding:"required,oneof=weight_loss muscle_gain maintenance health other"`
 	Invite    bool   `json:"invite"`
+	// Salud reproductiva, opcional al registrar (solo F u «Otro»); se puede capturar después en el expediente.
+	MenarcheAge     *int   `json:"menarche_age"`
+	MenarcheUnknown bool   `json:"menarche_unknown"`
+	LastPeriodDate  string `json:"last_period_date"`
+	PregnancyWeeks  *int   `json:"pregnancy_weeks"`
 }
 
 func (ct *Controller) create(c *gin.Context) {
@@ -256,8 +266,14 @@ func (ct *Controller) create(c *gin.Context) {
 		bad(c, ValidationError{"birth_date": "usa el formato AAAA-MM-DD"})
 		return
 	}
+	errs := ValidationError{}
+	repro := Reproductive{MenarcheAge: in.MenarcheAge, MenarcheUnknown: in.MenarcheUnknown, LastPeriod: optDay("last_period_date", in.LastPeriodDate, errs), PregnancyWeeks: in.PregnancyWeeks}
+	if len(errs) > 0 {
+		bad(c, errs)
+		return
+	}
 	p, err := ct.svc.Create(c.Request.Context(), actor(c), CreateInput{
-		FirstName: in.FirstName, LastName: in.LastName, Email: in.Email, Phone: in.Phone, Sex: in.Sex, Goal: in.Goal, BirthDate: birth, Invite: in.Invite,
+		FirstName: in.FirstName, LastName: in.LastName, Email: in.Email, Phone: in.Phone, Sex: in.Sex, Goal: in.Goal, BirthDate: birth, Invite: in.Invite, Repro: repro,
 	})
 	if err != nil {
 		fail(c, ct.log, err)

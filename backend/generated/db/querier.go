@@ -52,6 +52,7 @@ type Querier interface {
 	DishInPatientPublishedPlan(ctx context.Context, arg DishInPatientPublishedPlanParams) (bool, error)
 	// Autorización de descarga: ¿de quién es el archivo y quién puede verlo?
 	DocumentAccessByFile(ctx context.Context, fileObjectID uuid.UUID) (DocumentAccessByFileRow, error)
+	EndPregnancy(ctx context.Context, arg EndPregnancyParams) (int64, error)
 	FeedByToken(ctx context.Context, token string) (CalendarFeed, error)
 	// Al terminar el periodo el plan pasa a finalizado (§11).
 	FinalizeExpiredPlans(ctx context.Context, endDate pgtype.Date) ([]FinalizeExpiredPlansRow, error)
@@ -112,12 +113,14 @@ type Querier interface {
 	// ---------- Mediciones (append-only) ----------
 	InsertMeasurement(ctx context.Context, arg InsertMeasurementParams) (PatientMeasurement, error)
 	InsertMedication(ctx context.Context, arg InsertMedicationParams) (PatientMedication, error)
+	InsertMenstrualRecord(ctx context.Context, arg InsertMenstrualRecordParams) (PatientMenstrualRecord, error)
 	InsertNote(ctx context.Context, arg InsertNoteParams) (PatientNote, error)
 	// ---------- Planes ----------
 	InsertPlan(ctx context.Context, arg InsertPlanParams) (MealPlan, error)
 	InsertPlanEvent(ctx context.Context, arg InsertPlanEventParams) error
 	InsertPortion(ctx context.Context, arg InsertPortionParams) error
 	InsertPreference(ctx context.Context, arg InsertPreferenceParams) (PatientFoodPreference, error)
+	InsertPregnancy(ctx context.Context, arg InsertPregnancyParams) (PatientPregnancy, error)
 	InsertPublication(ctx context.Context, arg InsertPublicationParams) (MealPlanPublication, error)
 	InsertRecalcBatch(ctx context.Context, arg InsertRecalcBatchParams) (SmaeRecalcBatch, error)
 	InsertRecalcDecision(ctx context.Context, arg InsertRecalcDecisionParams) error
@@ -169,6 +172,7 @@ type Querier interface {
 	ListMeasurements(ctx context.Context, patientID uuid.UUID) ([]PatientMeasurement, error)
 	// ---------- Medicamentos ----------
 	ListMedications(ctx context.Context, patientID uuid.UUID) ([]PatientMedication, error)
+	ListMenstrualRecords(ctx context.Context, patientID uuid.UUID) ([]PatientMenstrualRecord, error)
 	// ---------- Notas privadas ----------
 	ListNotes(ctx context.Context, patientID uuid.UUID) ([]PatientNote, error)
 	ListPatientAppointments(ctx context.Context, arg ListPatientAppointmentsParams) ([]Appointment, error)
@@ -186,6 +190,7 @@ type Querier interface {
 	ListPortionsForFoods(ctx context.Context, dollar_1 []uuid.UUID) ([]SmaePortion, error)
 	// ---------- Preferencias ----------
 	ListPreferences(ctx context.Context, patientID uuid.UUID) ([]PatientFoodPreference, error)
+	ListPregnancies(ctx context.Context, patientID uuid.UUID) ([]PatientPregnancy, error)
 	ListPublications(ctx context.Context, planID uuid.UUID) ([]MealPlanPublication, error)
 	// Planes publicados vigentes, para el tablero de alertas.
 	ListPublishedPlanIDs(ctx context.Context) ([]uuid.UUID, error)
@@ -217,6 +222,8 @@ type Querier interface {
 	SetDishStatus(ctx context.Context, arg SetDishStatusParams) error
 	SetEditionStatus(ctx context.Context, arg SetEditionStatusParams) error
 	SetEntryNeedsReview(ctx context.Context, arg SetEntryNeedsReviewParams) error
+	// ---------- Salud reproductiva ----------
+	SetMenarche(ctx context.Context, arg SetMenarcheParams) error
 	SetPatientDeleted(ctx context.Context, arg SetPatientDeletedParams) (Patient, error)
 	// Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
 	SetPatientInvited(ctx context.Context, id uuid.UUID) error

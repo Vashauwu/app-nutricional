@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import {
-  Allergy, Condition, ConsentAcceptance, ConsentDocument, FoodPreference, Goal, Medication, Patient, PatientDocument, PatientNote, PatientProfile, PatientStatus, Sex,
+  Allergy, Condition, ConsentAcceptance, ConsentDocument, FoodPreference, Goal, Medication, Patient, PatientDocument, PatientNote, PatientProfile, PatientStatus, ReproductiveInitial, Sex,
 } from '../../shared/models/domain';
 import { Page } from '../../shared/utils/loadable';
 import { DbService } from '../data/db.service';
@@ -126,9 +126,12 @@ export class PatientsApi {
   }
 
   /** Devuelve el id y, si el servidor no tiene correo configurado, el enlace de invitación para compartir. */
-  create(p: PatientProfile, goal: Goal, invite: boolean): Observable<{ id: string; inviteLink?: string }> {
+  create(p: PatientProfile, goal: Goal, invite: boolean, repro?: ReproductiveInitial): Observable<{ id: string; inviteLink?: string }> {
     return this.api
-      .post<ApiPatient & { invite_link?: string }>('/patients', { first_name: p.firstName, last_name: p.lastName, birth_date: p.birthDate, sex: p.sex, email: p.email, phone: p.phone, goal, invite })
+      .post<ApiPatient & { invite_link?: string }>('/patients', {
+        first_name: p.firstName, last_name: p.lastName, birth_date: p.birthDate, sex: p.sex, email: p.email, phone: p.phone, goal, invite,
+        menarche_age: repro?.menarcheAge, menarche_unknown: repro?.menarcheUnknown, last_period_date: repro?.lastPeriod, pregnancy_weeks: repro?.pregnancyWeeks,
+      })
       .pipe(map((r) => ({ id: r.id, inviteLink: r.invite_link })));
   }
 

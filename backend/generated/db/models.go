@@ -337,6 +337,8 @@ type Patient struct {
 	CreatedAt           pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt           pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
+	MenarcheAge         pgtype.Int2        `json:"menarche_age"`
+	MenarcheUnknown     bool               `json:"menarche_unknown"`
 }
 
 type PatientAllergy struct {
@@ -439,6 +441,14 @@ type PatientMedication struct {
 	Kind      string             `json:"kind"`
 }
 
+type PatientMenstrualRecord struct {
+	ID             uuid.UUID          `json:"id"`
+	PatientID      uuid.UUID          `json:"patient_id"`
+	LastPeriodDate pgtype.Date        `json:"last_period_date"`
+	CreatedBy      uuid.UUID          `json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type PatientNote struct {
 	ID           uuid.UUID          `json:"id"`
 	PatientID    uuid.UUID          `json:"patient_id"`
@@ -446,6 +456,18 @@ type PatientNote struct {
 	Body         string             `json:"body"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+}
+
+type PatientPregnancy struct {
+	ID           uuid.UUID          `json:"id"`
+	PatientID    uuid.UUID          `json:"patient_id"`
+	WeeksAtStart int16              `json:"weeks_at_start"`
+	RecordedOn   pgtype.Date        `json:"recorded_on"`
+	DueDate      pgtype.Date        `json:"due_date"`
+	Notes        string             `json:"notes"`
+	EndedOn      pgtype.Date        `json:"ended_on"`
+	CreatedBy    uuid.UUID          `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type Permission struct {

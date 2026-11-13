@@ -74,6 +74,7 @@ type CreateInput struct {
 	FirstName, LastName, Email, Phone, Sex, Goal string
 	BirthDate                                    time.Time
 	Invite                                       bool
+	Repro                                        Reproductive
 }
 
 type UpdateInput struct {
@@ -96,6 +97,14 @@ func normEmail(e string) string { return strings.ToLower(strings.TrimSpace(e)) }
 func (s *Service) Create(ctx context.Context, a Actor, in CreateInput) (db.Patient, error) {
 	if !isAdult(in.BirthDate, s.now()) {
 		return db.Patient{}, ErrNotAdult
+	}
+	if !in.Repro.empty() {
+		if err := requireReproductive(in.Sex); err != nil {
+			return db.Patient{}, err
+		}
+		if errs := s.validateRepro(in.Repro, in.BirthDate); len(errs) > 0 {
+			return db.Patient{}, errs
+		}
 	}
 	email := normEmail(in.Email)
 	tx, err := s.pool.Begin(ctx)
@@ -137,6 +146,9 @@ func (s *Service) Create(ctx context.Context, a Actor, in CreateInput) (db.Patie
 		BirthDate: pgDate(in.BirthDate), Sex: in.Sex, Email: email, Phone: strings.TrimSpace(in.Phone), Goal: in.Goal, CreatedBy: a.ID,
 	})
 	if err != nil {
+		return db.Patient{}, err
+	}
+	if err := s.applyRepro(ctx, q, a, p.ID, in.Repro); err != nil {
 		return db.Patient{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {

@@ -7,6 +7,7 @@ import { computeBmi, latestMeasurement } from '../../core/nutrition/engine';
 import { Allergy, COMPOSITION_FIELDS, Condition, FoodPreference, GIRTH_FIELDS, GIRTH_GROUPS, Measurement, Medication, PREFERENCE_LABEL, Patient, PreferenceType } from '../../shared/models/domain';
 import { FieldError, decimalValidator } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
+import { ReproductiveCard } from './patient-reproductive';
 import { Modal } from '../../shared/components/modal';
 import { LineChart, LineSeries } from '../../shared/components/charts';
 import { Badge, EmptyState } from '../../shared/components/ui';
@@ -203,10 +204,11 @@ export class MeasurementsTab {
 // ---------- Información clínica ----------
 @Component({
   selector: 'app-clinical-tab',
-  imports: [ReactiveFormsModule, TuiButton, Icon, Modal, FieldError, Badge],
+  imports: [ReactiveFormsModule, TuiButton, Icon, Modal, FieldError, Badge, ReproductiveCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="stack">
+      <app-reproductive-card [patient]="patient()" />
       <section class="panel" aria-labelledby="h-ind">
         <div class="panel-head"><h2 id="h-ind">Indicaciones clínicas</h2></div>
         <p class="small muted">Las alertas usan este texto y las condiciones activas para detectar conflictos con los platillos.</p>

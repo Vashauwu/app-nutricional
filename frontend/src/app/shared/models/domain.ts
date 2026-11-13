@@ -753,3 +753,27 @@ export interface Appointment {
 export const APPOINTMENT_KIND_LABEL: Record<AppointmentKind, string> = { first: 'Primera consulta', follow_up: 'Seguimiento', other: 'Otra' };
 export const APPOINTMENT_MODE_LABEL: Record<AppointmentMode, string> = { in_person: 'Presencial', online: 'En línea' };
 export const APPOINTMENT_STATUS_LABEL: Record<AppointmentStatus, string> = { scheduled: 'Programada', completed: 'Realizada', cancelled: 'Cancelada', no_show: 'No asistió' };
+
+// ---------- Salud reproductiva (solo la nutrióloga; la paciente no la ve) ----------
+export interface MenstrualRecord { id: string; date: IsoDate; recordedAt: IsoDateTime }
+export interface Pregnancy {
+  id: string;
+  weeksAtStart: number;
+  recordedOn: IsoDate;
+  dueDate: IsoDate;
+  /** Semanas de gestación hoy (o a la fecha en que terminó), calculadas a partir de las del registro. */
+  currentWeeks: number;
+  notes: string;
+  endedOn?: IsoDate;
+  active: boolean;
+}
+export interface Reproductive {
+  menarcheAge?: number;
+  menarcheUnknown: boolean;
+  /** Más reciente primero. */
+  periods: MenstrualRecord[];
+  pregnancy?: Pregnancy;
+  pregnancies: Pregnancy[];
+}
+/** Lo que se puede capturar, de forma opcional, al registrar a la paciente. */
+export interface ReproductiveInitial { menarcheAge?: number; menarcheUnknown?: boolean; lastPeriod?: IsoDate; pregnancyWeeks?: number }
