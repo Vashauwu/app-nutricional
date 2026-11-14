@@ -6,9 +6,11 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#FAF7F2" />
-    <script>(function(){try{var t=localStorage.getItem("nutri-theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";}catch(e){}})();</script>
+    <!-- El script de abajo cambia este ícono según el tema (claro: paleta pastel; oscuro: ciruela). -->
+    <link rel="icon" id="app-favicon" type="image/png" href="icons/favicon-light.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <script>(function(){try{var t=localStorage.getItem("nutri-theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.dataset.theme=d?"dark":"light";var f=document.getElementById("app-favicon");if(f)f.href="icons/favicon-"+(d?"dark":"light")+".png";}catch(e){}})();</script>
     <script src="config.js"></script>
-    <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <link rel="manifest" href="manifest.webmanifest" />
   </head>
   <body>
