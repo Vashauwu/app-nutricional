@@ -156,7 +156,7 @@ func (s *Service) checkFree(ctx context.Context, q *db.Queries, in Input, except
 }
 
 func (s *Service) patientName(ctx context.Context, id uuid.UUID) (string, error) {
-	p, err := s.q.GetPatient(ctx, id)
+	p, err := s.q.GetPatientName(ctx, id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", ValidationError{"patient_id": "paciente no encontrado"}

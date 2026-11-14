@@ -64,6 +64,29 @@ type Service struct {
 	mailer  Mailer
 	log     *slog.Logger
 	now     func() time.Time
+	// Si es true, los correos que no condicionan la respuesta (recuperación y aviso de cambio) salen en segundo plano.
+	asyncMail bool
+}
+
+// SetAsyncMail envía en segundo plano el correo de recuperación y el aviso de cambio de contraseña.
+// Así la API responde igual de rápido exista o no la cuenta (sin filtrar por tiempo qué correos están registrados)
+// y un SMTP lento no retiene la petición. La invitación sigue siendo síncrona: su resultado se informa a quien invita.
+func (s *Service) SetAsyncMail(v bool) { s.asyncMail = v }
+
+// sendMail ejecuta el envío ahora o en segundo plano, con su propio límite de tiempo (nunca hereda la cancelación de la petición).
+func (s *Service) sendMail(ctx context.Context, name string, send func(context.Context) error) error {
+	if !s.asyncMail {
+		return send(ctx)
+	}
+	bg := context.WithoutCancel(ctx)
+	go func() {
+		bg, cancel := context.WithTimeout(bg, 45*time.Second)
+		defer cancel()
+		if err := send(bg); err != nil {
+			s.log.Error("mail_failed", slog.String("mail", name), slog.Any("error", err))
+		}
+	}()
+	return nil
 }
 
 func NewService(pool *pgxpool.Pool, cfg config.Config, mailer Mailer, log *slog.Logger) *Service {
@@ -291,7 +314,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email string, m Meta
 	}
 	s.audit(ctx, nu(u.ID), "auth.password_reset_requested", "user", nu(u.ID), m, nil)
 	link := strings.TrimRight(s.cfg.AppBaseURL, "/") + "/restablecer/" + raw
-	return s.mailer.SendPasswordReset(ctx, u.Email, link)
+	return s.sendMail(ctx, "password_reset", func(c context.Context) error { return s.mailer.SendPasswordReset(c, u.Email, link) })
 }
 
 // ResetPassword consume el token (un solo uso), cambia la contraseña y cierra todas las sesiones.
@@ -331,7 +354,7 @@ func (s *Service) ResetPassword(ctx context.Context, raw, newPassword string, m 
 	}
 	s.audit(ctx, nu(uid), "auth.password_reset", "user", nu(uid), m, nil)
 	if u, err := s.q.GetUserByID(ctx, uid); err == nil {
-		_ = s.mailer.SendPasswordChanged(ctx, u.Email)
+		_ = s.sendMail(ctx, "password_changed", func(c context.Context) error { return s.mailer.SendPasswordChanged(c, u.Email) })
 	}
 	return nil
 }

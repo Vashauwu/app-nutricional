@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, map, of, tap } from 'rxjs';
+import { Observable, finalize, map, of, tap } from 'rxjs';
 import { ApiClient } from '../api/api-client';
 import { ApiAlert, mapAlert } from '../api/plans-api';
 import { ApiEntry, mapEntry } from '../api/tracking-api';
@@ -51,6 +51,8 @@ export class InsightsService {
   private readonly remote = inject(ApiClient);
   readonly apiMode = this.remote.enabled;
   private readonly apiDash = signal<DashboardView>(EMPTY_DASHBOARD);
+  /** Modo API: verdadero hasta que llega la primera respuesta del tablero (para mostrar el esqueleto). */
+  readonly dashboardPending = signal(this.apiMode);
 
   /** Modo API: pide el tablero al servidor (los cálculos, incluidas las alertas, son suyos). */
   loadDashboard(): Observable<void> {
@@ -82,6 +84,7 @@ export class InsightsService {
         });
       }),
       map(() => void 0),
+      finalize(() => this.dashboardPending.set(false)),
     );
   }
   private readonly plans = inject(PlansService);

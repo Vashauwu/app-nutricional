@@ -440,5 +440,4 @@ export class PlansService {
   itemCount = (plan: MealPlan): number => plan.itemCount ?? plan.days.reduce((a, d) => a + d.slots.reduce((b, s) => b + s.items.length, 0), 0);
 }
 
-export const itemKey = (it: PlanItem): string => it.id;
 void throwError;

@@ -1,5 +1,5 @@
-import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, forkJoin, map, of, switchMap, tap } from 'rxjs';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, catchError, finalize, forkJoin, map, of, switchMap, tap } from 'rxjs';
 import { ApiMeasurement, toMeasurement } from './measurement-map';
 import { Dish, DishVersion, Goal, Patient, PatientDocument } from '../../shared/models/domain';
 import { DbService } from '../data/db.service';
@@ -27,6 +27,9 @@ export class PatientAppApi {
   private readonly data = inject(DbService);
   private readonly plans = inject(PlansApi);
   private readonly tracking = inject(TrackingApi);
+
+  /** Verdadero hasta que termina la primera carga: evita mostrar «sin plan» mientras el plan aún viaja por la red. */
+  readonly pending = signal(this.api.enabled);
 
   load(): Observable<void> {
     const soft = <T>(o: Observable<T>, fallback: T) => o.pipe(catchError((e: unknown) => (e instanceof ApiError && [403, 404, 423].includes(e.status) ? of(fallback) : of(fallback))));
@@ -76,6 +79,7 @@ export class PatientAppApi {
         }
       }),
       switchMap(() => this.tracking.mine().pipe(catchError(() => of(void 0)))),
+      finalize(() => this.pending.set(false)),
     );
   }
 

@@ -19,6 +19,7 @@ import { credentialsInterceptor } from './core/interceptors/credentials.intercep
 import { refreshInterceptor } from './core/interceptors/refresh.interceptor';
 import { AuthService } from './core/auth/auth.service';
 import { ReportingErrorHandler } from './core/services/error-reporter';
+import { startWebVitals } from './core/services/web-vitals';
 
 registerLocaleData(localeEsMx);
 
@@ -36,6 +37,7 @@ export const appConfig: ApplicationConfig = {
     { provide: ErrorHandler, useClass: ReportingErrorHandler },
     // Modo API: recupera la sesión (cookies HttpOnly) antes de resolver las rutas protegidas.
     provideAppInitializer(() => inject(AuthService).restore()),
+    provideAppInitializer(() => startWebVitals()),
     { provide: LOCALE_ID, useValue: 'es-MX' },
     provideServiceWorker('ngsw-worker.js', {
       enabled: !isDevMode(),

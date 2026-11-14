@@ -73,7 +73,7 @@ import { scaleEquivalents } from '../../core/nutrition/engine';
             </div>
             @if (!online()) { <p class="small muted" role="status">Registrar, subir fotos y comentar requieren conexión.</p> }
             @if (v.entry; as e) {
-              @if (e.photos.length) { <div class="photos">@for (p of e.photos; track p.id) { <img [src]="p.dataUrl" [alt]="p.alt" /> }</div> }
+              @if (e.photos.length) { <div class="photos">@for (p of e.photos; track p.id) { <img [src]="p.dataUrl" [alt]="p.alt" loading="lazy" decoding="async" /> }</div> }
               <div class="field"><label for="ph">Agregar fotografía</label><input id="ph" class="input" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" [disabled]="!online()" (change)="onPhoto($event)" aria-describedby="ph-h" /><span class="hint" id="ph-h">Solo la ve tu nutrióloga. Se optimiza antes de subirse.</span>@if (photoError()) { <p class="error" role="alert">{{ photoError() }}</p> }</div>
               @if (e.thread.length || e.patientComment) {
                 <div class="stack--s" role="log" aria-label="Conversación de esta comida">

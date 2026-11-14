@@ -596,8 +596,6 @@ func created(c *gin.Context, id *uuid.UUID, v any) {
 	c.JSON(http.StatusOK, v)
 }
 
-type conditionReq struct{ Name, Details, Status string }
-
 func (ct *Controller) saveCondition(c *gin.Context) {
 	in, id, ok := bindSave[struct {
 		Name    string `json:"name"`
