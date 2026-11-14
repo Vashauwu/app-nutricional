@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, of, throwError, tap, map, switchMap } from 'rxjs';
+import { Observable, of, throwError, tap, map, switchMap, catchError } from 'rxjs';
 import { ApiClient } from '../api/api-client';
 import { TrackingApi } from '../api/tracking-api';
 import { DbService } from '../data/db.service';
@@ -133,9 +133,35 @@ export class TrackingService {
   record(opts: { patientId: string; plan: MealPlan; date: IsoDate; slot: PlanSlot; item: PlanItem; status: 'done' | 'skipped'; comment?: string }): Observable<void> {
     if (this.apiMode) {
       if (!this.data.isOnline()) return throwError(() => new Error('Necesitas conexión para registrar tu seguimiento.'));
-      return this.remote.record(opts.item.id, opts.status, opts.comment);
+      return this.recordOptimistic(opts);
     }
     return this.guard(() => this.recordLocal(opts));
+  }
+
+  /**
+   * Actualización optimista: la comida se marca al instante y la petición confirma en segundo plano.
+   * Si el servidor la rechaza, se restaura exactamente el estado anterior y el error llega a quien llamó.
+   */
+  private recordOptimistic(opts: { patientId: string; plan: MealPlan; date: IsoDate; slot: PlanSlot; item: PlanItem; status: 'done' | 'skipped'; comment?: string }): Observable<void> {
+    const previous = this.entryFor(opts.plan.id, opts.item.id);
+    const snapshot = previous ? structuredClone(previous) : undefined;
+    this.recordLocal(opts);
+    // Registro provisional: el definitivo (con id del servidor) lo trae la respuesta.
+    const provisional = previous ? undefined : this.entryFor(opts.plan.id, opts.item.id)?.id;
+    return this.remote.record(opts.item.id, opts.status, opts.comment).pipe(
+      tap(() => {
+        if (provisional) this.data.mutate((d) => { d.tracking = d.tracking.filter((t) => t.id !== provisional); });
+      }),
+      catchError((e: unknown) => {
+        this.data.mutate((d) => {
+          if (snapshot) {
+            const at = d.tracking.findIndex((t) => t.id === snapshot.id);
+            if (at >= 0) d.tracking[at] = snapshot;
+          } else if (provisional) d.tracking = d.tracking.filter((t) => t.id !== provisional);
+        });
+        return throwError(() => e);
+      }),
+    );
   }
 
   private recordLocal(opts: { patientId: string; plan: MealPlan; date: IsoDate; slot: PlanSlot; item: PlanItem; status: 'done' | 'skipped'; comment?: string }): void {
@@ -164,7 +190,16 @@ export class TrackingService {
     if (this.apiMode) {
       if (!this.data.isOnline()) return throwError(() => new Error('Necesitas conexión para registrar tu seguimiento.'));
       const entry = this.entryFor(planId, itemId);
-      return entry ? this.remote.clear(entry.id) : of(void 0);
+      if (!entry) return of(void 0);
+      // Optimista: desaparece al instante; si falla, vuelve tal como estaba.
+      const snapshot = structuredClone(entry);
+      this.data.mutate((d) => { d.tracking = d.tracking.filter((t) => t.id !== entry.id); });
+      return this.remote.clear(entry.id).pipe(
+        catchError((e: unknown) => {
+          this.data.mutate((d) => { if (!d.tracking.some((t) => t.id === snapshot.id)) d.tracking.push(snapshot); });
+          return throwError(() => e);
+        }),
+      );
     }
     return this.guard(() => this.clearLocal(planId, itemId));
   }

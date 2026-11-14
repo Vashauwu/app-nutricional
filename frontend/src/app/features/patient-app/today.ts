@@ -8,14 +8,15 @@ import { ToastService } from '../../core/services/ui.services';
 import { Icon } from '../../shared/components/icon';
 import { Ring } from '../../shared/components/charts';
 import { DishThumb } from '../../shared/components/nutrition-bits';
-import { EmptyState } from '../../shared/components/ui';
+import { EmptyState, Skeleton } from '../../shared/components/ui';
+import { PatientAppApi } from '../../core/api/patient-app-api';
 import { addDays, fmtCompact, longDate, startOfWeek } from '../../shared/utils/format';
 import { PatientContext, PatientItemVM } from './patient-context';
 import { NextAppointment } from '../agenda/agenda-widgets';
 
 @Component({
   selector: 'app-patient-today',
-  imports: [RouterLink, TuiButton, Icon, Ring, DishThumb, EmptyState, NextAppointment],
+  imports: [RouterLink, TuiButton, Icon, Ring, DishThumb, EmptyState, Skeleton, NextAppointment],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: var(--space-4); }
@@ -73,6 +74,8 @@ import { NextAppointment } from '../agenda/agenda-widgets';
 
         @if (!online() && groups().length) { <p class="small muted" role="status">Sin conexión: puedes consultar tu menú, pero marcar comidas requiere conexión.</p> }
       </div>
+    } @else if (loading()) {
+      <app-skeleton [count]="5" height="4rem" />
     } @else {
       <app-empty icon="calendar" title="Aún no tienes un plan publicado" text="Cuando tu nutrióloga publique tu plan, lo verás aquí al instante." />
     }
@@ -80,6 +83,7 @@ import { NextAppointment } from '../agenda/agenda-widgets';
 })
 export class PatientToday {
   protected readonly ctx = inject(PatientContext);
+  protected readonly loading = inject(PatientAppApi).pending;
   private readonly auth = inject(AuthService);
   private readonly data = inject(DbService);
   private readonly tracking = inject(TrackingService);

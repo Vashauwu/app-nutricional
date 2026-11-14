@@ -38,22 +38,6 @@ export class EngineError extends Error {
 export const NUTRIENT_KEYS = ['energy', 'protein', 'carbs', 'lipids', 'fiber'] as const;
 export type NutrientKey = (typeof NUTRIENT_KEYS)[number];
 
-export const NUTRIENT_LABEL: Record<NutrientKey, string> = {
-  energy: 'Energía',
-  protein: 'Proteínas',
-  carbs: 'Carbohidratos',
-  lipids: 'Lípidos',
-  fiber: 'Fibra',
-};
-
-export const NUTRIENT_UNIT: Record<NutrientKey, string> = {
-  energy: 'kcal',
-  protein: 'g',
-  carbs: 'g',
-  lipids: 'g',
-  fiber: 'g',
-};
-
 export const zeroNutrients = (): Nutrients => ({ energy: '0', protein: '0', carbs: '0', lipids: '0', fiber: '0' });
 
 export function addNutrients(a: Nutrients, b: Nutrients): Nutrients {
@@ -409,10 +393,6 @@ export function distributeEquivalents(
     }
   });
   return out;
-}
-
-export function dishLabel(d: Dish): string {
-  return d.name;
 }
 
 export { sum };

@@ -69,7 +69,7 @@ const CATEGORY_TONE: Record<string, string> = { Desayuno: 'mantequilla', Comida:
   `,
   template: `
     <div class="t" [class]="'t tone-' + tone()">
-      @if (src()) { <img [src]="src()" [alt]="alt()" loading="lazy" /> } @else { <app-icon [name]="icon()" [size]="size()" /> }
+      @if (src()) { <img [src]="src()" [alt]="alt()" loading="lazy" decoding="async" /> } @else { <app-icon [name]="icon()" [size]="size()" /> }
     </div>
   `,
 })

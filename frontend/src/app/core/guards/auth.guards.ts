@@ -7,12 +7,6 @@ import { Role } from '../../shared/models/domain';
  * Los guards solo mejoran la experiencia: la autorización real vive en el
  * backend en cada operación (§2.2).
  */
-export const authGuard: CanActivateFn = (_route, state) => {
-  const auth = inject(AuthService);
-  const router = inject(Router);
-  return auth.isAuthenticated() ? true : router.createUrlTree(['/ingresar'], { queryParams: { volver: state.url } });
-};
-
 export const roleGuard =
   (role: Role): CanActivateFn =>
   () => {

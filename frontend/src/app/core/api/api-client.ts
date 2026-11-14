@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, throwError } from 'rxjs';
+import { Observable, catchError, finalize, share, throwError } from 'rxjs';
 
 declare global {
   interface Window {
@@ -52,10 +52,23 @@ export class ApiClient {
     return o.pipe(catchError((e) => throwError(() => toApiError(e))));
   }
 
+  /** GET en curso, por ruta y parámetros: dos pantallas que piden lo mismo a la vez comparten una sola petición. */
+  private readonly inflight = new Map<string, Observable<unknown>>();
+
   get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Observable<T> {
     let p = new HttpParams();
     for (const [k, v] of Object.entries(params ?? {})) if (v !== undefined && v !== '') p = p.set(k, String(v));
-    return this.wrap(this.http.get<T>(API + path, { params: p }));
+    const key = `${path}?${p.toString()}`;
+    const pending = this.inflight.get(key);
+    if (pending) return pending as Observable<T>;
+    const shared = this.wrap(this.http.get<T>(API + path, { params: p })).pipe(
+      // Al terminar (o fallar) se libera: la siguiente consulta siempre trae datos frescos.
+      finalize(() => this.inflight.delete(key)),
+      // Sin repetición: quien se suscriba cuando ya terminó vuelve a consultar en vez de recibir una copia vieja.
+      share(),
+    );
+    this.inflight.set(key, shared);
+    return shared;
   }
   /** Descarga un archivo (exportaciones y PDF): la sesión viaja en cookies, nunca en la URL. */
   blob(path: string, params?: Record<string, string | number | boolean | undefined>): Observable<Blob> {
