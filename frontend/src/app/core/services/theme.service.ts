@@ -24,6 +24,7 @@ export class ThemeService {
       this.dark.set(isDark);
       document.documentElement.dataset['theme'] = isDark ? 'dark' : 'light';
       this.tuiDark.set(isDark);
+      document.getElementById('app-favicon')?.setAttribute('href', `icons/favicon-${isDark ? 'dark' : 'light'}.png`);
       document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#1D181F' : '#FAF7F2');
     });
   }
