@@ -77,12 +77,6 @@ func start(t *testing.T) *env {
 	return &env{pool: pool, srv: srv, auth: as}
 }
 
-func (e *env) staff(t *testing.T) *testsupport.Client {
-	_, err := e.auth.CreateUser(context.Background(), fmt.Sprintf("nutri%s@demo.mx", uuid.NewString()[:6]), "Lic. Prueba", "nutritionist", "demo1234")
-	require.NoError(t, err)
-	return nil
-}
-
 func (e *env) login(t *testing.T, email, role string) *testsupport.Client {
 	_, err := e.auth.CreateUser(context.Background(), email, "Usuario", role, "demo1234")
 	require.NoError(t, err)
@@ -132,9 +126,6 @@ func linkAccount(t *testing.T, e *env, patientID, email string) *testsupport.Cli
 
 func day(date string, slots ...map[string]any) map[string]any {
 	return map[string]any{"date": date, "notes": "", "slots": slots}
-}
-func slot(id, name string, items ...map[string]any) map[string]any {
-	return map[string]any{"id": id, "name": name, "items": items}
 }
 func item(id, dish string, version int, servings string) map[string]any {
 	return map[string]any{"id": id, "dish_id": dish, "dish_version": version, "servings": servings, "instructions": ""}

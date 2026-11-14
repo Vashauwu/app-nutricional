@@ -8,7 +8,7 @@ RETURNING *;
 SELECT * FROM meal_plans WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: ListPlans :many
-SELECT p.*, pt.first_name, pt.last_name,
+SELECT p.id, p.patient_id, p.name, p.status, p.start_date, p.end_date, p.revision, p.updated_at, pt.first_name, pt.last_name,
        (SELECT count(*) FROM meal_slot_items i JOIN meal_slots s ON s.id = i.slot_id JOIN meal_plan_days d ON d.id = s.day_id
          WHERE d.plan_id = p.id AND i.removed_at IS NULL AND s.removed_at IS NULL AND d.removed_at IS NULL) AS item_count,
        count(*) OVER () AS total
@@ -143,7 +143,7 @@ INSERT INTO meal_plan_templates (name, description, scope, patient_id, structure
 SELECT * FROM meal_plan_templates WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: ListTemplates :many
-SELECT * FROM meal_plan_templates
+SELECT id, name, description, scope, patient_id, jsonb_array_length(structure)::int AS day_count, created_at FROM meal_plan_templates
 WHERE deleted_at IS NULL AND (sqlc.arg(patient_id)::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR scope = 'global' OR patient_id = sqlc.arg(patient_id)::uuid)
 ORDER BY created_at DESC;
 

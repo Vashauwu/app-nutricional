@@ -50,6 +50,43 @@ func NewController(log *slog.Logger) *Controller { return &Controller{log: log} 
 
 func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	v1.POST("/client-errors", middleware.RateLimit(20, time.Minute), ct.report)
+	v1.POST("/client-metrics", middleware.RateLimit(60, time.Minute), ct.metrics)
+}
+
+// Métricas de velocidad reales (Core Web Vitals) medidas en el navegador de cada persona.
+var vitals = map[string]bool{"LCP": true, "CLS": true, "INP": true, "FCP": true, "TTFB": true}
+
+type vital struct {
+	Name    string  `json:"name" binding:"required"`
+	Value   float64 `json:"value"`
+	Rating  string  `json:"rating"`
+	URL     string  `json:"url"`
+	Release string  `json:"release"`
+	// Conexión y memoria aproximadas del dispositivo, para separar equipos lentos de problemas del servidor.
+	Connection string `json:"connection"`
+}
+
+func (ct *Controller) metrics(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 2<<10)
+	var in vital
+	if err := c.ShouldBindJSON(&in); err != nil || !vitals[in.Name] || in.Value < 0 || in.Value > 1e7 {
+		shared.AbortWithError(c, http.StatusBadRequest, "invalid_request", "Métrica no válida.")
+		return
+	}
+	switch in.Rating {
+	case "good", "needs-improvement", "poor":
+	default:
+		in.Rating = "unknown"
+	}
+	ct.log.InfoContext(c.Request.Context(), "web_vital",
+		slog.String("name", in.Name),
+		slog.Float64("value", in.Value),
+		slog.String("rating", in.Rating),
+		slog.String("url", cleanURL(in.URL)),
+		slog.String("release", cut(in.Release, 40)),
+		slog.String("connection", cut(in.Connection, 20)),
+	)
+	c.Status(http.StatusNoContent)
 }
 
 func (ct *Controller) report(c *gin.Context) {

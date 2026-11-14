@@ -801,9 +801,9 @@ func TestPatientDeletesOwnAccount(t *testing.T) {
 	require.Equal(t, 204, code)
 	pc.login("baja@demo.mx", "MiClave2026")
 
-	code, b := pc.do("POST", "/api/v1/me/account/delete", map[string]string{})
+	code, _ = pc.do("POST", "/api/v1/me/account/delete", map[string]string{})
 	require.Equal(t, 422, code, "sin contraseña no procede")
-	code, b = pc.do("POST", "/api/v1/me/account/delete", map[string]string{"password": "incorrecta1"})
+	code, b := pc.do("POST", "/api/v1/me/account/delete", map[string]string{"password": "incorrecta1"})
 	require.Equal(t, 403, code, fmt.Sprint(b))
 	require.Equal(t, "invalid_password", errCode(b))
 	code, _ = pc.do("GET", "/api/v1/me/patient", nil)

@@ -708,7 +708,7 @@ func (q *Queries) ListPlanSlots(ctx context.Context, planID uuid.UUID) ([]ListPl
 }
 
 const listPlans = `-- name: ListPlans :many
-SELECT p.id, p.patient_id, p.name, p.status, p.start_date, p.end_date, p.revision, p.target_energy, p.target_protein, p.target_carbs, p.target_lipids, p.target_equivalents, p.targets_version, p.created_by, p.created_at, p.updated_by, p.updated_at, p.deleted_at, pt.first_name, pt.last_name,
+SELECT p.id, p.patient_id, p.name, p.status, p.start_date, p.end_date, p.revision, p.updated_at, pt.first_name, pt.last_name,
        (SELECT count(*) FROM meal_slot_items i JOIN meal_slots s ON s.id = i.slot_id JOIN meal_plan_days d ON d.id = s.day_id
          WHERE d.plan_id = p.id AND i.removed_at IS NULL AND s.removed_at IS NULL AND d.removed_at IS NULL) AS item_count,
        count(*) OVER () AS total
@@ -735,28 +735,18 @@ type ListPlansParams struct {
 }
 
 type ListPlansRow struct {
-	ID                uuid.UUID          `json:"id"`
-	PatientID         uuid.UUID          `json:"patient_id"`
-	Name              string             `json:"name"`
-	Status            string             `json:"status"`
-	StartDate         pgtype.Date        `json:"start_date"`
-	EndDate           pgtype.Date        `json:"end_date"`
-	Revision          int32              `json:"revision"`
-	TargetEnergy      decimal.Decimal    `json:"target_energy"`
-	TargetProtein     decimal.Decimal    `json:"target_protein"`
-	TargetCarbs       decimal.Decimal    `json:"target_carbs"`
-	TargetLipids      decimal.Decimal    `json:"target_lipids"`
-	TargetEquivalents []byte             `json:"target_equivalents"`
-	TargetsVersion    int32              `json:"targets_version"`
-	CreatedBy         uuid.UUID          `json:"created_by"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	UpdatedBy         uuid.UUID          `json:"updated_by"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
-	FirstName         string             `json:"first_name"`
-	LastName          string             `json:"last_name"`
-	ItemCount         int64              `json:"item_count"`
-	Total             int64              `json:"total"`
+	ID        uuid.UUID          `json:"id"`
+	PatientID uuid.UUID          `json:"patient_id"`
+	Name      string             `json:"name"`
+	Status    string             `json:"status"`
+	StartDate pgtype.Date        `json:"start_date"`
+	EndDate   pgtype.Date        `json:"end_date"`
+	Revision  int32              `json:"revision"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	FirstName string             `json:"first_name"`
+	LastName  string             `json:"last_name"`
+	ItemCount int64              `json:"item_count"`
+	Total     int64              `json:"total"`
 }
 
 func (q *Queries) ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPlansRow, error) {
@@ -784,17 +774,7 @@ func (q *Queries) ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPla
 			&i.StartDate,
 			&i.EndDate,
 			&i.Revision,
-			&i.TargetEnergy,
-			&i.TargetProtein,
-			&i.TargetCarbs,
-			&i.TargetLipids,
-			&i.TargetEquivalents,
-			&i.TargetsVersion,
-			&i.CreatedBy,
-			&i.CreatedAt,
-			&i.UpdatedBy,
 			&i.UpdatedAt,
-			&i.DeletedAt,
 			&i.FirstName,
 			&i.LastName,
 			&i.ItemCount,
@@ -879,30 +859,38 @@ func (q *Queries) ListRevisions(ctx context.Context, planID uuid.UUID) ([]ListRe
 }
 
 const listTemplates = `-- name: ListTemplates :many
-SELECT id, name, description, scope, patient_id, structure, created_by, created_at, deleted_at FROM meal_plan_templates
+SELECT id, name, description, scope, patient_id, jsonb_array_length(structure)::int AS day_count, created_at FROM meal_plan_templates
 WHERE deleted_at IS NULL AND ($1::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR scope = 'global' OR patient_id = $1::uuid)
 ORDER BY created_at DESC
 `
 
-func (q *Queries) ListTemplates(ctx context.Context, patientID uuid.UUID) ([]MealPlanTemplate, error) {
+type ListTemplatesRow struct {
+	ID          uuid.UUID          `json:"id"`
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Scope       string             `json:"scope"`
+	PatientID   uuid.NullUUID      `json:"patient_id"`
+	DayCount    int32              `json:"day_count"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) ListTemplates(ctx context.Context, patientID uuid.UUID) ([]ListTemplatesRow, error) {
 	rows, err := q.db.Query(ctx, listTemplates, patientID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []MealPlanTemplate
+	var items []ListTemplatesRow
 	for rows.Next() {
-		var i MealPlanTemplate
+		var i ListTemplatesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Description,
 			&i.Scope,
 			&i.PatientID,
-			&i.Structure,
-			&i.CreatedBy,
+			&i.DayCount,
 			&i.CreatedAt,
-			&i.DeletedAt,
 		); err != nil {
 			return nil, err
 		}
