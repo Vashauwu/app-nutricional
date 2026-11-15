@@ -73,6 +73,10 @@ type Querier interface {
 	GetItemForSubstitution(ctx context.Context, arg GetItemForSubstitutionParams) (GetItemForSubstitutionRow, error)
 	GetPatient(ctx context.Context, id uuid.UUID) (Patient, error)
 	GetPatientByUserID(ctx context.Context, userID uuid.NullUUID) (Patient, error)
+	// Solo las indicaciones clínicas (alertas).
+	GetPatientIndications(ctx context.Context, id uuid.UUID) (string, error)
+	// Solo el nombre y si está activo (agenda).
+	GetPatientName(ctx context.Context, id uuid.UUID) (GetPatientNameRow, error)
 	GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error)
 	GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid.UUID) (SmaeRecalcBatch, error)
 	GetRevision(ctx context.Context, arg GetRevisionParams) (MealPlanRevision, error)
@@ -199,7 +203,7 @@ type Querier interface {
 	ListRoleCodesForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
 	ListSubgroups(ctx context.Context, editionID uuid.UUID) ([]SmaeFoodSubgroup, error)
 	ListSubstitutions(ctx context.Context, dishVersionID uuid.UUID) ([]DishSubstitution, error)
-	ListTemplates(ctx context.Context, patientID uuid.UUID) ([]MealPlanTemplate, error)
+	ListTemplates(ctx context.Context, patientID uuid.UUID) ([]ListTemplatesRow, error)
 	MarkEntryReviewed(ctx context.Context, id uuid.UUID) (int64, error)
 	PatientEmailTaken(ctx context.Context, arg PatientEmailTakenParams) (bool, error)
 	// Espacio usado por un paciente (archivos vigentes); size_bytes incluye la miniatura.

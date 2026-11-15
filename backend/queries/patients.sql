@@ -6,6 +6,14 @@ RETURNING *;
 -- name: GetPatient :one
 SELECT * FROM patients WHERE id = $1;
 
+-- Solo el nombre y si está activo (agenda).
+-- name: GetPatientName :one
+SELECT first_name, last_name, deleted_at FROM patients WHERE id = $1;
+
+-- Solo las indicaciones clínicas (alertas).
+-- name: GetPatientIndications :one
+SELECT clinical_indications FROM patients WHERE id = $1;
+
 -- name: GetPatientByUserID :one
 SELECT * FROM patients WHERE user_id = $1 AND deleted_at IS NULL;
 

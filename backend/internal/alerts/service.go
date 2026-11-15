@@ -40,6 +40,9 @@ type Alert struct {
 
 type Plans interface {
 	Get(ctx context.Context, id uuid.UUID) (mealplans.PlanView, error)
+	// GetNoFinalize lee el plan sin intentar finalizar planes vencidos: para lotes que ya lo hicieron una vez.
+	GetNoFinalize(ctx context.Context, id uuid.UUID) (mealplans.PlanView, error)
+	FinalizeExpired(ctx context.Context) error
 }
 
 type Settings interface {
@@ -84,39 +87,87 @@ func matches(haystack []string, needle string) (string, bool) {
 var severityEs = map[string]string{"severe": "severa", "moderate": "moderada", "mild": "leve"}
 var rank = map[string]int{"critical": 0, "warning": 1, "info": 2}
 
+// patientData reúne lo que se consulta una sola vez por paciente.
+type patientData struct {
+	allergies   []db.PatientAllergy
+	prefs       []db.PatientFoodPreference
+	indications string
+}
+
+// batch comparte lecturas entre los planes de un mismo cálculo (evita consultas N+1 en el tablero):
+// la configuración, los datos de cada paciente y los nombres de ingredientes por versión de platillo.
+type batch struct {
+	cfg      *settings.All
+	patients map[uuid.UUID]*patientData
+	ings     map[string][]string
+}
+
+func newBatch() *batch {
+	return &batch{patients: map[uuid.UUID]*patientData{}, ings: map[string][]string{}}
+}
+
+func (s *Service) config(ctx context.Context, b *batch) (settings.All, error) {
+	if b.cfg != nil {
+		return *b.cfg, nil
+	}
+	cfg, err := s.settings.Get(ctx)
+	if err != nil {
+		return settings.All{}, err
+	}
+	b.cfg = &cfg
+	return cfg, nil
+}
+
+func (s *Service) patientData(ctx context.Context, b *batch, id uuid.UUID) (*patientData, error) {
+	if d, ok := b.patients[id]; ok {
+		return d, nil
+	}
+	allergies, err := s.q.ListAllergies(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	prefs, err := s.q.ListPreferences(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	conds, err := s.q.ListConditions(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	indicationsText, err := s.q.GetPatientIndications(ctx, id)
+	if err != nil {
+		return nil, ErrNotFound
+	}
+	parts := []string{indicationsText}
+	for _, c := range conds {
+		if c.Status == "active" {
+			parts = append(parts, c.Name+" "+c.Details)
+		}
+	}
+	d := &patientData{allergies: allergies, prefs: prefs, indications: normalize(strings.Join(parts, " "))}
+	b.patients[id] = d
+	return d, nil
+}
+
 // ForPlan evalúa un plan completo.
 func (s *Service) ForPlan(ctx context.Context, planID uuid.UUID) ([]Alert, error) {
 	plan, err := s.plans.Get(ctx, planID)
 	if err != nil {
 		return nil, ErrNotFound
 	}
-	cfg, err := s.settings.Get(ctx)
+	return s.evaluate(ctx, plan, newBatch())
+}
+
+func (s *Service) evaluate(ctx context.Context, plan mealplans.PlanView, b *batch) ([]Alert, error) {
+	cfg, err := s.config(ctx, b)
 	if err != nil {
 		return nil, err
 	}
-	allergies, err := s.q.ListAllergies(ctx, plan.PatientID)
+	pd, err := s.patientData(ctx, b, plan.PatientID)
 	if err != nil {
 		return nil, err
 	}
-	prefs, err := s.q.ListPreferences(ctx, plan.PatientID)
-	if err != nil {
-		return nil, err
-	}
-	conds, err := s.q.ListConditions(ctx, plan.PatientID)
-	if err != nil {
-		return nil, err
-	}
-	patient, err := s.q.GetPatient(ctx, plan.PatientID)
-	if err != nil {
-		return nil, ErrNotFound
-	}
-	parts := []string{patient.ClinicalIndications}
-	for _, c := range conds {
-		if c.Status == "active" {
-			parts = append(parts, c.Name+" "+c.Details)
-		}
-	}
-	indications := normalize(strings.Join(parts, " "))
+	allergies, prefs, indications := pd.allergies, pd.prefs, pd.indications
 
 	var out []Alert
 	seen := map[string]bool{}
@@ -127,7 +178,7 @@ func (s *Service) ForPlan(ctx context.Context, planID uuid.UUID) ([]Alert, error
 			out = append(out, a)
 		}
 	}
-	ingCache := map[string][]string{}
+	ingCache := b.ings
 	ingredients := func(dish uuid.UUID, v int32) ([]string, error) {
 		k := fmt.Sprintf("%s:%d", dish, v)
 		if n, ok := ingCache[k]; ok {
@@ -270,13 +321,23 @@ type Summary struct {
 }
 
 func (s *Service) Published(ctx context.Context) (Summary, error) {
+	// Se finaliza una sola vez y se comparten las lecturas entre planes: sin esto cada plan repetía
+	// la actualización de vencidos, la configuración y los datos del paciente (consultas N+1).
+	if err := s.plans.FinalizeExpired(ctx); err != nil {
+		return Summary{}, err
+	}
 	ids, err := s.q.ListPublishedPlanIDs(ctx)
 	if err != nil {
 		return Summary{}, err
 	}
 	sum := Summary{Items: []Alert{}}
+	b := newBatch()
 	for _, id := range ids {
-		list, err := s.ForPlan(ctx, id)
+		plan, err := s.plans.GetNoFinalize(ctx, id)
+		if err != nil {
+			return Summary{}, ErrNotFound
+		}
+		list, err := s.evaluate(ctx, plan, b)
 		if err != nil {
 			return Summary{}, err
 		}

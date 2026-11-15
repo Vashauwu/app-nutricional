@@ -213,6 +213,36 @@ func (q *Queries) GetPatientByUserID(ctx context.Context, userID uuid.NullUUID) 
 	return i, err
 }
 
+const getPatientIndications = `-- name: GetPatientIndications :one
+SELECT clinical_indications FROM patients WHERE id = $1
+`
+
+// Solo las indicaciones clínicas (alertas).
+func (q *Queries) GetPatientIndications(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getPatientIndications, id)
+	var clinical_indications string
+	err := row.Scan(&clinical_indications)
+	return clinical_indications, err
+}
+
+const getPatientName = `-- name: GetPatientName :one
+SELECT first_name, last_name, deleted_at FROM patients WHERE id = $1
+`
+
+type GetPatientNameRow struct {
+	FirstName string             `json:"first_name"`
+	LastName  string             `json:"last_name"`
+	DeletedAt pgtype.Timestamptz `json:"deleted_at"`
+}
+
+// Solo el nombre y si está activo (agenda).
+func (q *Queries) GetPatientName(ctx context.Context, id uuid.UUID) (GetPatientNameRow, error) {
+	row := q.db.QueryRow(ctx, getPatientName, id)
+	var i GetPatientNameRow
+	err := row.Scan(&i.FirstName, &i.LastName, &i.DeletedAt)
+	return i, err
+}
+
 const insertAcceptance = `-- name: InsertAcceptance :one
 INSERT INTO consent_acceptances (patient_id, consent_document_id, acceptance_method, evidence_metadata)
 VALUES ($1, $2, $3, $4)

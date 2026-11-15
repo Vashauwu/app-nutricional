@@ -32,6 +32,11 @@
             "styles": [
               "@taiga-ui/styles/taiga-ui-theme.less",
               "@taiga-ui/styles/taiga-ui-fonts.less",
+              "@fontsource/inter/latin-400.css",
+              "@fontsource/inter/latin-500.css",
+              "@fontsource/inter/latin-600.css",
+              "@fontsource/playfair-display/latin-600.css",
+              "@fontsource/playfair-display/latin-700.css",
               "src/styles.scss"
             ]
           },

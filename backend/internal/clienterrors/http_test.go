@@ -53,3 +53,27 @@ func TestReportValidatesAndLimits(t *testing.T) {
 	require.Equal(t, http.StatusTooManyRequests, w.Code)
 	require.NotEmpty(t, w.Header().Get("Retry-After"))
 }
+
+func postMetric(r *gin.Engine, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/client-metrics", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	return w
+}
+
+func TestMetricsLogsKnownVitalsOnly(t *testing.T) {
+	var buf bytes.Buffer
+	r := router(&buf)
+	w := postMetric(r, `{"name":"LCP","value":2400.5,"rating":"good","url":"https://app.test/pacientes/AbCdEfGhIjKlMnOpQrStUvWxYz0123456789?x=1","connection":"4g"}`)
+	require.Equal(t, http.StatusNoContent, w.Code)
+	out := buf.String()
+	require.Contains(t, out, "web_vital")
+	require.Contains(t, out, "LCP")
+	require.NotContains(t, out, "AbCdEfGhIjKlMnOpQrStUvWxYz0123456789")
+
+	require.Equal(t, http.StatusNoContent, postMetric(r, `{"name":"CLS","value":0,"rating":"good"}`).Code, "un CLS de cero es válido")
+	require.Equal(t, http.StatusBadRequest, postMetric(r, `{"name":"HACK","value":1}`).Code, "nombre desconocido")
+	require.Equal(t, http.StatusBadRequest, postMetric(r, `{"name":"LCP","value":-5}`).Code, "valor negativo")
+	require.Equal(t, http.StatusBadRequest, postMetric(r, `no es json`).Code)
+}

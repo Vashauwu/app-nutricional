@@ -99,7 +99,12 @@ func (s *Service) Templates(ctx context.Context, patientID uuid.UUID) ([]Templat
 	}
 	out := []TemplateView{}
 	for _, r := range rows {
-		out = append(out, templateView(r))
+		v := TemplateView{ID: r.ID, Name: r.Name, Description: r.Description, Scope: r.Scope, Days: int(r.DayCount), CreatedAt: r.CreatedAt.Time}
+		if r.PatientID.Valid {
+			id := r.PatientID.UUID
+			v.PatientID = &id
+		}
+		out = append(out, v)
 	}
 	return out, nil
 }

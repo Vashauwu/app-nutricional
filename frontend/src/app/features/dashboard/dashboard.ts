@@ -41,12 +41,18 @@ import { formatDate, longDate, relativeTime, todayIso } from '../../shared/utils
 
       <app-getting-started [state]="onboarding()" />
 
-      <section aria-label="Resumen" class="grid grid--4">
-        <a class="stat tone-lavanda" routerLink="/pacientes"><span class="value">{{ s().patients.active }}</span><span class="label">Pacientes activos</span><span class="small">{{ s().patients.invited }} con invitación pendiente</span></a>
-        <a class="stat tone-salvia" routerLink="/planes" [queryParams]="{ estado: 'published' }"><span class="value">{{ s().plans.published }}</span><span class="label">Planes publicados</span><span class="small">{{ s().plans.draft }} en borrador</span></a>
-        <a class="stat tone-cielo" routerLink="/reportes"><span class="value">{{ s().compliance.pct ?? '—' }}@if (s().compliance.pct !== null) {<small>%</small>}</span><span class="label">Cumplimiento, últimos 7 días</span><span class="small">Comidas realizadas ÷ programadas</span></a>
-        <a class="stat" [class]="s().alerts.critical.length ? 'stat tone-rosa' : 'stat tone-mantequilla'" href="#alertas"><span class="value">{{ s().alerts.critical.length + s().alerts.warning.length }}</span><span class="label">Alertas activas</span><span class="small">{{ s().alerts.critical.length }} críticas · {{ s().alerts.warning.length }} advertencias</span></a>
-      </section>
+      @if (pending()) {
+        <div class="grid grid--4" role="status" aria-busy="true" aria-label="Cargando resumen">
+          @for (i of tiles; track i) { <span class="skeleton" style="block-size: 7.5rem; border-radius: var(--radius-m)"></span> }
+        </div>
+      } @else {
+        <section aria-label="Resumen" class="grid grid--4">
+          <a class="stat tone-lavanda" routerLink="/pacientes"><span class="value">{{ s().patients.active }}</span><span class="label">Pacientes activos</span><span class="small">{{ s().patients.invited }} con invitación pendiente</span></a>
+          <a class="stat tone-salvia" routerLink="/planes" [queryParams]="{ estado: 'published' }"><span class="value">{{ s().plans.published }}</span><span class="label">Planes publicados</span><span class="small">{{ s().plans.draft }} en borrador</span></a>
+          <a class="stat tone-cielo" routerLink="/reportes"><span class="value">{{ s().compliance.pct ?? '—' }}@if (s().compliance.pct !== null) {<small>%</small>}</span><span class="label">Cumplimiento, últimos 7 días</span><span class="small">Comidas realizadas ÷ programadas</span></a>
+          <a class="stat" [class]="s().alerts.critical.length ? 'stat tone-rosa' : 'stat tone-mantequilla'" href="#alertas"><span class="value">{{ s().alerts.critical.length + s().alerts.warning.length }}</span><span class="label">Alertas activas</span><span class="small">{{ s().alerts.critical.length }} críticas · {{ s().alerts.warning.length }} advertencias</span></a>
+        </section>
+      }
 
       <div class="cols">
         <div class="stack">
@@ -124,6 +130,8 @@ export class Dashboard {
   private readonly patients = inject(PatientsService);
   protected readonly auth = inject(AuthService);
 
+  protected readonly pending = this.insights.dashboardPending;
+  protected readonly tiles = [1, 2, 3, 4];
   protected readonly s = computed(() => {
     this.data.version();
     return this.insights.dashboard();

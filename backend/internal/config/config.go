@@ -41,6 +41,27 @@ type Config struct {
 	SMTPFromName string `envconfig:"SMTP_FROM_NAME" default:"Nutrición"`
 
 	SignedURLTTL time.Duration `envconfig:"SIGNED_URL_TTL" default:"5m"`
+
+	// Pool de conexiones a PostgreSQL. Un tope explícito evita agotar max_connections del servidor.
+	DBMaxConns          int32         `envconfig:"DB_MAX_CONNS" default:"20"`
+	DBMinConns          int32         `envconfig:"DB_MIN_CONNS" default:"2"`
+	DBMaxConnLifetime   time.Duration `envconfig:"DB_MAX_CONN_LIFETIME" default:"30m"`
+	DBMaxConnIdleTime   time.Duration `envconfig:"DB_MAX_CONN_IDLE_TIME" default:"5m"`
+	DBHealthCheckPeriod time.Duration `envconfig:"DB_HEALTH_CHECK_PERIOD" default:"1m"`
+
+	// Tiempos de espera del servidor HTTP (el de escritura cubre exportaciones y PDF).
+	HTTPReadTimeout  time.Duration `envconfig:"HTTP_READ_TIMEOUT" default:"30s"`
+	HTTPWriteTimeout time.Duration `envconfig:"HTTP_WRITE_TIMEOUT" default:"90s"`
+	HTTPIdleTimeout  time.Duration `envconfig:"HTTP_IDLE_TIMEOUT" default:"120s"`
+
+	// Cada cuánto se finalizan en segundo plano los planes cuyo periodo terminó.
+	PlanFinalizeInterval time.Duration `envconfig:"PLAN_FINALIZE_INTERVAL" default:"5m"`
+
+	// Trazas OpenTelemetry (OTLP/HTTP). Sin endpoint quedan desactivadas y no cuestan nada.
+	OTLPEndpoint string `envconfig:"OTEL_EXPORTER_OTLP_ENDPOINT"`
+	ServiceName  string `envconfig:"OTEL_SERVICE_NAME" default:"nutri-api"`
+	// Peticiones más lentas que esto se registran como advertencia (0 = desactivado).
+	SlowRequestThreshold time.Duration `envconfig:"SLOW_REQUEST_THRESHOLD" default:"1s"`
 }
 
 func Load() (Config, error) {

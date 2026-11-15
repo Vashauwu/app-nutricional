@@ -378,6 +378,11 @@ func (s *Service) Get(ctx context.Context, id uuid.UUID) (PlanView, error) {
 	if err := s.FinalizeExpired(ctx); err != nil {
 		return PlanView{}, err
 	}
+	return s.GetNoFinalize(ctx, id)
+}
+
+// GetNoFinalize lee el plan sin finalizar los vencidos; para lotes que ya llamaron a FinalizeExpired.
+func (s *Service) GetNoFinalize(ctx context.Context, id uuid.UUID) (PlanView, error) {
 	p, err := s.q.GetPlan(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PlanView{}, ErrNotFound

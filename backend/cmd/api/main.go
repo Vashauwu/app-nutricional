@@ -10,12 +10,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
 	"github.com/nutri/app-nutricional/backend/internal/agenda"
 	"github.com/nutri/app-nutricional/backend/internal/alerts"
@@ -35,6 +37,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/shared"
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/storage"
+	"github.com/nutri/app-nutricional/backend/internal/telemetry"
 	"github.com/nutri/app-nutricional/backend/internal/tracking"
 )
 
@@ -64,7 +67,18 @@ func run(logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	pool, err := newPool(ctx, cfg.DatabaseURL)
+	shutdownTelemetry, tracing, err := telemetry.Setup(ctx, cfg.OTLPEndpoint, cfg.ServiceName, cfg.Env, logger)
+	if err != nil {
+		// Las trazas son opcionales: un colector mal configurado no debe tumbar la API.
+		logger.Error("telemetry_unavailable", slog.Any("error", err))
+	}
+	defer func() {
+		flushCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = shutdownTelemetry(flushCtx)
+	}()
+
+	pool, err := newPool(ctx, cfg, tracing)
 	if err != nil {
 		return err
 	}
@@ -74,10 +88,17 @@ func run(logger *slog.Logger) error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	router, plans := newRouter(cfg, logger, pool, tracing)
+	// Tareas lentas fuera de la petición: finalizar planes vencidos ya no depende de que alguien consulte.
+	go runEvery(ctx, cfg.PlanFinalizeInterval, logger, "plans_finalize", plans.FinalizeExpired)
+
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
-		Handler:           newRouter(cfg, logger, pool),
+		Handler:           router,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       cfg.HTTPReadTimeout,
+		WriteTimeout:      cfg.HTTPWriteTimeout,
+		IdleTimeout:       cfg.HTTPIdleTimeout,
 	}
 
 	errCh := make(chan error, 1)
@@ -99,12 +120,47 @@ func run(logger *slog.Logger) error {
 	return srv.Shutdown(shutdownCtx)
 }
 
+// runEvery ejecuta job al arrancar y luego cada interval hasta que ctx termine. Un fallo se registra y
+// no detiene el ciclo: la tarea es idempotente y se reintenta en la siguiente vuelta.
+func runEvery(ctx context.Context, interval time.Duration, logger *slog.Logger, name string, job func(context.Context) error) {
+	if interval <= 0 {
+		return
+	}
+	run := func() {
+		jobCtx, cancel := context.WithTimeout(ctx, interval)
+		defer cancel()
+		if err := job(jobCtx); err != nil && ctx.Err() == nil {
+			logger.Error("background_job_failed", slog.String("job", name), slog.Any("error", err))
+		}
+	}
+	run()
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			run()
+		}
+	}
+}
+
 // newPool registra el codec NUMERIC <-> shopspring/decimal en cada conexión,
-// de modo que ningún valor nutricional pase por float (§7.3).
-func newPool(ctx context.Context, url string) (*pgxpool.Pool, error) {
-	pcfg, err := pgxpool.ParseConfig(url)
+// de modo que ningún valor nutricional pase por float (§7.3), y acota el pool de conexiones.
+func newPool(ctx context.Context, cfg config.Config, tracing bool) (*pgxpool.Pool, error) {
+	pcfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
 	if err != nil {
 		return nil, err
+	}
+	pcfg.MaxConns = cfg.DBMaxConns
+	pcfg.MinConns = cfg.DBMinConns
+	pcfg.MaxConnLifetime = cfg.DBMaxConnLifetime
+	pcfg.MaxConnIdleTime = cfg.DBMaxConnIdleTime
+	pcfg.HealthCheckPeriod = cfg.DBHealthCheckPeriod
+	if tracing {
+		// Un span por consulta SQL, sin los valores de los parámetros (pueden ser datos personales).
+		pcfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTrimSQLInSpanName())
 	}
 	pcfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
 		pgxdecimal.Register(conn.TypeMap())
@@ -113,11 +169,15 @@ func newPool(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	return pgxpool.NewWithConfig(ctx, pcfg)
 }
 
-func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) *gin.Engine {
+func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, tracing bool) (*gin.Engine, *mealplans.Service) {
 	r := gin.New()
 	// Solo se confía en X-Forwarded-For del proxy (Caddy) dentro de la red privada; si no, el límite de intentos se evade falseando la IP.
 	_ = r.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.1"})
-	r.Use(gin.Recovery(), middleware.RequestID(), middleware.AccessLog(logger))
+	r.Use(gin.Recovery(), middleware.RequestID())
+	if tracing {
+		r.Use(otelgin.Middleware(cfg.ServiceName))
+	}
+	r.Use(middleware.AccessLog(logger), middleware.SlowRequests(logger, cfg.SlowRequestThreshold))
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.CORSAllowedOrigins,
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
@@ -141,6 +201,8 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) *gin.
 	v1 := r.Group("/api/v1")
 	// Tope general por IP (§5): frena abuso y scripts sin estorbar el uso normal de la app.
 	v1.Use(middleware.RateLimit(600, time.Minute))
+	// Validación condicional (ETag/304) de las respuestas JSON de lectura.
+	v1.Use(middleware.ETag())
 	clienterrors.NewController(logger).Register(v1)
 	v1.GET("/meta", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -165,6 +227,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) *gin.
 		logger.Warn("mail_disabled", slog.String("reason", "SMTP_HOST no configurado: los enlaces solo se escriben en el registro"))
 	}
 	authSvc := auth.NewService(pool, cfg, mailer, logger)
+	authSvc.SetAsyncMail(true)
 	auth.NewController(authSvc, cfg).Register(v1)
 	patientsSvc := patients.NewService(pool, authSvc, logger)
 	patients.NewController(patientsSvc, authSvc, logger).Register(v1)
@@ -234,5 +297,5 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool) *gin.
 	reports.NewController(reports.NewService(pool, patientsSvc, trackingSvc, logger), authSvc, settingsSvc, logger).Register(v1)
 	// La consulta de auditoría registra aquí sus rutas cuando se implemente.
 
-	return r
+	return r, plansSvc
 }

@@ -1,0 +1,9 @@
+DROP INDEX IF EXISTS meal_comments_author_idx;
+DROP INDEX IF EXISTS dish_substitutions_substitute_idx;
+DROP INDEX IF EXISTS dish_versions_created_by_idx;
+DROP INDEX IF EXISTS dishes_owner_idx;
+DROP INDEX IF EXISTS meal_plan_days_date_idx;
+DROP INDEX IF EXISTS meal_plans_start_idx;
+DROP INDEX IF EXISTS meal_plans_published_recent_idx;
+DROP INDEX IF EXISTS tracking_entries_recorded_idx;
+DROP INDEX IF EXISTS audit_logs_occurred_idx;

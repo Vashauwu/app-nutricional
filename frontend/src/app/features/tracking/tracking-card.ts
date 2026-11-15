@@ -48,7 +48,7 @@ import { formatDate, formatDateTime } from '../../shared/utils/format';
       @if (entry().patientComment) { <blockquote>{{ entry().patientComment }}</blockquote> }
       @if (entry().photos.length) {
         <div class="photos" role="group" aria-label="Fotografías del registro">
-          @for (p of entry().photos; track p.id) { <button type="button" [attr.aria-label]="'Ver foto: ' + p.alt" (click)="photo.set(p)"><img [src]="p.dataUrl" [alt]="p.alt" loading="lazy" /></button> }
+          @for (p of entry().photos; track p.id) { <button type="button" [attr.aria-label]="'Ver foto: ' + p.alt" (click)="photo.set(p)"><img [src]="p.dataUrl" [alt]="p.alt" loading="lazy" decoding="async" /></button> }
         </div>
       }
       @if (entry().thread.length) {
@@ -65,7 +65,7 @@ import { formatDate, formatDateTime } from '../../shared/utils/format';
       }
     </article>
     <app-modal [open]="!!photo()" (closed)="photo.set(null)" [title]="photo()?.alt ?? 'Fotografía'" size="wide">
-      @if (photo(); as p) { <img class="big" [src]="p.dataUrl" [alt]="p.alt" /> }
+      @if (photo(); as p) { <img class="big" [src]="p.dataUrl" [alt]="p.alt" decoding="async" /> }
     </app-modal>
   `,
 })
