@@ -20,6 +20,18 @@
     min-inline-size: 0;
   }
 
+  .title a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 1.5rem;
+  }
+
+  .grp {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
   .name-input {
     inline-size: 100%;
     border: 1px solid transparent;
@@ -32,6 +44,7 @@
     font-size: 1.375rem;
     font-weight: 600;
     color: var(--nutri-texto-fuerte);
+    text-overflow: ellipsis;
 
     &:hover,
     &:focus-visible {
@@ -82,6 +95,10 @@
   }
 }
 
+:host {
+  overflow-x: clip;
+}
+
 .cal {
   min-inline-size: 0;
   display: grid;
@@ -97,6 +114,7 @@
 
 .scroller {
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-block-end: var(--space-2);
 }
 
@@ -138,6 +156,19 @@
 
   h3 {
     font-size: 0.9375rem;
+  }
+
+  .delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+
+    &.over {
+      color: var(--danger);
+      font-weight: 600;
+    }
   }
 }
 
@@ -222,13 +253,26 @@
   }
 
   &.al-critical {
-    border-color: var(--danger);
-    background: var(--nutri-rosa);
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--line));
   }
 
   &.al-warning {
-    border-color: var(--warn);
+    border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+  }
+
+  .flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
     background: var(--nutri-mantequilla);
+    color: var(--nutri-texto-fuerte);
+    font-weight: 600;
+
+    &.crit {
+      background: var(--nutri-rosa);
+    }
   }
 }
 
@@ -309,5 +353,21 @@
 @media (max-width: 48rem) {
   .week {
     grid-auto-columns: minmax(0, 1fr);
+  }
+}
+
+.sub-h {
+  font-size: 0.9375rem;
+}
+
+// «Agregar a…» solo al pasar el cursor o con el teclado; en pantallas táctiles siempre visible.
+@media (hover: hover) {
+  .dish-card button {
+    opacity: 0;
+  }
+
+  .dish-card:hover button,
+  .dish-card:focus-within button {
+    opacity: 1;
   }
 }

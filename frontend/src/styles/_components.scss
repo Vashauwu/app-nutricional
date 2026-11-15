@@ -1,7 +1,7 @@
 // Primitivas del sistema visual propio. Los pastel viven en superficies; el texto
 // y las acciones usan el ciruela (§19.3). Marca dinámica: --brand-primary/secondary (§19.2).
 :root {
-  --brand-primary: var(--nutri-texto);
+  --brand-primary: var(--brand-ink);
   --brand-secondary: var(--nutri-lavanda);
   --radius-s: 0.5rem;
   --radius-m: 0.875rem;
@@ -80,7 +80,7 @@ p {
 
 // ---------- Layout de página ----------
 .page {
-  max-inline-size: 78rem;
+  max-inline-size: var(--page-max);
   margin-inline: auto;
   padding: clamp(1rem, 3vw, 2rem) clamp(1rem, 3vw, 2rem) var(--space-7);
   display: grid;
@@ -285,6 +285,7 @@ p {
 .field {
   display: grid;
   gap: var(--space-1);
+  align-content: start;
   min-inline-size: 0;
 
   > label,
@@ -309,7 +310,7 @@ p {
 .select,
 .textarea {
   inline-size: 100%;
-  min-block-size: var(--tap);
+  min-block-size: var(--field-h);
   padding: 0.5rem 0.75rem;
   border: 1px solid color-mix(in srgb, var(--nutri-texto) 38%, var(--nutri-borde));
   border-radius: var(--radius-s);
@@ -362,6 +363,7 @@ p {
 .form-grid {
   display: grid;
   gap: var(--space-4);
+  align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
 }
 
@@ -409,6 +411,7 @@ p {
   cursor: pointer;
 
   &[aria-pressed='true'],
+  &[aria-selected='true'],
   &.is-on {
     background: var(--brand-primary);
     border-color: var(--brand-primary);
@@ -454,24 +457,33 @@ p {
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-s);
   background: var(--nutri-cielo);
-  border-inline-start: 4px solid var(--info);
+  border: 1px solid color-mix(in srgb, var(--info) 30%, transparent);
 
   &--warn {
     background: var(--nutri-mantequilla);
-    border-color: var(--warn);
+    border-color: color-mix(in srgb, var(--warn) 35%, transparent);
   }
   &--crit {
     background: var(--nutri-rosa);
-    border-color: var(--danger);
+    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
   }
   &--ok {
     background: var(--nutri-salvia);
-    border-color: var(--ok);
+    border-color: color-mix(in srgb, var(--ok) 35%, transparent);
   }
 
   app-icon {
     flex: none;
     margin-block-start: 0.125rem;
+  }
+  &--crit app-icon {
+    color: var(--danger);
+  }
+  &--warn app-icon {
+    color: var(--warn);
+  }
+  &--ok app-icon {
+    color: var(--ok);
   }
 
   .callout-body {
@@ -525,6 +537,23 @@ p {
 
     &:hover {
       text-decoration: underline;
+    }
+  }
+
+  // Fila completa clicable: el enlace principal se estira sobre la fila; los demás enlaces quedan por encima.
+  tr.clickable {
+    position: relative;
+    cursor: pointer;
+
+    a.row-link::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+    }
+
+    td a:not(.row-link) {
+      position: relative;
+      z-index: 1;
     }
   }
 }
@@ -652,10 +681,10 @@ p {
   text-decoration: none;
 
   .value {
-    font-family: var(--nutri-font-display);
     font-size: 2rem;
     font-weight: 600;
     line-height: 1.1;
+    letter-spacing: -0.02em;
     font-variant-numeric: tabular-nums;
   }
 
@@ -719,3 +748,208 @@ a.stat:hover {
     padding: 0;
   }
 }
+
+// ---------- Superficies del navegador, temadas con la paleta ----------
+::selection {
+  background: var(--nutri-lavanda);
+  color: var(--nutri-texto-fuerte);
+}
+
+input,
+textarea,
+select {
+  caret-color: var(--brand-ink);
+  accent-color: var(--brand-ink);
+}
+
+::placeholder {
+  color: var(--nutri-texto-suave);
+  opacity: 1;
+}
+
+* {
+  scrollbar-color: color-mix(in srgb, var(--nutri-texto) 35%, transparent) transparent;
+  scrollbar-width: thin;
+}
+
+// Deshabilitado legible (AA): se distingue por forma y cursor, no solo por un gris pálido.
+[tuiButton]:disabled,
+[tuiButton][disabled],
+[tuiButton][data-disabled='true'] {
+  opacity: 1 !important;
+  background: color-mix(in srgb, var(--nutri-borde) 80%, var(--surface)) !important;
+  color: var(--nutri-texto-suave) !important;
+  border: 1px dashed color-mix(in srgb, var(--nutri-texto) 35%, transparent) !important;
+  cursor: not-allowed;
+}
+
+// Cifras y datos siempre tabulares.
+table,
+.mono,
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+// ---------- Densidad de tablas (preferencia de la persona) ----------
+:root[data-density='compact'] .table {
+  th,
+  td {
+    padding-block: 0.375rem;
+  }
+}
+
+// ---------- Tabla que pasa a tarjetas en pantallas angostas ----------
+// Cada <td> lleva data-label con el nombre de su columna; la celda con .cell-main es el título de la tarjeta.
+@media (max-width: 48rem) {
+  .table--cards {
+    thead {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    &,
+    tbody,
+    tr,
+    td {
+      display: block;
+      inline-size: 100%;
+    }
+
+    tr {
+      padding: var(--space-3) var(--space-4);
+      border-block-end: 1px solid var(--line);
+    }
+
+    td {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: var(--space-4);
+      padding: 0.25rem 0;
+      border: 0;
+      text-align: end;
+
+      &::before {
+        content: attr(data-label);
+        flex: none;
+        font-size: 0.8125rem;
+        color: var(--muted);
+        text-align: start;
+      }
+
+      &.cell-main {
+        display: block;
+        text-align: start;
+        padding-block-end: var(--space-2);
+
+        &::before {
+          content: none;
+        }
+      }
+
+      &:empty {
+        display: none;
+      }
+    }
+
+    .table-wrap & {
+      min-inline-size: 0;
+    }
+  }
+}
+
+// ---------- Utilidades (sustituyen a los estilos en línea) ----------
+.t-sm { font-size: 1.0625rem; }
+.t-md { font-size: 1.125rem; }
+.t-lg { font-size: 1.5rem; }
+.m-0 { margin: 0; }
+.m-0-sm { margin: 0 0 0.25rem; }
+.px-5 { padding: 0 var(--space-5); }
+.p-4 { padding: var(--space-4); }
+.p-3-5 { padding: var(--space-3) var(--space-5); }
+.py-4 { padding-block: var(--space-4); }
+.mt-2 { margin-block-start: var(--space-2); }
+.mt-3 { margin-block-start: var(--space-3); }
+.fieldset-reset { border: 0; padding: 0; margin: 0; }
+.min-h-page { min-block-size: 100dvh; }
+.center-x { justify-content: center; }
+.grow-1 { flex: 1; }
+.flex-center { display: flex; align-items: center; }
+.text-danger { color: var(--danger); }
+.hr-line { border: 0; border-block-start: 1px solid var(--line); inline-size: 100%; }
+.maxw-14 { max-inline-size: 14rem; }
+.maxw-16 { max-inline-size: 16rem; }
+.maxw-22 { max-inline-size: 22rem; }
+.maxw-24 { max-inline-size: 24rem; }
+.maxw-40 { max-inline-size: 40rem; }
+.maxw-44 { max-inline-size: 44rem; }
+.minw-12 { min-inline-size: 12rem; }
+.minw-14 { min-inline-size: 14rem; }
+
+// Los pesos de las barras de avance se animan al cambiar (un solo movimiento, con significado).
+.meter > span {
+  transition: inline-size 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+// Botones destructivos secundarios con contraste AA en claro y oscuro.
+[tuiButton][data-appearance='secondary-destructive'] {
+  color: var(--danger) !important;
+}
+
+body.has-bottom-nav {
+  --toast-offset: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+// El logotipo de la plataforma (Nutrición Integral) se usa cuando la consulta no ha subido el suyo.
+.logo.logo--default {
+  background: transparent;
+  object-fit: contain;
+}
+
+// Utilidades extra (antes estilos en línea)
+.u-ai-start-wrap { align-items: flex-start; flex-wrap: wrap; }
+.u-avatar-photo { max-inline-size: 8rem; border-radius: var(--radius-m); }
+.u-box-6 { inline-size: 1.5rem; block-size: 1.5rem; }
+.u-brand-name { font-size: 1.25rem; font-family: var(--nutri-font-display); }
+.u-brand-rule { border: 0; border-block-start: 3px solid; inline-size: 100%; }
+.u-c-info { color: var(--info); }
+.u-c-warn { color: var(--warn); }
+.u-center-pb-4 { justify-content: center; padding-block-end: var(--space-4); }
+.u-col-full { grid-column: 1 / -1; }
+.u-contents { display: contents; }
+.u-corner-tr { position: absolute; inset-block-start: 0.5rem; inset-inline-end: 0.5rem; }
+.u-dl-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.375rem var(--space-4); margin: 0; }
+.u-dl-grid-s { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem var(--space-4); margin: 0; }
+.u-empty-panel { min-block-size: 18rem; place-items: center; text-align: center; }
+.u-gap-0 { gap: 0; }
+.u-gap-1 { gap: 0.25rem; }
+.u-gap-2 { gap: var(--space-2); }
+.u-h-18 { block-size: 18rem; }
+.u-h-4 { block-size: 4rem; }
+.u-h1-lg { font-size: 1.75rem; }
+.u-h1-md { font-size: 1.625rem; }
+.u-h2-ui { font-size: 1.0625rem; font-family: var(--nutri-font-ui); }
+.u-jc-stretch { justify-content: stretch; }
+.u-list-tight { margin: 0; padding-inline-start: 1rem; }
+.u-mb-2 { margin-block-end: var(--space-2); }
+.u-mb-3 { margin-block-end: var(--space-3); }
+.u-minh-10 { min-block-size: 10rem; }
+.u-minh-3 { min-block-size: 3rem; }
+.u-minh-4 { min-block-size: 4rem; }
+.u-ms-2 { margin-inline-start: 0.5rem; }
+.u-mt-1 { margin-block-start: 0.25rem; }
+.u-mt-6 { margin-block-start: 1.5rem; }
+.u-num-input { max-inline-size: 7rem; text-align: end; }
+.u-pad-3-4 { padding: var(--space-3) var(--space-4); }
+.u-pad-b-4 { padding: 0 var(--space-4) var(--space-4); }
+.u-pad-pager { padding: 0.75rem 1.25rem; }
+.u-plain-link { text-decoration: none; color: inherit; }
+.u-pt-3 { padding-block-start: var(--space-3); }
+.u-skel-stack { display: grid; gap: 0.75rem; padding: 1rem 1.25rem; }
+.u-skel-tile { block-size: 6.5rem; border-radius: var(--radius-m); }
+.u-sw-soft { background: var(--chart-soft); border: 1.5px solid var(--chart-1); }
+.u-sw-solid { background: var(--chart-1); }
+.u-text-btn { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; color: inherit; }

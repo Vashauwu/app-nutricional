@@ -12,8 +12,8 @@ import { isoDay, longDate, timeLabel, todayIso } from '../../shared/utils/format
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    .next { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-l); background: var(--nutri-lavanda); color: var(--nutri-texto-fuerte); }
-    .next .ic { display: grid; place-items: center; inline-size: 2.5rem; block-size: 2.5rem; border-radius: 50%; background: var(--surface); flex: none; }
+    .next { display: flex; align-items: center; gap: var(--space-3); padding: .5rem var(--space-4); border-radius: var(--radius-m); background: color-mix(in srgb, var(--nutri-lavanda) 55%, var(--surface)); color: var(--nutri-texto-fuerte); }
+    .next .ic { display: grid; place-items: center; inline-size: 2rem; block-size: 2rem; border-radius: 50%; background: var(--surface); flex: none; }
     .next p { margin: 0; } .next .t { font-weight: 700; }
   `,
   template: `
@@ -21,8 +21,7 @@ import { isoDay, longDate, timeLabel, todayIso } from '../../shared/utils/format
       <section class="next" aria-label="Próxima consulta">
         <span class="ic" aria-hidden="true"><app-icon name="calendar" /></span>
         <div>
-          <p class="small">{{ isToday() ? 'Tu consulta es hoy' : 'Tu próxima consulta' }}</p>
-          <p class="t">{{ when() }}, {{ time(a.startsAt) }}</p>
+          <p class="t">{{ isToday() ? 'Consulta hoy' : 'Próxima consulta' }} · {{ when() }}, {{ time(a.startsAt) }}</p>
           <p class="small">{{ kind[a.kind] }} · {{ mode[a.mode] }}@if (a.place) { · {{ a.place }} }</p>
         </div>
       </section>
@@ -67,7 +66,7 @@ export class NextAppointment {
           @if (a.status === 'completed') { <app-badge tone="ok" icon="check">Realizada</app-badge> }
         </div>
       } @empty {
-        <p class="small muted" style="padding: var(--space-4)"><app-icon name="calendar" [size]="16" /> No tienes consultas programadas para hoy.</p>
+        <p class="small muted p-4"><app-icon name="calendar" [size]="16" /> No tienes consultas programadas para hoy.</p>
       }
     </section>
   `,

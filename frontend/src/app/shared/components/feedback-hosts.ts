@@ -9,19 +9,22 @@ import { Modal } from './modal';
   imports: [Icon],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    :host { position: fixed; inset-inline: 0; inset-block-end: 1rem; z-index: 200; display: grid; justify-items: center; gap: .5rem; pointer-events: none; padding-inline: 1rem; }
+    :host { position: fixed; inset-inline: 0; inset-block-end: var(--toast-offset, 1rem); z-index: 200; display: grid; justify-items: center; gap: .5rem; pointer-events: none; padding-inline: 1rem; }
     .toast { pointer-events: auto; display: flex; align-items: center; gap: .75rem; max-inline-size: 34rem; padding: .75rem 1rem; border-radius: var(--radius-s);
       background: var(--nutri-texto-fuerte); color: var(--nutri-marfil); box-shadow: var(--shadow-m); }
     .toast.error { background: var(--danger); }
     button { color: inherit; }
+    .toast-action { min-block-size: 2rem; padding: 0 .75rem; border: 1px solid currentColor; border-radius: var(--radius-s); background: transparent; font: inherit; font-weight: 600; cursor: pointer; }
+    .toast-action:hover { background: rgb(255 255 255 / 14%); }
     @media (prefers-reduced-motion: no-preference) { .toast { animation: up .2s ease-out; } @keyframes up { from { opacity: 0; transform: translateY(10px); } } }
   `,
   template: `
-    <div role="status" aria-live="polite" style="display: contents">
+    <div class="u-contents" role="status" aria-live="polite">
       @for (t of toasts.toasts(); track t.id) {
         <div class="toast" [class.error]="t.kind === 'error'">
           <app-icon [name]="t.kind === 'error' ? 'alert-circle' : t.kind === 'ok' ? 'check-circle' : 'info'" />
           <span>{{ t.message }}</span>
+          @if (t.action; as a) { <button type="button" class="toast-action" (click)="a.run(); toasts.dismiss(t.id)">{{ a.label }}</button> }
           <button type="button" class="icon-btn icon-btn--s" aria-label="Cerrar aviso" (click)="toasts.dismiss(t.id)"><app-icon name="x" [size]="16" /></button>
         </div>
       }

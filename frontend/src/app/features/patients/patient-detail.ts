@@ -15,7 +15,7 @@ import { FieldError, adultValidator } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
 import { InviteLink } from '../../shared/components/invite-link';
 import { Modal } from '../../shared/components/modal';
-import { Ring } from '../../shared/components/charts';
+import { ActionMenu, MenuItem } from '../../shared/components/action-menu';
 import { ageFrom, formatBytes, formatDate, initials } from '../../shared/utils/format';
 import { TrackingCard } from '../tracking/tracking-card';
 import { ClinicalTab, MeasurementsTab, PreferencesTab } from './patient-clinical-tabs';
@@ -37,11 +37,20 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
   { id: 'seguimiento', label: 'Seguimiento', clinical: true },
 ];
 
+/** 10 secciones → 5 grupos: menos que recordar. Cada sección conserva su dirección (?tab=…) para los enlaces existentes. */
+const GROUPS: { id: string; label: string; tabs: TabId[] }[] = [
+  { id: 'resumen', label: 'Resumen', tabs: ['resumen'] },
+  { id: 'salud', label: 'Salud', tabs: ['antropometria', 'clinico', 'laboratorios', 'preferencias'] },
+  { id: 'plan', label: 'Plan y seguimiento', tabs: ['planes', 'seguimiento'] },
+  { id: 'documentos', label: 'Documentos', tabs: ['documentos'] },
+  { id: 'admin', label: 'Administración', tabs: ['notas', 'consentimientos'] },
+];
+
 @Component({
   selector: 'app-patient-detail',
   imports: [InviteLink, 
-    RouterLink, ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, Ring, FieldError, TrackingCard,
-    MeasurementsTab, ClinicalTab, LabsTab, PreferencesTab, NotesTab, DocumentsTab, ConsentsTab,
+    RouterLink, ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, FieldError, TrackingCard,
+    MeasurementsTab, ClinicalTab, LabsTab, PreferencesTab, NotesTab, DocumentsTab, ConsentsTab, ActionMenu,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
@@ -49,7 +58,10 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
     .head h1 { font-size: clamp(1.5rem, 3vw, 2rem); }
     dl { display: grid; grid-template-columns: minmax(7rem, auto) 1fr; gap: .5rem var(--space-4); margin: 0; }
     dt { color: var(--muted); font-size: .875rem; } dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
-    .cols { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); align-items: start; }
+    .cols { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); align-items: stretch; }
+    .cols > .panel { align-content: start; }
+    .subtabs { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block-end: var(--space-4); }
+    .pct-big { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-inline-end: .375rem; }
     .meas { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: var(--space-3); }
     .meas div { padding: var(--space-3); border-radius: var(--radius-s); background: var(--nutri-marfil); } .meas b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; } .meas span { font-size: .8125rem; color: var(--muted); }
     .lock { text-align: center; }
@@ -74,10 +86,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
             @if (!p.deletedAt) {
               <a tuiButton size="m" routerLink="/planes/nuevo" [queryParams]="{ paciente: p.id }" [attr.aria-disabled]="!consentOk()"><app-icon name="calendar" [size]="18" /> Nuevo plan</a>
               <a tuiButton size="m" appearance="secondary" routerLink="/consultas" [queryParams]="{ paciente: p.id }"><app-icon name="clock" [size]="18" /> Agendar consulta</a>
-              <button tuiButton type="button" size="m" appearance="secondary" (click)="openEdit()"><app-icon name="edit" [size]="18" /> Editar datos</button>
-              @if (patients.apiMode && !p.userId) { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Invitar al paciente</button> }
-              @else if (p.status === 'invited') { <button tuiButton type="button" size="m" appearance="secondary" (click)="resend()">Reenviar invitación</button> }
-              <button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="deactivate()">Desactivar</button>
+              <app-action-menu text="Más" icon="more" label="Más acciones del paciente" [items]="moreItems()" />
             } @else {
               <button tuiButton type="button" size="m" (click)="restore()"><app-icon name="refresh" [size]="18" /> Restaurar paciente</button>
             }
@@ -87,15 +96,22 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
 
         @if (p.deletedAt) { <div class="callout callout--warn" role="status"><app-icon name="ban" /><div class="callout-body">Paciente desactivado el {{ fd(p.deletedAt) }}. Su historial se conserva y no aparece en las consultas habituales.</div></div> }
 
-        <div class="tabs" role="tablist" aria-label="Secciones del expediente" (keydown)="onTabKey($event)">
-          @for (t of tabs; track t.id) {
-            <button type="button" role="tab" [id]="'tab-' + t.id" [attr.aria-selected]="activeTab() === t.id" [attr.aria-controls]="'panel-' + t.id" [attr.tabindex]="activeTab() === t.id ? 0 : -1" (click)="go(t.id)">
-              {{ t.label }}@if (t.clinical && !consentOk()) { <app-icon name="lock" [size]="14" /> }
+        <div class="tabs" role="tablist" aria-label="Secciones del expediente" (keydown)="onGroupKey($event)">
+          @for (g of groups; track g.id) {
+            <button type="button" role="tab" [id]="'grp-' + g.id" [attr.aria-selected]="activeGroup().id === g.id" [attr.tabindex]="activeGroup().id === g.id ? 0 : -1" (click)="go(g.tabs[0])">
+              {{ g.label }}@if (!consentOk() && groupClinical(g)) { <app-icon name="lock" [size]="14" /> }
             </button>
           }
         </div>
+        @if (activeGroup().tabs.length > 1) {
+          <div class="subtabs" role="tablist" [attr.aria-label]="'Secciones de ' + activeGroup().label" (keydown)="onSubKey($event)">
+            @for (id of activeGroup().tabs; track id) {
+              <button type="button" role="tab" class="chip-toggle" [id]="'tab-' + id" [attr.aria-selected]="activeTab() === id" [attr.tabindex]="activeTab() === id ? 0 : -1" (click)="go(id)">{{ labelOf(id) }}</button>
+            }
+          </div>
+        }
 
-        <div role="tabpanel" [id]="'panel-' + activeTab()" [attr.aria-labelledby]="'tab-' + activeTab()" tabindex="0">
+        <div role="tabpanel" [id]="'panel-' + activeTab()" [attr.aria-labelledby]="activeGroup().tabs.length > 1 ? 'tab-' + activeTab() : 'grp-' + activeGroup().id" tabindex="0">
           @if (locked()) {
             <div class="panel lock">
               <app-empty icon="lock" title="Expediente clínico restringido" text="La captura y consulta clínica se habilita cuando la persona acepta el aviso de privacidad y el consentimiento informado.">
@@ -114,9 +130,8 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
                       <dt>Correo</dt><dd>{{ p.profile.email }}</dd>
                       <dt>Teléfono</dt><dd>{{ p.profile.phone }}</dd>
                       <dt>Alta</dt><dd>{{ fd(p.createdAt) }}</dd>
+                      <dt>Objetivo</dt><dd>{{ goalLabel[p.goal] }}@if (p.goalNotes) { <span class="muted"> · {{ p.goalNotes }}</span> }</dd>
                     </dl>
-                    <div class="eyebrow">Objetivo</div>
-                    <p><strong>{{ goalLabel[p.goal] }}</strong>@if (p.goalNotes) { · {{ p.goalNotes }} }</p>
                   </section>
 
                   <section class="panel" aria-labelledby="h-med">
@@ -136,7 +151,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
                   <section class="panel" aria-labelledby="h-cum">
                     <div class="panel-head"><h2 id="h-cum">Cumplimiento (14 días)</h2><button type="button" class="link-btn small" (click)="go('seguimiento')">Ver seguimiento</button></div>
                     @if (compliance().pct !== null) {
-                      <div class="row"><app-ring [pct]="compliance().pct ?? 0" label="cumplido" /><div><p><strong>{{ compliance().done }}</strong> de {{ compliance().planned }} comidas realizadas</p><p class="small muted">{{ compliance().skipped }} omitidas · {{ compliance().pending }} sin registro</p></div></div>
+                      <div class="stack--s"><p><span class="pct-big">{{ compliance().pct }} %</span> <span class="muted">cumplido</span></p><div class="meter" role="img" [attr.aria-label]="compliance().pct + '% de cumplimiento'"><span [style.inline-size.%]="compliance().pct ?? 0"></span></div><p class="small"><strong>{{ compliance().done }}</strong> de {{ compliance().planned }} comidas realizadas</p><p class="small muted">{{ compliance().skipped }} omitidas · {{ compliance().pending }} sin registro</p></div>
                     } @else { <p class="muted">Sin comidas programadas en el periodo.</p> }
                   </section>
 
@@ -204,7 +219,7 @@ const TABS: { id: TabId; label: string; clinical: boolean }[] = [
         </ng-container>
       </app-modal>
     } @else if (loading()) {
-      <div class="page" role="status" aria-label="Cargando expediente"><span class="skeleton" style="block-size: 4rem"></span><span class="skeleton" style="block-size: 18rem"></span></div>
+      <div class="page" role="status" aria-label="Cargando expediente"><span class="skeleton u-h-4"></span><span class="skeleton u-h-18"></span></div>
     } @else {
       <div class="page"><app-empty icon="users" title="Paciente no encontrado" text="Es posible que el enlace sea incorrecto."><a tuiButton routerLink="/pacientes" appearance="secondary" size="m">Volver a pacientes</a></app-empty></div>
     }
@@ -225,6 +240,20 @@ export class PatientDetail {
   readonly tab = input<string>('resumen');
 
   protected readonly tabs = TABS;
+  protected readonly groups = GROUPS;
+  protected readonly activeGroup = computed(() => GROUPS.find((g) => g.tabs.includes(this.activeTab())) ?? GROUPS[0]);
+  protected readonly labelOf = (id: TabId): string => TABS.find((t) => t.id === id)?.label ?? id;
+  protected readonly groupClinical = (g: { tabs: TabId[] }): boolean => g.tabs.some((id) => TABS.find((t) => t.id === id)?.clinical);
+  /** Acciones secundarias agrupadas; «Desactivar» va apartada y al final. */
+  protected readonly moreItems = computed<MenuItem[]>(() => {
+    const p = this.patient();
+    if (!p) return [];
+    const items: MenuItem[] = [{ label: 'Editar datos', icon: 'edit', run: () => this.openEdit() }];
+    if (this.patients.apiMode && !p.userId) items.push({ label: 'Invitar al paciente', icon: 'send', run: () => this.resend() });
+    else if (p.status === 'invited') items.push({ label: 'Reenviar invitación', icon: 'send', run: () => this.resend() });
+    items.push({ label: 'Desactivar paciente', icon: 'ban', danger: true, separator: true, run: () => this.deactivate() });
+    return items;
+  });
   protected readonly tone = PATIENT_TONE;
   protected readonly planTone = PLAN_TONE;
   protected readonly statusLabel = PATIENT_STATUS_LABEL;
@@ -313,14 +342,27 @@ export class PatientDetail {
     void this.router.navigate([], { queryParams: { tab }, queryParamsHandling: 'merge' });
   }
 
-  protected onTabKey(e: KeyboardEvent): void {
-    const i = TABS.findIndex((t) => t.id === this.activeTab());
-    const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? TABS.length - 1 : null;
+  /** Flechas entre los grupos del primer nivel. */
+  protected onGroupKey(e: KeyboardEvent): void {
+    const i = GROUPS.findIndex((g) => g.id === this.activeGroup().id);
+    const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? GROUPS.length - 1 : null;
     if (next === null) return;
     e.preventDefault();
-    const t = TABS[(next + TABS.length) % TABS.length];
-    this.go(t.id);
-    setTimeout(() => document.getElementById('tab-' + t.id)?.focus());
+    const g = GROUPS[(next + GROUPS.length) % GROUPS.length];
+    this.go(g.tabs[0]);
+    setTimeout(() => document.getElementById('grp-' + g.id)?.focus());
+  }
+
+  /** Flechas entre las secciones de un mismo grupo. */
+  protected onSubKey(e: KeyboardEvent): void {
+    const list = this.activeGroup().tabs;
+    const i = list.indexOf(this.activeTab());
+    const next = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : null;
+    if (next === null) return;
+    e.preventDefault();
+    const id = list[(next + list.length) % list.length];
+    this.go(id);
+    setTimeout(() => document.getElementById('tab-' + id)?.focus());
   }
 
   protected openEdit(): void {

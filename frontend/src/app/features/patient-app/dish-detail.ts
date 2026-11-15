@@ -37,39 +37,39 @@ import { scaleEquivalents } from '../../core/nutrition/engine';
       @if (vm(); as v) {
         @if (v.dish && v.version) {
           <app-dish-thumb [category]="v.dish.category" [src]="v.version.image?.dataUrl" [alt]="v.version.image?.alt ?? ''" [size]="48" />
-          <header><p class="eyebrow">{{ v.slot.name }}</p><h1 style="font-size: 1.625rem">{{ v.dish.name }}</h1><p class="muted">{{ v.version.description }}</p></header>
+          <header><h1 class="u-h1-md">{{ v.dish.name }}</h1><p class="small"><strong>{{ v.slot.name }}</strong></p><p class="muted">{{ v.version.description }}</p></header>
           @if (v.item.instructions) { <div class="callout callout--warn"><app-icon name="info" /><div class="callout-body"><strong>Indicación para este platillo</strong><p>{{ v.item.instructions }}</p></div></div> }
 
           <section class="panel" aria-labelledby="h-n">
-            <h2 id="h-n" class="panel-head" style="font-size: 1.0625rem">Tu porción ({{ v.item.servings }} {{ v.item.servings === '1' ? 'porción' : 'porciones' }})</h2>
+            <h2 id="h-n" class="panel-head t-sm">Tu porción ({{ v.item.servings }} {{ v.item.servings === '1' ? 'porción' : 'porciones' }})</h2>
             <div class="tiles"><div><b>{{ c(v.totals.nutrients.energy) }}</b><span>kcal</span></div><div><b>{{ c(v.totals.nutrients.protein, 1) }}</b><span>Prot. (g)</span></div><div><b>{{ c(v.totals.nutrients.carbs, 1) }}</b><span>Carb. (g)</span></div><div><b>{{ c(v.totals.nutrients.lipids, 1) }}</b><span>Lip. (g)</span></div></div>
             <div class="eyebrow">Equivalentes SMAE</div><app-eq-chips [eq]="eq()" />
           </section>
 
           <section class="panel" aria-labelledby="h-i">
-            <h2 id="h-i" class="panel-head" style="font-size: 1.0625rem">Ingredientes para tu porción</h2>
+            <h2 id="h-i" class="panel-head t-sm">Ingredientes para tu porción</h2>
             <ul class="ing">@for (i of ingredients(); track i.id) { <li><span>{{ i.name }}</span><strong>{{ i.qty }} {{ i.unit }}</strong></li> }</ul>
           </section>
 
           <section class="panel" aria-labelledby="h-p">
-            <h2 id="h-p" class="panel-head" style="font-size: 1.0625rem">Preparación · {{ v.version.prepTimeMinutes }} min</h2>
+            <h2 id="h-p" class="panel-head t-sm">Preparación · {{ v.version.prepTimeMinutes }} min</h2>
             @if (v.version.recipeMode === 'structured') { <ol>@for (s of v.version.steps; track $index) { <li>{{ s }}</li> }</ol> } @else { <pre>{{ v.version.instructionsText }}</pre> }
             @if (v.version.recommendations) { <div class="callout"><app-icon name="leaf" /><div class="callout-body">{{ v.version.recommendations }}</div></div> }
           </section>
 
           @if (v.version.substitutions.length) {
             <section class="panel" aria-labelledby="h-s">
-              <h2 id="h-s" class="panel-head" style="font-size: 1.0625rem">Alternativas autorizadas por tu nutrióloga</h2>
+              <h2 id="h-s" class="panel-head t-sm">Alternativas autorizadas por tu nutrióloga</h2>
               <ul class="ing">@for (s of v.version.substitutions; track s.id) { <li><span>{{ s.label }}</span><span class="small muted">≈ {{ c(s.diff.energy) }} kcal de diferencia</span></li> }</ul>
               <p class="small muted">Solo puedes elegir entre estas opciones; si necesitas otra, coméntalo abajo.</p>
             </section>
           }
 
           <section class="panel" aria-labelledby="h-t">
-            <h2 id="h-t" class="panel-head" style="font-size: 1.0625rem">Mi seguimiento</h2>
+            <h2 id="h-t" class="panel-head t-sm">Mi seguimiento</h2>
             <div class="row" role="group" aria-label="Estado de esta comida">
               <button tuiButton type="button" size="m" [appearance]="v.entry?.status === 'done' ? 'primary' : 'secondary'" [attr.aria-pressed]="v.entry?.status === 'done'" [disabled]="!online()" (click)="mark('done')"><app-icon name="check" [size]="18" /> Realizada</button>
-              <button tuiButton type="button" size="m" [appearance]="v.entry?.status === 'skipped' ? 'primary' : 'secondary'" [attr.aria-pressed]="v.entry?.status === 'skipped'" [disabled]="!online()" (click)="mark('skipped')"><app-icon name="skip" [size]="18" /> Omitida</button>
+              <button tuiButton type="button" size="m" [appearance]="v.entry?.status === 'skipped' ? 'primary' : 'secondary'" [attr.aria-pressed]="v.entry?.status === 'skipped'" [disabled]="!online()" (click)="mark('skipped')"><app-icon name="skip" [size]="18" /> No la comí</button>
             </div>
             @if (!online()) { <p class="small muted" role="status">Registrar, subir fotos y comentar requieren conexión.</p> }
             @if (v.entry; as e) {
@@ -85,7 +85,7 @@ import { scaleEquivalents } from '../../core/nutrition/engine';
                 <div class="field"><label for="cm">Comentario para tu nutrióloga</label><textarea id="cm" class="textarea" formControlName="body" maxlength="1000" [attr.disabled]="online() ? null : true"></textarea></div>
                 <div class="form-actions"><button tuiButton type="submit" size="m" [disabled]="!online() || !form.controls.body.value.trim()"><app-icon name="send" [size]="16" /> Enviar comentario</button></div>
               </form>
-            } @else { <p class="small muted">Marca la comida como realizada u omitida para poder agregar fotos y comentarios.</p> }
+            } @else { <p class="small muted">Marca la comida como realizada o «No la comí» para poder agregar fotos y comentarios.</p> }
           </section>
         } @else { <app-empty icon="dish" title="Este platillo ya no está disponible" /> }
       } @else { <app-empty icon="dish" title="No encontramos este platillo" text="Es posible que tu nutrióloga lo haya sustituido."><a tuiButton routerLink="/paciente" size="m" appearance="secondary">Volver a hoy</a></app-empty> }

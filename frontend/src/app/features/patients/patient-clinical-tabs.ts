@@ -68,7 +68,7 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
           <div class="field"><label for="m-date">Fecha</label><input id="m-date" class="input" type="date" formControlName="measuredAt" [max]="today" /><app-field-error [control]="form.controls.measuredAt" /></div>
           <div class="field"><label for="m-w">Peso (kg)</label><input id="m-w" class="input" inputmode="decimal" formControlName="weightKg" /><app-field-error [control]="form.controls.weightKg" [messages]="rangeW" /></div>
           <div class="field"><label for="m-h">Talla (cm)</label><input id="m-h" class="input" inputmode="decimal" formControlName="heightCm" /><app-field-error [control]="form.controls.heightCm" [messages]="rangeH" /></div>
-          <div class="field"><span class="label">IMC (calculado)</span><output class="input" style="display: flex; align-items: center">{{ bmiPreview() }}</output></div>
+          <div class="field"><span class="label">IMC (calculado)</span><output class="input flex-center">{{ bmiPreview() }}</output></div>
         </div>
 
         <h3 class="eyebrow">Composición corporal <span class="muted">opcional</span></h3>
@@ -84,7 +84,7 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
           <div class="field"><label for="m-hip">Cadera</label><input id="m-hip" class="input" inputmode="decimal" formControlName="hipCm" /><app-field-error [control]="form.controls.hipCm" /></div>
         </div>
         @for (g of girthGroups; track g.title) {
-          <fieldset class="stack" style="border: 0; padding: 0; margin: 0" formGroupName="girths">
+          <fieldset class="stack fieldset-reset" formGroupName="girths">
             <legend class="small muted">{{ g.title }}</legend>
             <div class="form-grid">
               @for (f of g.fields; track f.key) {
@@ -352,7 +352,7 @@ export class ClinicalTab {
           <div class="chips">
             @for (p of g.items; track p.id) {
               <span class="badge" [class]="'badge badge--' + g.tone"><span>{{ p.foodName }}</span>
-                <button type="button" class="icon-btn icon-btn--s" style="inline-size: 1.5rem; block-size: 1.5rem" [attr.aria-label]="'Quitar ' + p.foodName" (click)="remove(p)"><app-icon name="x" [size]="14" /></button></span>
+                <button type="button" class="icon-btn icon-btn--s u-box-6" [attr.aria-label]="'Quitar ' + p.foodName" (click)="remove(p)"><app-icon name="x" [size]="14" /></button></span>
             }
           </div>
         </div>

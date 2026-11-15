@@ -17,14 +17,18 @@ import { PatientContext } from './patient-context';
     details[open] { border-color: var(--brand-primary); }
     summary { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-block-size: 3.5rem; cursor: pointer; list-style: none; }
     summary::-webkit-details-marker { display: none; }
-    .dot { inline-size: .75rem; block-size: .75rem; border-radius: 50%; border: 2px solid var(--muted); flex: none; } .dot.ok { background: var(--ok); border-color: var(--ok); } .dot.part { background: var(--nutri-mantequilla); border-color: var(--warn); }
+    .st { display: inline-grid; place-items: center; inline-size: 1.75rem; block-size: 1.75rem; border-radius: 50%; flex: none; border: 1.5px solid var(--muted); color: var(--muted); }
+    .st.ok { background: var(--nutri-salvia); border-color: var(--ok); color: var(--ok); } .st.part { background: var(--nutri-mantequilla); border-color: var(--warn); color: var(--warn); }
+    .side { min-inline-size: 0; }
+    .preview { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .count { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--nutri-texto-fuerte); }
     .body { padding: 0 var(--space-4) var(--space-4); display: grid; gap: var(--space-3); }
     ul { margin: 0; padding-inline-start: 1.1rem; }
   `,
   template: `
     @if (ctx.plan(); as plan) {
       <div class="stack">
-        <h1 style="font-size: 1.5rem">Mi semana</h1>
+        <h1 class="t-lg">Mi semana</h1>
         <div class="nav">
           <button type="button" class="icon-btn" aria-label="Semana anterior" [disabled]="start() <= plan.startDate" (click)="shift(-7)"><app-icon name="chevron-left" /></button>
           <strong>{{ range() }}</strong>
@@ -34,8 +38,8 @@ import { PatientContext } from './patient-context';
         @for (d of days(); track d.date) {
           <details [open]="d.date === ctx.today">
             <summary>
-              <span class="dot" [class.ok]="d.state === 'ok'" [class.part]="d.state === 'part'" aria-hidden="true"></span>
-              <span style="flex: 1"><strong>{{ longDate(d.date) }}</strong>@if (d.date === ctx.today) { <span class="badge badge--ok" style="margin-inline-start: .5rem">Hoy</span> }<br /><span class="small muted">{{ d.done }}/{{ d.total }} realizadas · {{ f(d.kcal) }} kcal</span></span>
+              <span class="st" [class.ok]="d.state === 'ok'" [class.part]="d.state === 'part'" aria-hidden="true"><app-icon [name]="d.state === 'ok' ? 'check' : d.state === 'part' ? 'minus' : 'clock'" [size]="14" /></span>
+              <span class="grow-1 side"><strong>{{ longDate(d.date) }}</strong>@if (d.date === ctx.today) { <span class="badge badge--ok u-ms-2">Hoy</span> }<br /><span class="small"><span class="count">{{ d.done }}/{{ d.total }}</span> <span class="muted">{{ d.state === 'ok' ? 'completo' : d.state === 'part' ? 'en progreso' : 'pendiente' }} · {{ f(d.kcal) }} kcal</span></span><span class="small muted preview">{{ d.preview }}</span></span>
               <app-icon name="chevron-down" [size]="18" />
             </summary>
             <div class="body">
@@ -66,7 +70,8 @@ export class PatientWeek {
         const total = groups.reduce((a, g) => a + g.items.length, 0);
         const done = groups.reduce((a, g) => a + g.items.filter((i) => i.entry?.status === 'done').length, 0);
         const kcal = groups.reduce((a, g) => a + g.items.reduce((s, i) => s + Number(i.totals.nutrients.energy), 0), 0);
-        return { date, groups, total, done, kcal: String(kcal), state: total && done === total ? 'ok' : done ? 'part' : 'none' };
+        const preview = groups.flatMap((g) => g.items.map((i) => i.dish?.name ?? '')).filter(Boolean).slice(0, 3).join(' · ');
+        return { date, groups, total, done, kcal: String(kcal), preview, state: total && done === total ? 'ok' : done ? 'part' : 'none' };
       });
   });
 

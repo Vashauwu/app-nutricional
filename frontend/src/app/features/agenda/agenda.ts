@@ -10,6 +10,7 @@ import {
 } from '../../shared/models/domain';
 import { FieldError } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
+import { PageHeader } from '../../shared/components/page-header';
 import { Modal } from '../../shared/components/modal';
 import { Badge, EmptyState, Tone } from '../../shared/components/ui';
 import { addDays, isoDay, longDate, parseIsoDate, startOfWeek, timeLabel, toIsoDate, todayIso } from '../../shared/utils/format';
@@ -21,7 +22,7 @@ interface Cell { date: string; day: number; inMonth: boolean; isToday: boolean; 
 
 @Component({
   selector: 'app-agenda',
-  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, Modal, Badge, EmptyState, FieldError],
+  imports: [PageHeader, ReactiveFormsModule, RouterLink, TuiButton, Icon, Modal, Badge, EmptyState, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: start; }
@@ -31,7 +32,7 @@ interface Cell { date: string; day: number; inMonth: boolean; isToday: boolean; 
     .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
     .cal .dow { text-align: center; font-size: .75rem; font-weight: 600; color: var(--muted); padding-block: .375rem; }
     .cal button.day { display: flex; flex-direction: column; align-items: flex-start; gap: .25rem; min-block-size: 4.25rem; padding: .375rem .5rem; border: 1px solid var(--line); border-radius: var(--radius-s, .5rem); background: var(--surface); color: inherit; cursor: pointer; font: inherit; text-align: start; }
-    .cal button.day.out { opacity: .45; }
+    .cal button.day.out { color: var(--muted); } .cal button.day.out .n { font-weight: 500; }
     .cal button.day.today .n { background: var(--nutri-texto-fuerte); color: var(--surface); }
     .cal button.day.sel { outline: 2px solid var(--nutri-texto-fuerte); outline-offset: 1px; }
     .cal .n { display: inline-grid; place-items: center; min-inline-size: 1.5rem; block-size: 1.5rem; border-radius: 999px; font-size: .8125rem; font-weight: 600; }
@@ -46,10 +47,9 @@ interface Cell { date: string; day: number; inMonth: boolean; isToday: boolean; 
   `,
   template: `
     <div class="page">
-      <header class="page-header">
-        <div><h1>Consultas</h1><p class="sub">Agenda de citas con tus pacientes.</p></div>
-        <div class="actions"><button tuiButton type="button" size="m" (click)="openNew()"><app-icon name="plus" [size]="18" /> Nueva consulta</button></div>
-      </header>
+      <app-page-header title="Consultas" sub="Agenda de citas con tus pacientes.">
+        <button tuiButton type="button" size="m" (click)="openNew()"><app-icon name="plus" [size]="18" /> Nueva consulta</button>
+      </app-page-header>
 
       <div class="layout">
         <section class="panel" aria-label="Calendario">
@@ -59,10 +59,10 @@ interface Cell { date: string; day: number; inMonth: boolean; isToday: boolean; 
             <button type="button" class="icon-btn" aria-label="Mes siguiente" (click)="shift(1)"><app-icon name="chevron-right" /></button>
             <button tuiButton type="button" size="s" appearance="secondary" (click)="goToday()">Hoy</button>
           </div>
-          <div class="cal" role="grid" aria-label="Días del mes">
-            @for (d of dows; track $index) { <span class="dow" role="columnheader">{{ d }}</span> }
+          <div class="cal" role="group" aria-label="Días del mes">
+            @for (d of dows; track $index) { <span class="dow" aria-hidden="true">{{ d }}</span> }
             @for (c of cells(); track c.date) {
-              <button type="button" class="day" role="gridcell" [class.out]="!c.inMonth" [class.today]="c.isToday" [class.sel]="c.date === selected()"
+              <button type="button" class="day" [class.out]="!c.inMonth" [class.today]="c.isToday" [class.sel]="c.date === selected()"
                 [attr.aria-selected]="c.date === selected()" [attr.aria-label]="label(c)" (click)="selected.set(c.date)">
                 <span class="n">{{ c.day }}</span>
                 @if (c.count) { <span class="cnt">{{ c.count }} {{ c.count === 1 ? 'consulta' : 'consultas' }}</span> }
@@ -86,7 +86,7 @@ interface Cell { date: string; day: number; inMonth: boolean; isToday: boolean; 
                 <button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Editar consulta de ' + a.patientName" (click)="openEdit(a)"><app-icon name="edit" [size]="18" /></button>
               </article>
             } @empty {
-              <div style="padding: var(--space-4)"><app-empty icon="calendar" title="Sin consultas este día" text="Elige otro día o agenda una consulta nueva." /></div>
+              <div class="p-4"><app-empty icon="calendar" title="Sin consultas este día" text="Elige otro día o agenda una consulta nueva." /></div>
             }
           </section>
 

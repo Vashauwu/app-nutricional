@@ -12,6 +12,8 @@ import { Totals, compareEquivalents, compareMacros, dayTotals, distributeEquival
 import { Dish, DishVersion, GOAL_LABEL, NutriAlert, PLAN_STATUS_LABEL, PlanDay, PlanItem, PlanSlot } from '../../shared/models/domain';
 import { AlertItem, Badge, EmptyState, PLAN_TONE } from '../../shared/components/ui';
 import { CompareRow, EqChips } from '../../shared/components/nutrition-bits';
+import { ActionMenu, MenuItem } from '../../shared/components/action-menu';
+import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
 import { ageFrom, addDays, fmtCompact, formatDate, formatDateTime, longDate, normalizeText, shortDate, startOfWeek, todayIso, weekdayShort } from '../../shared/utils/format';
@@ -42,7 +44,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
 @Component({
   selector: 'app-plan-editor',
-  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, CompareRow, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPreview],
+  imports: [Combobox, RouterLink, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, ActionMenu, CompareRow, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPreview],
   providers: [PlanEditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './plan-editor.scss',
@@ -53,26 +55,26 @@ const SAVE_TEXT: Record<SaveState, string> = {
         <a class="icon-btn" routerLink="/planes" aria-label="Volver a planes"><app-icon name="arrow-left" /></a>
         <div class="title">
           <label class="visually-hidden" for="plan-name">Nombre del plan</label>
-          <input id="plan-name" class="name-input" [value]="store.name()" [disabled]="readOnly()" (change)="store.rename($any($event.target).value)" />
+          <input id="plan-name" class="name-input" [value]="store.name()" [attr.title]="store.name()" [disabled]="readOnly()" (change)="store.rename($any($event.target).value)" />
           <div class="row small muted"><a [routerLink]="['/pacientes', meta.patientId]">{{ patientName() }}</a><app-badge [tone]="tone[meta.status]">{{ statusLabel[meta.status] }}</app-badge><span>{{ fd(firstDate()) }} – {{ fd(lastDate()) }}</span></div>
         </div>
         <span class="save-state" [class.is-error]="store.saveState() === 'error' || store.saveState() === 'conflict'" [class.is-saved]="store.saveState() === 'saved'" role="status" aria-live="polite">
           <app-icon [name]="stateIcon()" [size]="16" />{{ saveText() }}@if (store.saveState() === 'saved' && store.lastSavedAt(); as t) { {{ time(t) }} }
           @if (store.saveState() === 'error') { <button type="button" class="link-btn" (click)="store.retry()">Reintentar</button> }
         </span>
-        <button type="button" class="icon-btn" aria-label="Deshacer" title="Deshacer" [disabled]="!store.canUndo() || readOnly()" (click)="store.undoLast()"><app-icon name="undo" /></button>
-        <button type="button" class="icon-btn" aria-label="Rehacer" title="Rehacer" [disabled]="!store.canRedo() || readOnly()" (click)="store.redoLast()"><app-icon name="redo" /></button>
-        <button tuiButton type="button" size="s" appearance="secondary" (click)="alertsOpen.set(true)"><app-icon name="alert" [size]="16" /> Alertas ({{ alerts().length }})</button>
-        <button tuiButton type="button" size="s" appearance="secondary" (click)="openTargets()"><app-icon name="target" [size]="16" /> Objetivos</button>
-        <button tuiButton type="button" size="s" appearance="secondary" (click)="historyOpen.set(true)"><app-icon name="history" [size]="16" /> Historial</button>
-        <button tuiButton type="button" size="s" appearance="secondary" (click)="openTemplate()"><app-icon name="copy" [size]="16" /> Plantilla</button>
+        <div class="grp" role="group" aria-label="Deshacer y rehacer">
+          <button type="button" class="icon-btn" aria-label="Deshacer" title="Deshacer (Ctrl/Cmd+Z)" [disabled]="!store.canUndo() || readOnly()" (click)="store.undoLast()"><app-icon name="undo" /></button>
+          <button type="button" class="icon-btn" aria-label="Rehacer" title="Rehacer (Ctrl/Cmd+Mayús+Z)" [disabled]="!store.canRedo() || readOnly()" (click)="store.redoLast()"><app-icon name="redo" /></button>
+        </div>
+        <div class="grp" role="group" aria-label="Revisión del plan">
+          <button tuiButton type="button" size="s" appearance="secondary" (click)="alertsOpen.set(true)"><app-icon name="alert" [size]="16" /> Alertas ({{ alerts().length }})</button>
+          <button tuiButton type="button" size="s" appearance="secondary" (click)="openTargets()"><app-icon name="target" [size]="16" /> Objetivos</button>
+        </div>
+        <app-action-menu text="Más" icon="more" label="Más opciones del plan" [items]="moreItems()" />
         @switch (meta.status) {
           @case ('draft') { <button tuiButton type="button" size="s" (click)="openPublish()"><app-icon name="send" [size]="16" /> Publicar</button> }
-          @case ('published') {
-            <button tuiButton type="button" size="s" appearance="secondary" (click)="status('unpublish')">Volver a borrador</button>
-            <button tuiButton type="button" size="s" (click)="status('finalize')">Finalizar plan</button>
-          }
-          @case ('finished') { <button tuiButton type="button" size="s" (click)="status('archive')">Archivar</button><a tuiButton size="s" routerLink="/planes/nuevo" [queryParams]="{ copiar: meta.id }">Crear el siguiente plan</a> }
+          @case ('published') { <button tuiButton type="button" size="s" (click)="status('finalize')">Finalizar plan</button> }
+          @case ('finished') { <button tuiButton type="button" size="s" (click)="status('archive')">Archivar</button> }
           @case ('archived') { <button tuiButton type="button" size="s" (click)="status('restore')">Restaurar</button> }
         }
       </div>
@@ -98,17 +100,17 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
       <div class="ed" cdkDropListGroup>
         <aside class="lib panel" [class.closed]="!libOpen()" aria-label="Biblioteca de platillos">
-          <h2 class="panel-head" style="font-size: 1.0625rem">Biblioteca</h2>
+          <h2 class="panel-head t-sm">Biblioteca</h2>
           <div class="field"><label class="visually-hidden" for="lib-s">Buscar platillo</label><div class="input-affix"><app-icon name="search" [size]="18" /><input id="lib-s" class="input" type="search" placeholder="Buscar platillo…" [value]="libSearch()" (input)="libSearch.set($any($event.target).value)" /></div></div>
-          <div class="field"><label class="visually-hidden" for="lib-c">Categoría</label><select id="lib-c" class="select" (change)="libCat.set($any($event.target).value)"><option value="">Todas las categorías</option>@for (c of categories(); track c) { <option [value]="c">{{ c }}</option> }</select></div>
+          <app-combobox label="Categoría" [hideLabel]="true" [allowAll]="true" allLabel="Todas las categorías" placeholder="Todas las categorías" [options]="categoryOptions()" [value]="libCat()" (valueChange)="libCat.set($event)" />
           <p class="small muted">Arrastra al calendario o usa "Agregar a…".</p>
-          <div cdkDropList [cdkDropListData]="libRef" [cdkDropListSortingDisabled]="true" [cdkDropListEnterPredicate]="noEnter" class="stack--s" role="list">
+          <div cdkDropList [cdkDropListData]="libRef" [cdkDropListSortingDisabled]="true" [cdkDropListEnterPredicate]="noEnter" class="stack--s" [attr.role]="library().length ? 'list' : null">
             @for (d of library(); track d.id) {
               <div class="dish-card" role="listitem" cdkDrag [cdkDragData]="d" [cdkDragDisabled]="readOnly()">
                 <div class="cdk-drag-preview" *cdkDragPreview>{{ d.name }}</div>
                 <span class="t">{{ d.name }}</span>
                 <span class="small muted">{{ c(cur(d).nutrition.perServing.energy) }} kcal · {{ d.category }}</span>
-                @if (flagged(d)) { <span class="small" style="color: var(--danger)"><app-icon name="alert" [size]="12" /> {{ flagged(d) }}</span> }
+                @if (flagged(d)) { <span class="small text-danger"><app-icon name="alert" [size]="12" /> {{ flagged(d) }}</span> }
                 <button tuiButton type="button" size="xs" appearance="secondary" [disabled]="readOnly()" (click)="openAdd(d)">Agregar a…</button>
               </div>
             } @empty { <app-empty icon="dish" title="Sin platillos" text="Ajusta la búsqueda." /> }
@@ -136,15 +138,16 @@ const SAVE_TEXT: Record<SaveState, string> = {
               @for (v of visibleVMs(); track v.day.date) {
                 <article class="day" [class.sel]="selected() === v.day.date" [class.today]="v.day.date === today">
                   <header>
-                    <div class="row row--between" style="gap: .25rem"><h3><button type="button" class="link-btn" style="text-decoration: none; color: inherit" (click)="selected.set(v.day.date)" [attr.aria-pressed]="selected() === v.day.date">{{ cap(wd(v.day.date)) }} {{ sd(v.day.date) }}</button></h3>
+                    <div class="row row--between u-gap-1"><h3><button type="button" class="link-btn u-plain-link" (click)="selected.set(v.day.date)" [attr.aria-pressed]="selected() === v.day.date">{{ cap(wd(v.day.date)) }} {{ sd(v.day.date) }}</button></h3>
                       @if (v.alerts) { <app-badge tone="crit" icon="alert"><span class="visually-hidden">Alertas:</span> {{ v.alerts }}</app-badge> }</div>
                     <div class="meter" role="img" [attr.aria-label]="c(v.totals.nutrients.energy) + ' de ' + c(store.targets()?.energy) + ' kcal'"><span [style.inline-size.%]="v.pct > 100 ? 100 : v.pct" [style.background]="v.over ? 'var(--danger)' : null"></span></div>
                     <span class="small mono">{{ c(v.totals.nutrients.energy) }} / {{ c(store.targets()?.energy) }} kcal</span>
+                    @if (diff(v); as d) { <span class="small delta" [class.over]="d.over"><app-icon [name]="d.over ? 'trending-up' : 'trending-down'" [size]="12" /> {{ d.text }}</span> }
                   </header>
                   @for (s of v.slots; track s.slot.id) {
                     <div class="slot">
                       <div class="sh"><span>{{ s.slot.name }}</span><span class="mono">{{ c(s.kcal) }} kcal</span></div>
-                      <div class="drop" cdkDropList [cdkDropListData]="slotRef(v.day.date, s.slot.id)" [cdkDropListDisabled]="readOnly()" (cdkDropListDropped)="onDrop($event, v.day.date, s.slot.id)" role="list" [attr.aria-label]="s.slot.name + ' del ' + sd(v.day.date)">
+                      <div class="drop" cdkDropList [cdkDropListData]="slotRef(v.day.date, s.slot.id)" [cdkDropListDisabled]="readOnly()" (cdkDropListDropped)="onDrop($event, v.day.date, s.slot.id)" [attr.role]="s.items.length ? 'list' : null" [attr.aria-label]="s.slot.name + ' del ' + sd(v.day.date)">
                         @for (it of s.items; track it.item.id) {
                           <div class="item" role="listitem" cdkDrag [cdkDragData]="it.item.id" [cdkDragDisabled]="readOnly()" [class.al-critical]="it.alert === 'critical'" [class.al-warning]="it.alert === 'warning'">
                             <span class="grip" cdkDragHandle aria-hidden="true"><app-icon name="grip" [size]="16" /></span>
@@ -153,8 +156,8 @@ const SAVE_TEXT: Record<SaveState, string> = {
                             <div class="meta">
                               <span>{{ c(it.totals.nutrients.energy) }} kcal</span>
                               @if (it.item.servings !== '1') { <span>× {{ it.item.servings }}</span> }
-                              @if (it.alert) { <span style="color: var(--danger); font-weight: 600"><app-icon name="alert" [size]="12" /> {{ it.alert === 'critical' ? 'Alerta crítica' : 'Advertencia' }}</span> }
-                              @if (it.latest > it.item.dishVersion) { <span style="color: var(--info)">Nueva versión v{{ it.latest }}</span> }
+                              @if (it.alert) { <span class="flag" [class.crit]="it.alert === 'critical'" [attr.title]="it.alert === 'critical' ? 'Alerta crítica' : 'Advertencia'"><app-icon [name]="it.alert === 'critical' ? 'alert' : 'alert-circle'" [size]="12" /> {{ it.alert === 'critical' ? 'Crítica' : 'Aviso' }}</span> }
+                              @if (it.latest > it.item.dishVersion) { <span class="u-c-info">Nueva versión v{{ it.latest }}</span> }
                             </div>
                           </div>
                         } @empty { <span class="hint">{{ readOnly() ? 'Vacío' : 'Suelta un platillo aquí' }}</span> }
@@ -169,13 +172,13 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
         <aside class="sum panel" aria-label="Resumen del día seleccionado" aria-live="polite">
           @if (selVM(); as sv) {
-            <div class="panel-head"><h2 style="font-size: 1.0625rem">{{ longDate(sv.day.date) }}</h2><span class="small muted">Resumen del día</span></div>
+            <div class="panel-head"><h2 class="t-sm">{{ longDate(sv.day.date) }}</h2><span class="small muted">Resumen del día</span></div>
             @for (m of selMacros(); track m.key) { <app-compare-row [m]="m" /> }
-            <div class="eyebrow">Equivalentes SMAE (planeado / objetivo)</div>
+            <h3 class="sub-h">Equivalentes SMAE <span class="muted small">planeado / objetivo</span></h3>
             <div>
               @for (m of selEq(); track m.key) { <div class="eq-row"><span>{{ m.label }}</span><span>{{ c(m.planned, 1) }} / {{ c(m.target, 1) }}</span><span [style.color]="m.status === 'ok' ? 'var(--ok)' : m.status === 'over' ? 'var(--danger)' : 'var(--warn)'">{{ m.status === 'ok' ? 'En meta' : m.status === 'over' ? 'Excede' : 'Faltan' }}</span></div> }
             </div>
-            <div class="field"><label for="dn">Indicaciones especiales del día</label><textarea id="dn" class="textarea" style="min-block-size: 4rem" [value]="sv.day.notes" [disabled]="readOnly()" (change)="store.setDayNotes(sv.day.date, $any($event.target).value)"></textarea></div>
+            <div class="field"><label for="dn">Indicaciones especiales del día</label><textarea id="dn" class="textarea u-minh-4" [value]="sv.day.notes" [disabled]="readOnly()" (change)="store.setDayNotes(sv.day.date, $any($event.target).value)"></textarea></div>
             @if (!readOnly()) {
               <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="openDupDay()"><app-icon name="copy" [size]="16" /> Duplicar día</button><button tuiButton type="button" size="s" appearance="secondary-destructive" (click)="clearDay(sv.day.date)">Vaciar día</button></div>
             }
@@ -201,7 +204,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
               <button tuiButton type="button" size="s" appearance="secondary" (click)="nudge(1)"><app-icon name="chevron-down" [size]="16" /> Bajar</button>
               <button tuiButton type="button" size="s" appearance="secondary" (click)="openSubstitute()"><app-icon name="swap" [size]="16" /> Sustituir…</button>
             </div>
-            <fieldset style="border: 0; padding: 0; margin: 0"><legend class="eyebrow">Copiar a otros días (mismo tiempo de comida)</legend>
+            <fieldset class="fieldset-reset"><legend class="eyebrow">Copiar a otros días (mismo tiempo de comida)</legend>
               <div class="chips">@for (d of otherDays(); track d) { <label class="chip-toggle" [class.is-on]="copyTo().includes(d)"><input type="checkbox" class="visually-hidden" [checked]="copyTo().includes(d)" (change)="toggleCopy(d)" />{{ wd(d) }} {{ sd(d) }}</label> }</div></fieldset>
           }
         }
@@ -235,7 +238,14 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
       <app-modal [(open)]="alertsOpen" title="Alertas nutricionales" size="wide">
         <p class="small muted">Apoyan tu revisión; no bloquean la publicación. Los umbrales y reglas se configuran en Configuración › Alertas.</p>
-        @for (a of alerts(); track a.id) { <app-alert-item [alert]="a" [link]="false" /> } @empty { <app-empty icon="check-circle" title="Sin alertas" text="El plan está dentro de tus reglas y umbrales." /> }
+        @if (alerts().length) {
+          <div class="chips" role="group" aria-label="Filtrar alertas">
+            <button type="button" class="chip-toggle" [attr.aria-pressed]="alertFilter() === 'all'" (click)="alertFilter.set('all')">Todas ({{ alerts().length }})</button>
+            <button type="button" class="chip-toggle" [attr.aria-pressed]="alertFilter() === 'critical'" (click)="alertFilter.set('critical')">Críticas ({{ critical().length }})</button>
+            <button type="button" class="chip-toggle" [attr.aria-pressed]="alertFilter() === 'rest'" (click)="alertFilter.set('rest')">Advertencias ({{ alerts().length - critical().length }})</button>
+          </div>
+        }
+        @for (a of shownAlerts(); track a.id) { <app-alert-item [alert]="a" [link]="false" /> } @empty { <app-empty icon="check-circle" title="Sin alertas" text="El plan está dentro de tus reglas y umbrales." /> }
         <ng-container modalFooter><button tuiButton type="button" size="m" (click)="alertsOpen.set(false)">Cerrar</button></ng-container>
       </app-modal>
 
@@ -251,7 +261,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
       <app-modal [(open)]="targetsOpen" title="Objetivos diarios" size="wide">
         <p class="small muted">Las propuestas son orientativas y siempre editables. Se guarda la versión de objetivos usada en cada plan (v{{ store.targets()?.version }}).</p>
         <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Proponer según el paciente</button></div>
-        @if (proposalNotes().length) { <div class="callout"><app-icon name="info" /><ul class="callout-body" style="margin: 0; padding-inline-start: 1rem">@for (n of proposalNotes(); track n) { <li class="small">{{ n }}</li> }</ul></div> }
+        @if (proposalNotes().length) { <div class="callout"><app-icon name="info" /><ul class="callout-body u-list-tight">@for (n of proposalNotes(); track n) { <li class="small">{{ n }}</li> }</ul></div> }
         <div class="form-grid">
           @for (k of macroKeys; track k.key) { <div class="field"><label [for]="'tg-' + k.key">{{ k.label }}</label><input [id]="'tg-' + k.key" class="input" inputmode="decimal" [value]="tgDraft()[k.key]" (input)="setTg(k.key, $any($event.target).value)" /></div> }
         </div>
@@ -293,8 +303,8 @@ const SAVE_TEXT: Record<SaveState, string> = {
         } @else {
           <p class="small muted">Copia exacta de lo que vio la paciente en cada publicación.</p>
           @for (p of pubsDesc(); track p.versionNumber) {
-            <details class="panel" style="padding: var(--space-3) var(--space-4)"><summary><strong>Versión {{ p.versionNumber }}</strong> · {{ fdt(p.publishedAt) }} · {{ p.by }} — {{ p.summary }}</summary>
-              <div class="stack--s" style="margin-block-start: var(--space-3)">@for (d of p.days; track d.date) { <p class="small"><strong>{{ cap(wd(d.date)) }} {{ sd(d.date) }}:</strong> {{ dayNames(d) }}</p> }</div></details>
+            <details class="panel u-pad-3-4"><summary><strong>Versión {{ p.versionNumber }}</strong> · {{ fdt(p.publishedAt) }} · {{ p.by }} — {{ p.summary }}</summary>
+              <div class="stack--s mt-3">@for (d of p.days; track d.date) { <p class="small"><strong>{{ cap(wd(d.date)) }} {{ sd(d.date) }}:</strong> {{ dayNames(d) }}</p> }</div></details>
           } @empty { <app-empty icon="send" title="Aún sin publicaciones" /> }
         }
         <ng-container modalFooter><button tuiButton type="button" size="m" (click)="historyOpen.set(false)">Cerrar</button></ng-container>
@@ -333,8 +343,36 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly sg = (v: string): string => { const n = Number(v); return (n > 0 ? '+' : '') + n.toFixed(0); };
 
   protected readonly selected = signal('');
-  protected readonly viewMode = signal<'week' | 'day'>(typeof matchMedia === 'function' && matchMedia('(max-width: 48rem)').matches ? 'day' : 'week');
+  protected readonly viewMode = signal<'week' | 'day'>(typeof matchMedia === 'function' && matchMedia('(max-width: 93.75rem)').matches ? 'day' : 'week');
   protected readonly libOpen = signal(true);
+  protected readonly alertFilter = signal<'all' | 'critical' | 'rest'>('all');
+  protected readonly shownAlerts = computed(() => {
+    const f = this.alertFilter();
+    return this.alerts().filter((a) => (f === 'all' ? true : f === 'critical' ? a.level === 'critical' : a.level !== 'critical'));
+  });
+
+  /** Acciones secundarias del plan, fuera de la barra principal. */
+  protected readonly moreItems = computed<MenuItem[]>(() => {
+    const meta = this.store.meta();
+    if (!meta) return [];
+    const items: MenuItem[] = [
+      { label: 'Historial', icon: 'history', run: () => this.historyOpen.set(true) },
+      { label: 'Guardar como plantilla', icon: 'copy', run: () => this.openTemplate() },
+    ];
+    if (meta.status === 'published') items.push({ label: 'Volver a borrador', icon: 'undo', separator: true, run: () => this.status('unpublish') });
+    if (meta.status === 'finished') items.push({ label: 'Crear el siguiente plan', icon: 'calendar', link: ['/planes/nuevo'] });
+    return items;
+  });
+
+  /** Diferencia contra el objetivo del día, en palabras (no solo en color). */
+  protected diff(v: DayVM): { text: string; over: boolean } | null {
+    const target = Number(this.store.targets()?.energy ?? 0);
+    const planned = Number(v.totals.nutrients.energy);
+    if (!target || !planned) return null;
+    const d = Math.round(planned - target);
+    if (d === 0) return { text: 'En el objetivo', over: false };
+    return { text: `${d > 0 ? '+' : '−'}${Math.abs(d)} kcal`, over: d > 0 };
+  }
   protected readonly libSearch = signal('');
   protected readonly libCat = signal('');
 
@@ -380,6 +418,7 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly stateIcon = computed(() => ({ idle: 'check', dirty: 'clock', saving: 'refresh', saved: 'check-circle', error: 'alert-circle', offline: 'wifi-off', conflict: 'alert' } as const)[this.store.saveState()]);
   protected readonly subgroups = this.data.activeSubgroups;
   protected readonly categories = computed(() => [...new Set(this.data.db().dishes.map((d) => d.category))]);
+  protected readonly categoryOptions = computed<ComboOption[]>(() => this.categories().map((c) => ({ id: c, label: c })));
   protected readonly slotNames = computed(() => [...new Set(this.store.days().flatMap((d) => d.slots.map((s) => s.name)))]);
   protected readonly emptyDays = computed(() => this.store.days().filter((d) => !d.slots.some((s) => s.items.length)).length);
 

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TuiRoot } from '@taiga-ui/core';
 import { BrandService } from './core/services/ui.services';
+import { TableCardsService } from './core/services/table-cards.service';
 import { ThemeService } from './core/services/theme.service';
 import { ConfirmHost, ToastHost } from './shared/components/feedback-hosts';
 
@@ -15,4 +16,6 @@ export class App {
   // Instanciar activa la marca dinámica (§19.2).
   private readonly brand = inject(BrandService);
   private readonly theme = inject(ThemeService);
+
+  constructor() { inject(TableCardsService).start(); }
 }

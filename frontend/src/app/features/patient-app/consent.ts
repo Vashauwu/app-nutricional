@@ -13,11 +13,11 @@ import { Icon } from '../../shared/components/icon';
     .doc { max-block-size: 14rem; overflow: auto; padding: var(--space-3) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--nutri-marfil); white-space: pre-wrap; font-size: .9375rem; }
   `,
   template: `
-    <div class="stack" style="padding-block-start: var(--space-3)">
-      <header><h1 style="font-size: 1.75rem">Antes de empezar</h1><p class="muted">Para proteger tu información, necesitamos tu aceptación. Hasta entonces tu expediente y tu plan permanecen cerrados.</p></header>
+    <div class="stack u-pt-3">
+      <header><h1 class="u-h1-lg">Antes de empezar</h1><p class="muted">Para proteger tu información, necesitamos tu aceptación. Hasta entonces tu expediente y tu plan permanecen cerrados.</p></header>
       @for (d of pending(); track d.id) {
         <section class="panel" [attr.aria-labelledby]="'c-' + d.id">
-          <h2 [id]="'c-' + d.id" class="panel-head" style="font-size: 1.125rem">{{ d.title }} <span class="small muted">· versión {{ d.version }}</span></h2>
+          <h2 [id]="'c-' + d.id" class="panel-head t-md">{{ d.title }} <span class="small muted">· versión {{ d.version }}</span></h2>
           <div class="doc" tabindex="0" role="region" [attr.aria-label]="'Texto de ' + d.title">{{ d.content }}</div>
           <label class="check"><input type="checkbox" [checked]="accepted().includes(d.id)" (change)="toggle(d.id)" /> <span>He leído y acepto el {{ d.title.toLowerCase() }}.</span></label>
         </section>

@@ -7,6 +7,8 @@ export interface Toast {
   id: number;
   kind: 'ok' | 'error' | 'info';
   message: string;
+  /** Acción opcional del aviso (p. ej. «Deshacer»). */
+  action?: { label: string; run: () => void };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -14,10 +16,15 @@ export class ToastService {
   readonly toasts = signal<Toast[]>([]);
   private seq = 0;
 
-  show(message: string, kind: Toast['kind'] = 'ok', ms = 4500): void {
+  show(message: string, kind: Toast['kind'] = 'ok', ms = 4500, action?: Toast['action']): void {
     const id = ++this.seq;
-    this.toasts.update((t) => [...t, { id, kind, message }]);
+    this.toasts.update((t) => [...t, { id, kind, message, action }]);
     setTimeout(() => this.dismiss(id), ms);
+  }
+
+  /** Aviso con «Deshacer»: visible 6 s para dar tiempo real de arrepentirse. */
+  undoable(message: string, undo: () => void): void {
+    this.show(message, 'ok', 6000, { label: 'Deshacer', run: undo });
   }
 
   ok = (m: string): void => this.show(m, 'ok');

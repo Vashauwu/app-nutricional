@@ -52,7 +52,7 @@ const notFuture = (c: AbstractControl): ValidationErrors | null => (c.value && S
           <div class="field"><label for="email">Correo electrónico</label><input id="email" class="input" type="email" formControlName="email" autocomplete="email" aria-describedby="email-e" /><app-field-error id="email-e" [control]="form.controls.email" [messages]="{ taken: 'Ya existe un paciente con este correo.' }" /></div>
           <div class="field"><label for="phone">Teléfono</label><input id="phone" class="input" type="tel" formControlName="phone" autocomplete="tel" inputmode="tel" aria-describedby="phone-e" /><app-field-error id="phone-e" [control]="form.controls.phone" [messages]="{ pattern: 'Escribe 10 dígitos (puedes usar espacios o guiones).' }" /></div>
         </div>
-        <div class="field" style="max-inline-size: 24rem"><label for="goal">Objetivo nutricional inicial</label><select id="goal" class="select" formControlName="goal">@for (g of goals; track g[0]) { <option [value]="g[0]">{{ g[1] }}</option> }</select></div>
+        <div class="field maxw-24"><label for="goal">Objetivo nutricional inicial</label><select id="goal" class="select" formControlName="goal">@for (g of goals; track g[0]) { <option [value]="g[0]">{{ g[1] }}</option> }</select></div>
 
         @if (showRepro()) {
           <details class="repro" [open]="reproOpen()" (toggle)="reproOpen.set($any($event.target).open)">

@@ -18,10 +18,9 @@ import { Icon } from '../../shared/components/icon';
   template: `
     <main class="box" id="contenido">
       <span class="code" aria-hidden="true"><app-icon name="search" [size]="36" /></span>
-      <p class="eyebrow">Error 404</p>
       <h1>No encontramos esta página</h1>
-      <p class="muted">Puede que el enlace esté incompleto o que la página ya no exista.</p>
-      <div class="row" style="justify-content: center">
+      <p class="muted">Puede que el enlace esté incompleto o que la página ya no exista. (Error 404)</p>
+      <div class="row center-x">
         <a tuiButton routerLink="/" size="m">Ir al inicio</a>
         <button tuiButton type="button" size="m" appearance="secondary" (click)="back()">Volver</button>
       </div>

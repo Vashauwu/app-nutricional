@@ -38,7 +38,7 @@ function dismissed(): boolean {
       <section class="panel" aria-labelledby="h-start">
         <div class="panel-head">
           <h2 id="h-start">Primeros pasos</h2>
-          <button type="button" class="small" style="background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; color: inherit" (click)="dismiss()">Ocultar</button>
+          <button type="button" class="small u-text-btn" (click)="dismiss()">Ocultar</button>
         </div>
         <p class="small muted">{{ doneCount() }} de {{ steps().length }} listos. Con esto tu consulta queda lista para atender.</p>
         <div class="meter" role="img" [attr.aria-label]="doneCount() + ' de ' + steps().length + ' pasos completados'"><span [style.inline-size.%]="(doneCount() / steps().length) * 100"></span></div>

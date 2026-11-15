@@ -7,8 +7,10 @@ import { PlansService } from '../../core/services/plans.service';
 import { TrackingService } from '../../core/services/tracking.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { GOAL_LABEL } from '../../shared/models/domain';
-import { BarChart, LineChart, LineSeries, Ring } from '../../shared/components/charts';
+import { BarChart, LineChart, LineSeries } from '../../shared/components/charts';
 import { Icon } from '../../shared/components/icon';
+import { Combobox } from '../../shared/components/combobox';
+import { PageHeader } from '../../shared/components/page-header';
 import { Badge, EmptyState } from '../../shared/components/ui';
 import { ToastService } from '../../core/services/ui.services';
 import { addDays, downloadBlob, formatDate, shortDate, todayIso, toCsv } from '../../shared/utils/format';
@@ -20,7 +22,7 @@ const METRICS = [
 
 @Component({
   selector: 'app-reports',
-  imports: [TuiButton, Icon, EmptyState, LineChart, BarChart, Ring],
+  imports: [TuiButton, Icon, EmptyState, LineChart, BarChart, PageHeader, Combobox],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .controls { display: grid; gap: var(--space-3); grid-template-columns: minmax(14rem, 2fr) repeat(2, minmax(9rem, 1fr)); align-items: end; }
@@ -28,20 +30,20 @@ const METRICS = [
     .print-head { display: none; }
     @media print { .print-head { display: block; border-block-end: 2px solid #000; padding-block-end: .5rem; margin-block-end: 1rem; } .panel { break-inside: avoid; border-color: #bbb; } }
     .delta { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .pct-big { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-inline-end: .375rem; }
   `,
   template: `
     <div class="page">
-      <header class="page-header no-print">
-        <div><h1>Reportes</h1><p class="sub">Evolución antropométrica, cumplimiento y comparativas. El cumplimiento se reporta por separado de la evolución.</p></div>
-        <div class="actions">
-          <button tuiButton type="button" size="m" appearance="secondary" [disabled]="!patient()" (click)="exportCsv()"><app-icon name="download" [size]="18" /> Excel / CSV</button>
-          <button tuiButton type="button" size="m" [disabled]="!patient()" (click)="print()"><app-icon name="printer" [size]="18" /> Exportar PDF</button>
-        </div>
-      </header>
+      <app-page-header class="no-print" title="Reportes" sub="Evolución antropométrica, cumplimiento y comparativas. El cumplimiento se reporta por separado de la evolución.">
+        @if (patient()) {
+          <button tuiButton type="button" size="m" appearance="secondary" (click)="exportCsv()"><app-icon name="download" [size]="18" /> Excel / CSV</button>
+          <button tuiButton type="button" size="m" (click)="print()"><app-icon name="printer" [size]="18" /> Exportar PDF</button>
+        }
+      </app-page-header>
 
       <section class="panel no-print" aria-label="Parámetros del reporte">
         <div class="controls">
-          <div class="field"><label for="r-p">Paciente</label><select id="r-p" class="select" (change)="patientIdSel.set($any($event.target).value)"><option value="">Selecciona un paciente…</option>@for (p of patientList(); track p.id) { <option [value]="p.id" [selected]="p.id === patientId()">{{ name(p.id) }}</option> }</select></div>
+          <app-combobox label="Paciente" placeholder="Busca un paciente…" [options]="patientOptions()" [value]="patientId()" (valueChange)="patientIdSel.set($event)" />
           <div class="field"><label for="r-f">Desde</label><input id="r-f" class="input" type="date" [value]="from()" (change)="from.set($any($event.target).value)" /></div>
           <div class="field"><label for="r-t">Hasta</label><input id="r-t" class="input" type="date" [value]="to()" [max]="today" (change)="to.set($any($event.target).value)" /></div>
         </div>
@@ -57,14 +59,14 @@ const METRICS = [
         @if (!rangeInvalid()) {
           <div class="grid grid--2">
             <section class="panel" aria-labelledby="h-cum">
-              <h2 id="h-cum" class="panel-head" style="font-size: 1.125rem">Cumplimiento del periodo</h2>
+              <h2 id="h-cum" class="panel-head t-md">Cumplimiento del periodo</h2>
               @if (overall().planned) {
-                <div class="row"><app-ring [pct]="overall().pct ?? 0" label="cumplido" />
-                  <div><p><strong>{{ overall().done }}</strong> de {{ overall().planned }} comidas realizadas</p><p class="small muted">{{ overall().skipped }} omitidas · {{ overall().pending }} sin registro</p><p class="small muted">Criterio: realizadas ÷ programadas hasta hoy.</p></div></div>
+                <div class="stack--s"><p><span class="pct-big">{{ overall().pct }} %</span> <span class="muted">cumplido</span></p><div class="meter" role="img" [attr.aria-label]="overall().pct + '% de cumplimiento'"><span [style.inline-size.%]="overall().pct ?? 0"></span></div>
+                  <p><strong>{{ overall().done }}</strong> de {{ overall().planned }} comidas realizadas</p><p class="small muted">{{ overall().skipped }} no comidas · {{ overall().pending }} sin registro</p><p class="small muted">Criterio: realizadas ÷ programadas hasta hoy.</p></div>
               } @else { <app-empty icon="calendar" title="Sin comidas programadas" text="No hay planes publicados en este periodo." /> }
             </section>
             <section class="panel" aria-labelledby="h-obj">
-              <h2 id="h-obj" class="panel-head" style="font-size: 1.125rem">Progreso respecto al objetivo</h2>
+              <h2 id="h-obj" class="panel-head t-md">Progreso respecto al objetivo</h2>
               <p><strong>{{ progress().label }}</strong></p><p class="muted">{{ progress().detail }}</p>
               @if (progress().pct !== null) { <div class="meter" role="img" [attr.aria-label]="progress().pct + '% de avance estimado'"><span [style.inline-size.%]="progress().pct"></span></div><p class="small muted">Avance estimado {{ progress().pct }} % (orientativo; no sustituye tu valoración clínica).</p> }
             </section>
@@ -82,19 +84,19 @@ const METRICS = [
           </section>
 
           <section class="panel" aria-labelledby="h-wk">
-            <h2 id="h-wk" class="panel-head" style="font-size: 1.125rem">Cumplimiento semanal (comidas programadas vs realizadas)</h2>
+            <h2 id="h-wk" class="panel-head t-md">Cumplimiento semanal (comidas programadas vs realizadas)</h2>
             <app-bar-chart [data]="weekly()" aLabel="Programadas" bLabel="Realizadas" title="Cumplimiento semanal" />
           </section>
 
           <section class="panel" aria-labelledby="h-kc">
-            <h2 id="h-kc" class="panel-head" style="font-size: 1.125rem">Energía planeada frente a registrada (kcal por día)</h2>
+            <h2 id="h-kc" class="panel-head t-md">Energía planeada frente a registrada (kcal por día)</h2>
             <app-bar-chart [data]="energy()" aLabel="Planeada" bLabel="Registrada" title="Energía planeada frente a registrada" />
             <p class="small muted">"Registrada" suma la energía de los platillos marcados como realizados; no mide porciones reales consumidas.</p>
           </section>
         }
 
         <section class="panel no-print" aria-labelledby="h-cmp">
-          <h2 id="h-cmp" class="panel-head" style="font-size: 1.125rem">Comparativa entre periodos</h2>
+          <h2 id="h-cmp" class="panel-head t-md">Comparativa entre periodos</h2>
           <p class="small muted">Periodo A: {{ fd(cmpA().from) }} – {{ fd(cmpA().to) }} (anterior de igual duración) · Periodo B: {{ fd(from()) }} – {{ fd(to()) }}</p>
           <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Indicador</th><th scope="col" class="num">Periodo A</th><th scope="col" class="num">Periodo B</th><th scope="col" class="num">Cambio</th></tr></thead><tbody>
             <tr><td>Cumplimiento</td><td class="num">{{ cmp().a.compliance.pct ?? '—' }}%</td><td class="num">{{ cmp().b.compliance.pct ?? '—' }}%</td><td class="num delta">{{ cmpDelta() }}</td></tr>
@@ -130,6 +132,7 @@ export class Reports {
   protected readonly fd = formatDate;
 
   protected readonly patientList = computed(() => this.patients.all());
+  protected readonly patientOptions = computed(() => this.patientList().map((p) => ({ id: p.id, label: this.data.patientName(p.id), hint: p.profile.email })));
   protected readonly patient = computed(() => (this.data.version(), this.patients.get(this.patientId())));
   protected readonly brand = computed(() => this.data.db().settings.brand);
   protected readonly rangeInvalid = computed(() => this.from() > this.to());

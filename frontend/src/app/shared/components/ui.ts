@@ -30,7 +30,7 @@ export class EmptyState {
   selector: 'app-skeleton',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div role="status" aria-label="Cargando" style="display: grid; gap: .75rem; padding: 1rem 1.25rem">
+    <div class="u-skel-stack" role="status" aria-label="Cargando">
       @for (r of rows(); track r) { <span class="skeleton" [style.block-size]="height()" [style.inline-size]="r % 3 === 0 ? '70%' : '100%'"></span> }
       <span class="visually-hidden">Cargando…</span>
     </div>
@@ -91,7 +91,7 @@ export class SearchBox {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (total() > 0) {
-      <nav class="row row--between" aria-label="Paginación" style="padding: .75rem 1.25rem">
+      <nav class="row row--between u-pad-pager" aria-label="Paginación">
         <p class="small muted" aria-live="polite">Mostrando {{ from() }}–{{ to() }} de {{ total() }}</p>
         <div class="row">
           <button tuiButton type="button" appearance="secondary" size="s" [disabled]="page() <= 1" (click)="pageChange.emit(page() - 1)"><app-icon name="chevron-left" [size]="16" /> Anterior</button>
@@ -159,4 +159,36 @@ export class AlertItem {
   readonly link = input(true, { transform: booleanAttribute });
   protected readonly meta = computed(() => LEVEL[this.alert().level]);
   protected readonly dateLabel = computed(() => (this.alert().date ? shortDate(this.alert().date!) : ''));
+}
+
+// ---------- Fila compacta de alerta (tablero) ----------
+@Component({
+  selector: 'app-alert-row',
+  imports: [Icon, RouterLink],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    .row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .5rem .75rem; align-items: start; padding: .625rem 0; }
+    .row p { margin: 0; }
+    .when { color: var(--muted); font-size: .8125rem; }
+  `,
+  template: `
+    <div class="row">
+      <span class="badge" [class]="'badge badge--' + (level() === 'critical' ? 'crit' : level() === 'warning' ? 'warn' : 'info')"><app-icon [name]="level() === 'critical' ? 'alert' : level() === 'warning' ? 'alert-circle' : 'info'" [size]="14" />{{ label() }}</span>
+      <div>
+        <p><strong>{{ title() }}</strong></p>
+        @if (reason()) { <p class="small muted">{{ reason() }}</p> }
+        @if (dates()) { <p class="when">{{ dates() }}</p> }
+      </div>
+      @if (planId()) { <a class="small" [routerLink]="['/planes', planId()]" [queryParams]="firstDate() ? { fecha: firstDate() } : null">Revisar</a> }
+    </div>
+  `,
+})
+export class AlertRow {
+  readonly level = input.required<NutriAlert['level']>();
+  readonly title = input.required<string>();
+  readonly reason = input('');
+  readonly dates = input('');
+  readonly planId = input<string | undefined>(undefined);
+  readonly firstDate = input<string | undefined>(undefined);
+  protected readonly label = computed(() => (this.level() === 'critical' ? 'Crítica' : this.level() === 'warning' ? 'Advertencia' : 'Aviso'));
 }

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, DestroyRef } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
 import { AuthService } from '../auth/auth.service';
@@ -32,9 +32,9 @@ import { formatDateTime } from '../../shared/utils/format';
   template: `
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
     <header class="app-topbar">
-      @if (brand().logoDataUrl) { <img class="logo" [src]="brand().logoDataUrl" alt="" /> } @else { <span class="logo" aria-hidden="true">{{ brand().businessName.trim()[0] }}</span> }
+      @if (brand().logoDataUrl) { <img class="logo" [src]="brand().logoDataUrl" alt="" /> } @else { <img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> }
       <div class="name">{{ brand().businessName }}<small>Hola, {{ firstName() }}</small></div>
-      <span class="grow" style="flex: 1"></span>
+      <span class="grow grow-1"></span>
       <app-theme-toggle />
       <button tuiButton type="button" appearance="flat" size="s" (click)="logout()"><app-icon name="log-out" [size]="16" /> Salir</button>
     </header>
@@ -74,6 +74,9 @@ export class PatientShell {
   ];
 
   constructor() {
+    // Los avisos suben por encima de la barra de navegación inferior.
+    document.body.classList.add('has-bottom-nav');
+    inject(DestroyRef).onDestroy(() => document.body.classList.remove('has-bottom-nav'));
     // Modo API: plan vigente, seguimiento, mediciones y documentos de la paciente, desde /me/*.
     if (isApiMode()) {
       this.app.load().subscribe({ error: () => undefined });

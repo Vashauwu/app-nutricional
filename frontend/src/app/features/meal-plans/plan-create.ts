@@ -52,14 +52,14 @@ const dateOrder = (g: AbstractControl): ValidationErrors | null => {
           <label class="opt"><input type="radio" formControlName="mode" value="custom" /><strong>Periodo personalizado</strong><span class="small muted">Elige inicio y término</span></label>
         </fieldset>
         @if (form.controls.mode.value === 'weeks') {
-          <div class="field" style="max-inline-size: 14rem"><label for="np-w">Semanas</label><select id="np-w" class="select" formControlName="weeks"><option [value]="2">2 semanas</option><option [value]="3">3 semanas</option><option [value]="4">4 semanas</option></select></div>
+          <div class="field maxw-14"><label for="np-w">Semanas</label><select id="np-w" class="select" formControlName="weeks"><option [value]="2">2 semanas</option><option [value]="3">3 semanas</option><option [value]="4">4 semanas</option></select></div>
         }
         <div class="form-grid">
           <div class="field"><label for="np-s">Fecha de inicio</label><input id="np-s" class="input" type="date" formControlName="start" /></div>
           @if (form.controls.mode.value === 'custom') {
             <div class="field"><label for="np-e">Fecha de término</label><input id="np-e" class="input" type="date" formControlName="end" /></div>
           } @else {
-            <div class="field"><span class="label">Término</span><output class="input" style="display: flex; align-items: center">{{ computedEnd() }}</output></div>
+            <div class="field"><span class="label">Término</span><output class="input flex-center">{{ computedEnd() }}</output></div>
           }
         </div>
         @if (form.errors?.['dateOrder']) { <p class="error" role="alert">La fecha de término debe ser posterior al inicio.</p> }

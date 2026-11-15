@@ -147,6 +147,7 @@ function buildDishes(foods: FoodView[], editionId: Id): Dish[] {
           id: `${s.id}-v1`,
           versionNumber: 1,
           description: s.description,
+          image: { dataUrl: `/seed/dishes/${s.id.slice(2)}.webp`, alt: `${s.name}: fotografía de ejemplo (imagen sintética de prueba)` },
           recipeMode: s.mode ?? 'structured',
           instructionsText: s.free ?? '',
           steps: s.steps,
@@ -368,7 +369,7 @@ function buildTracking(plans: MealPlan[], dishes: Dish[]): TrackingEntry[] {
             itemId: item.id, dishId: item.dishId, dishVersion: item.dishVersion, dishName: dish.name, status,
             recordedAt: new Date(`${day.date}T${{ Desayuno: '08:10', 'Colación matutina': '11:00', Comida: '14:20', 'Colación vespertina': '17:30', Cena: '20:15' }[slot.name] ?? '12:00'}:00`).toISOString(),
             patientComment: hasComment ? comments[Math.floor(rnd() * comments.length)] : '',
-            photos: [], thread: [], needsReview: recent && (hasComment || status === 'skipped'),
+            photos: status === 'done' && rnd() < 0.2 ? [{ id: uid('ph'), dataUrl: `/seed/dishes/${item.dishId.slice(2)}.webp`, alt: `Foto de ${dish.name} enviada por la paciente`, uploadedAt: new Date(`${day.date}T12:00:00`).toISOString() }] : [], thread: [], needsReview: recent && (hasComment || status === 'skipped'),
           });
         }
       }
@@ -419,7 +420,7 @@ function buildSettings(): Settings {
   return {
     brand: {
       businessName: 'Nutrición Integral', tagline: 'Alimentación consciente, resultados sostenibles',
-      primary: '#514653', secondary: '#DDD6F2', phone: '55 5555 0100', email: 'contacto@nutricion-integral.example',
+      primary: '#4E344C', secondary: '#DDD6F2', phone: '55 5555 0100', email: 'contacto@nutricion-integral.example',
       address: 'Av. Ejemplo 123, Col. Centro, CDMX', credentials: 'Licenciada en Nutrición · Esp. en Nutrición Clínica', licenseNumber: 'Cédula 1234567 (ejemplo)',
     },
     region: { timezone: 'America/Mexico_City', weekStart: 'mon' },

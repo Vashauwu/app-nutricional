@@ -12,7 +12,7 @@ import { Modal } from '../../shared/components/modal';
 import { Badge, EmptyState } from '../../shared/components/ui';
 import { downloadBlob, formatBytes, formatDate, formatDateTime, todayIso } from '../../shared/utils/format';
 
-// ---------- Notas privadas (§3.2) ----------
+// ---------- Notas privadas ----------
 @Component({
   selector: 'app-notes-tab',
   imports: [ReactiveFormsModule, TuiButton, Icon, EmptyState],
@@ -57,7 +57,7 @@ export class NotesTab {
   }
 }
 
-// ---------- Documentos clínicos PDF (§3.3, §18.4) ----------
+// ---------- Documentos clínicos PDF ----------
 function placeholderPdf(title: string): string {
   const text = `(${title.replace(/[()\\]/g, '')} - documento de ejemplo) Tj`;
   const stream = `BT /F1 16 Tf 72 760 Td ${text} ET`;
@@ -74,7 +74,7 @@ function placeholderPdf(title: string): string {
         <div class="panel-head"><h2 id="h-doc">Documentos clínicos</h2><button tuiButton type="button" size="s" (click)="openUpload()"><app-icon name="upload" [size]="16" /> Subir PDF</button></div>
         <div>
           <div class="meter" role="img" [attr.aria-label]="quota().pct + '% de la cuota usada'"><span [style.inline-size.%]="quota().pct"></span></div>
-          <p class="small muted" style="margin-block-start: .25rem">{{ bytes(quota().used) }} de {{ bytes(quota().quota) }} · Límite por PDF: {{ bytes(maxPdf()) }}</p>
+          <p class="small muted u-mt-1">{{ bytes(quota().used) }} de {{ bytes(quota().quota) }} · Límite por PDF: {{ bytes(maxPdf()) }}</p>
         </div>
       </section>
       <section class="panel panel--flush" aria-label="Lista de documentos">
@@ -119,7 +119,7 @@ function placeholderPdf(title: string): string {
     <app-modal [open]="!!preview()" (closed)="preview.set(null)" [title]="preview()?.name ?? 'Vista previa'" size="wide">
       @if (preview(); as d) {
         <div class="callout"><app-icon name="info" /><div class="callout-body">Vista previa simulada. Con el backend real se muestra mediante una URL firmada de corta duración.</div></div>
-        <div class="panel" style="min-block-size: 18rem; place-items: center; text-align: center"><app-icon name="file-text" [size]="48" /><h3>{{ d.name }}</h3><p class="muted">{{ cat[d.category] }} · {{ fd(d.documentDate) }} · {{ bytes(d.sizeBytes) }}</p><p>{{ d.description }}</p></div>
+        <div class="panel u-empty-panel"><app-icon name="file-text" [size]="48" /><h3>{{ d.name }}</h3><p class="muted">{{ cat[d.category] }} · {{ fd(d.documentDate) }} · {{ bytes(d.sizeBytes) }}</p><p>{{ d.description }}</p></div>
       }
     </app-modal>
   `,
@@ -214,7 +214,7 @@ export class DocumentsTab {
   }
 }
 
-// ---------- Consentimientos (§4.1) ----------
+// ---------- Consentimientos ----------
 @Component({
   selector: 'app-consents-tab',
   imports: [TuiButton, Icon, Modal, Badge],
@@ -251,7 +251,7 @@ export class DocumentsTab {
           } @empty { <tr><td colspan="6" class="muted">Sin aceptaciones registradas.</td></tr> }
         </tbody></table></div>
       </section>
-      <p class="small muted">Los textos son marcadores; deben validarse con asesoría jurídica antes de producción (§4.1, §25.1).</p>
+      <p class="small muted">Los textos son marcadores; deben validarse con asesoría jurídica antes de producción.</p>
     </div>
 
     <app-modal [(open)]="open" title="Registrar aceptación presencial" size="narrow">
