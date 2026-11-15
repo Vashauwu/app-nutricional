@@ -82,7 +82,7 @@ export class TrackingFeed {
   protected readonly page = signal(1);
   protected readonly retry = signal(0);
   protected readonly kinds: { id: Kind; label: string }[] = [
-    { id: '', label: 'Todo' }, { id: 'review', label: 'Por revisar' }, { id: 'photos', label: 'Con fotos' }, { id: 'comments', label: 'Con comentarios' }, { id: 'skipped', label: 'Omitidas' },
+    { id: '', label: 'Todo' }, { id: 'review', label: 'Por revisar' }, { id: 'photos', label: 'Con fotos' }, { id: 'comments', label: 'Con comentarios' }, { id: 'skipped', label: 'No las comió' },
   ];
   protected readonly patientsList = computed(() => (this.data.version(), this.patients.all()));
   protected readonly toReview = computed(() => this.data.db().tracking.filter((t) => t.needsReview).length);

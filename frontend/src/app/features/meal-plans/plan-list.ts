@@ -11,7 +11,7 @@ import { MealPlan, PLAN_STATUS_LABEL, PlanStatus } from '../../shared/models/dom
 import { Badge, EmptyState, LoadError, PLAN_TONE, Pagination, SearchBox, Skeleton } from '../../shared/components/ui';
 import { Icon } from '../../shared/components/icon';
 import { PageHeader } from '../../shared/components/page-header';
-import { Combobox } from '../../shared/components/combobox';
+import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Loadable, Page, loadable } from '../../shared/utils/loadable';
 import { formatDate } from '../../shared/utils/format';
 
@@ -39,7 +39,7 @@ import { formatDate } from '../../shared/utils/format';
         <section class="panel panel--flush" aria-label="Listado de planes">
           <div class="filters">
             <app-search label="Buscar planes" placeholder="Nombre del plan o paciente" [value]="search()" (valueChange)="search.set($event); page.set(1)" />
-            <div class="field"><label class="visually-hidden" for="pl-st">Estado</label><select id="pl-st" class="select" [value]="statusValue()" (change)="onStatus($any($event.target).value)"><option value="">Todos los estados</option>@for (s of statuses; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }</select></div>
+            <app-combobox label="Estado" [hideLabel]="true" [allowAll]="true" allLabel="Todos los estados" placeholder="Todos los estados" [options]="statusOptions" [value]="statusValue()" (valueChange)="onStatus($any($event))" />
             <app-combobox label="Paciente" [hideLabel]="true" [allowAll]="true" allLabel="Todos los pacientes" placeholder="Todos los pacientes" [options]="patientOptions()" [value]="patientId()" (valueChange)="patientId.set($event); page.set(1)" />
             <div class="field"><label for="pl-f" class="small">Desde</label><input id="pl-f" class="input" type="date" (change)="from.set($any($event.target).value); page.set(1)" /></div>
             <div class="field"><label for="pl-t" class="small">Hasta</label><input id="pl-t" class="input" type="date" (change)="to.set($any($event.target).value); page.set(1)" /></div>
@@ -60,12 +60,12 @@ import { formatDate } from '../../shared/utils/format';
         </section>
       } @else {
         <section aria-label="Plantillas">
-          <p class="small muted" style="margin-block-end: var(--space-3)">Modificar una plantilla no cambia los planes ya asignados: cada plan conserva su propia copia.</p>
+          <p class="small muted u-mb-3">Modificar una plantilla no cambia los planes ya asignados: cada plan conserva su propia copia.</p>
           <div class="grid grid--3">
             @for (t of templates(); track t.id) {
               <article class="tpl">
                 <div class="row"><app-badge [tone]="t.scope === 'global' ? 'info' : 'accent'">{{ t.scope === 'global' ? 'Global' : 'Paciente: ' + patientName(t.patientId ?? '') }}</app-badge><span class="small muted">{{ t.days.length }} día(s)</span></div>
-                <h2 style="font-size: 1.0625rem; font-family: var(--nutri-font-ui)">{{ t.name }}</h2>
+                <h2 class="u-h2-ui">{{ t.name }}</h2>
                 <p class="small muted">{{ t.description }}</p>
                 <div class="row"><a tuiButton size="s" routerLink="/planes/nuevo" [queryParams]="{ plantilla: t.id }">Usar</a><button tuiButton type="button" size="s" appearance="secondary" (click)="dupTpl(t.id)">Duplicar</button><button tuiButton type="button" size="s" appearance="flat" (click)="delTpl(t.id, t.name)">Eliminar</button></div>
               </article>
@@ -95,6 +95,7 @@ export class PlanList {
   protected readonly page = signal(1);
   protected readonly retry = signal(0);
   protected readonly statuses = Object.entries(PLAN_STATUS_LABEL);
+  protected readonly statusOptions: ComboOption[] = this.statuses.map(([id, label]) => ({ id, label }));
   protected readonly label = PLAN_STATUS_LABEL;
   protected readonly tone = PLAN_TONE;
   protected readonly fd = formatDate;

@@ -98,7 +98,7 @@ function gauge(r: LabResult): { from: number; width: number; mark: number } | nu
 
       <section class="panel panel--flush" aria-labelledby="h-hist-lab">
         <div class="panel-head"><h2 id="h-hist-lab">Estudios capturados</h2><span class="small muted">{{ reports().length }} en total</span></div>
-        <div class="stack--s" style="padding: 0 var(--space-4) var(--space-4)">
+        <div class="stack--s u-pad-b-4">
           @for (r of reports(); track r.id) {
             <details class="rep">
               <summary><strong>{{ fd(r.takenAt) }}</strong><span class="muted">{{ r.labName || 'Laboratorio sin nombre' }}</span><span class="small muted">{{ r.results.length }} análisis</span><span class="grow"></span>@if (outOfRange(r)) { <app-badge tone="warn" icon="alert-circle">{{ outOfRange(r) }} fuera de rango</app-badge> }</summary>
@@ -145,7 +145,7 @@ function gauge(r: LabResult): { from: number; width: number; mark: number } | nu
               <div class="field"><label class="hdr" [for]="'r-u' + i">Unidad</label><input [id]="'r-u' + i" class="input" formControlName="unit" /></div>
               <div class="field"><label class="hdr" [for]="'r-a' + i">Ref. mín.</label><input [id]="'r-a' + i" class="input" inputmode="decimal" formControlName="refMin" /><app-field-error [control]="row.controls.refMin" /></div>
               <div class="field"><label class="hdr" [for]="'r-b' + i">Ref. máx.</label><input [id]="'r-b' + i" class="input" inputmode="decimal" formControlName="refMax" /><app-field-error [control]="row.controls.refMax" /></div>
-              <button type="button" class="icon-btn icon-btn--s" style="margin-block-start: 1.5rem" [attr.aria-label]="'Quitar fila ' + (i + 1)" (click)="removeRow(i)"><app-icon name="trash" [size]="18" /></button>
+              <button type="button" class="icon-btn icon-btn--s u-mt-6" [attr.aria-label]="'Quitar fila ' + (i + 1)" (click)="removeRow(i)"><app-icon name="trash" [size]="18" /></button>
             </div>
           }
         </div>

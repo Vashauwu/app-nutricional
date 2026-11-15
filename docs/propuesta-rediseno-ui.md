@@ -338,14 +338,14 @@ Fase 0 → 1 → 3 → 2 → 4. La app de la paciente (Fase 3) va antes del edit
 
 ## 10. Estado de la implementación (15 nov 2026)
 
-Verificado con axe-core (WCAG 2.2 AA) sobre las pantallas principales en claro, oscuro y móvil, más 31 pruebas unitarias y el build de producción (inicial: 154 kB transferidos).
+Verificado con axe-core (WCAG 2.2 AA) sobre las pantallas principales en claro, oscuro y móvil, más 32 pruebas unitarias y el build de producción (inicial: 154 kB transferidos).
 
 | Fase | Punto | Estado |
 |---|---|---|
 | 0 | `PRODUCT.md` y `DESIGN.md` | Hecho |
 | 0 | Tokens (`--page-max`, `--field-h`, `--brand-ink`) | Hecho |
 | 0 | `PageHeader` con 1 acción primaria + menú «Más» | Hecho (Inicio, Pacientes, Planes, Consultas, Seguimiento, Platillos, Catálogo, Configuración, Reportes, editor de platillo) |
-| 0 | Reemplazar estilos en línea | **Parcial**: de 126 a 43. Los restantes son anchos y alturas puntuales |
+| 0 | Reemplazar estilos en línea | Hecho: 0 estilos en línea estáticos (quedan solo enlaces dinámicos `[style.x]`) |
 | 0 | `ThemeMenu` con etiquetas | Hecho |
 | 1 | Inicio: indicadores neutros, alertas por paciente sin repeticiones, «Por revisar» | Hecho |
 | 1 | Seguimiento: ancho consistente, «Responder» desplegable, acciones en lote | Hecho |
@@ -354,17 +354,16 @@ Verificado con axe-core (WCAG 2.2 AA) sobre las pantallas principales en claro, 
 | 1 | Catálogo: búsqueda de ancho flexible, chips en una fila | Hecho |
 | 2 | Expediente: 10 secciones → 5 grupos, «Más» con «Desactivar» apartada | Hecho |
 | 2 | Editor de plan: modo enfoque, vista Día por defecto < 1500 px, barra en grupos, alertas con filtros, diferencia de kcal en texto | Hecho |
-| 2 | Tablas → tarjetas en móvil | Hecho en Pacientes y Planes |
+| 2 | Tablas → tarjetas en móvil | Hecho en todas: el servicio `TableCardsService` etiqueta las celdas desde el encabezado y aplica `table--cards` bajo 48 rem (`table--keep` lo omite) |
 | 3 | App de la paciente: «Siguiente comida», lo registrado plegado, «Deshacer», «No la comí» | Hecho |
 | 3 | Semana: estado con icono + texto y vista previa de platillos | Hecho |
 | 3 | Progreso: gráficas al ancho real (texto de 12 px), estados vacíos | Hecho |
-| 3 | Fotografía real de platillos | Hecho en el código (usa la foto si existe); **faltan las fotos** |
+| 3 | Fotografía real de platillos | Hecho. Hay 15 fotos **sintéticas de prueba** en `frontend/public/seed/dishes/` (una por platillo de ejemplo, también usadas en el seguimiento). Sustitúyelas por fotos reales cuando las haya |
 | 4 | Búsqueda global Ctrl/Cmd + K, densidad de tablas, avisos con acción | Hecho |
 | 4 | Movimiento con significado (barras, menús, avisos) | Hecho |
 | 4 | Auditoría de accesibilidad | Hecho; corrigió el calendario de Consultas y la lista vacía de ingredientes |
 
-**Pendiente o decidido a medias**
-- «No la comí» está en la app de la paciente; el panel de la nutrióloga sigue diciendo «Omitida». **Falta la aprobación de la nutrióloga** (decisión 3).
-- La tabla de Seguimiento y las del expediente no pasan a tarjetas (solo Pacientes y Planes).
-- Los filtros de estado, objetivo y categoría siguen siendo `select` nativos.
+**Decisiones tomadas al cerrar**
+- «No la comí» ahora también se lee así en el panel de la nutrióloga («No la comió» / filtro «No las comió»). Es solo texto: el estado interno sigue siendo `skipped`.
+- Los filtros de estado, objetivo, categoría, grupo SMAE y origen usan el selector con búsqueda. Los `select` nativos se conservan en formularios con 2–6 opciones fijas (mejor experiencia en móvil).
 - El color de marca por defecto cambió a `#4E344C` para instalaciones nuevas; las existentes conservan el que ya guardaron en Configuración.

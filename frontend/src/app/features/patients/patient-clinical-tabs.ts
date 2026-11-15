@@ -352,7 +352,7 @@ export class ClinicalTab {
           <div class="chips">
             @for (p of g.items; track p.id) {
               <span class="badge" [class]="'badge badge--' + g.tone"><span>{{ p.foodName }}</span>
-                <button type="button" class="icon-btn icon-btn--s" style="inline-size: 1.5rem; block-size: 1.5rem" [attr.aria-label]="'Quitar ' + p.foodName" (click)="remove(p)"><app-icon name="x" [size]="14" /></button></span>
+                <button type="button" class="icon-btn icon-btn--s u-box-6" [attr.aria-label]="'Quitar ' + p.foodName" (click)="remove(p)"><app-icon name="x" [size]="14" /></button></span>
             }
           </div>
         </div>

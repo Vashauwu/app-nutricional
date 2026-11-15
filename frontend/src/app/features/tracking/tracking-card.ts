@@ -46,7 +46,7 @@ import { formatDate, formatDateTime } from '../../shared/utils/format';
         }
         @if (showPatient()) { <a [routerLink]="['/pacientes', entry().patientId]"><strong>{{ patientName() }}</strong></a> · }
         <span>{{ fd(entry().date) }} · {{ entry().slotName }}</span>
-        <app-badge [tone]="entry().status === 'done' ? 'ok' : 'warn'" [icon]="entry().status === 'done' ? 'check' : 'skip'">{{ entry().status === 'done' ? 'Realizada' : 'Omitida' }}</app-badge>
+        <app-badge [tone]="entry().status === 'done' ? 'ok' : 'warn'" [icon]="entry().status === 'done' ? 'check' : 'skip'">{{ entry().status === 'done' ? 'Realizada' : 'No la comió' }}</app-badge>
         @if (entry().needsReview) { <app-badge tone="accent">Por revisar</app-badge> }
         <span class="grow"></span><span class="small muted">{{ fdt(entry().recordedAt) }}</span>
       </div>

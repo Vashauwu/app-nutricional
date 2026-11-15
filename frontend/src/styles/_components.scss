@@ -908,3 +908,48 @@ body.has-bottom-nav {
   background: transparent;
   object-fit: contain;
 }
+
+// Utilidades extra (antes estilos en línea)
+.u-ai-start-wrap { align-items: flex-start; flex-wrap: wrap; }
+.u-avatar-photo { max-inline-size: 8rem; border-radius: var(--radius-m); }
+.u-box-6 { inline-size: 1.5rem; block-size: 1.5rem; }
+.u-brand-name { font-size: 1.25rem; font-family: var(--nutri-font-display); }
+.u-brand-rule { border: 0; border-block-start: 3px solid; inline-size: 100%; }
+.u-c-info { color: var(--info); }
+.u-c-warn { color: var(--warn); }
+.u-center-pb-4 { justify-content: center; padding-block-end: var(--space-4); }
+.u-col-full { grid-column: 1 / -1; }
+.u-contents { display: contents; }
+.u-corner-tr { position: absolute; inset-block-start: 0.5rem; inset-inline-end: 0.5rem; }
+.u-dl-grid { display: grid; grid-template-columns: auto 1fr; gap: 0.375rem var(--space-4); margin: 0; }
+.u-dl-grid-s { display: grid; grid-template-columns: auto 1fr; gap: 0.25rem var(--space-4); margin: 0; }
+.u-empty-panel { min-block-size: 18rem; place-items: center; text-align: center; }
+.u-gap-0 { gap: 0; }
+.u-gap-1 { gap: 0.25rem; }
+.u-gap-2 { gap: var(--space-2); }
+.u-h-18 { block-size: 18rem; }
+.u-h-4 { block-size: 4rem; }
+.u-h1-lg { font-size: 1.75rem; }
+.u-h1-md { font-size: 1.625rem; }
+.u-h2-ui { font-size: 1.0625rem; font-family: var(--nutri-font-ui); }
+.u-jc-stretch { justify-content: stretch; }
+.u-list-tight { margin: 0; padding-inline-start: 1rem; }
+.u-mb-2 { margin-block-end: var(--space-2); }
+.u-mb-3 { margin-block-end: var(--space-3); }
+.u-minh-10 { min-block-size: 10rem; }
+.u-minh-3 { min-block-size: 3rem; }
+.u-minh-4 { min-block-size: 4rem; }
+.u-ms-2 { margin-inline-start: 0.5rem; }
+.u-mt-1 { margin-block-start: 0.25rem; }
+.u-mt-6 { margin-block-start: 1.5rem; }
+.u-num-input { max-inline-size: 7rem; text-align: end; }
+.u-pad-3-4 { padding: var(--space-3) var(--space-4); }
+.u-pad-b-4 { padding: 0 var(--space-4) var(--space-4); }
+.u-pad-pager { padding: 0.75rem 1.25rem; }
+.u-plain-link { text-decoration: none; color: inherit; }
+.u-pt-3 { padding-block-start: var(--space-3); }
+.u-skel-stack { display: grid; gap: 0.75rem; padding: 1rem 1.25rem; }
+.u-skel-tile { block-size: 6.5rem; border-radius: var(--radius-m); }
+.u-sw-soft { background: var(--chart-soft); border: 1.5px solid var(--chart-1); }
+.u-sw-solid { background: var(--chart-1); }
+.u-text-btn { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; color: inherit; }

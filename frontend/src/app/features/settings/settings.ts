@@ -87,9 +87,9 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
             <aside class="preview" aria-label="Vista previa de la marca">
               <p class="small muted"><strong>Vista previa</strong> (PDF y encabezado)</p>
               <div class="row">@if (logo()) { <img class="pv-logo" [src]="logo()" alt="" /> } @else { <span class="pv-logo" [style.background]="brandForm.controls.secondary.value">{{ initial() }}</span> }
-                <div><strong style="font-size: 1.25rem; font-family: var(--nutri-font-display)">{{ brandForm.controls.businessName.value }}</strong><p class="small muted">{{ brandForm.controls.tagline.value }}</p></div></div>
-              <hr style="border: 0; border-block-start: 3px solid; inline-size: 100%" [style.border-color]="brandForm.controls.primary.value" />
-              @if (photo()) { <img [src]="photo()" alt="Fotografía profesional" style="max-inline-size: 8rem; border-radius: var(--radius-m)" /> }
+                <div><strong class="u-brand-name">{{ brandForm.controls.businessName.value }}</strong><p class="small muted">{{ brandForm.controls.tagline.value }}</p></div></div>
+              <hr class="u-brand-rule" [style.border-color]="brandForm.controls.primary.value" />
+              @if (photo()) { <img class="u-avatar-photo" [src]="photo()" alt="Fotografía profesional" /> }
               <p class="small">{{ brandForm.controls.credentials.value }}<br />{{ brandForm.controls.licenseNumber.value }}</p>
               <p class="small muted">{{ brandForm.controls.phone.value }} · {{ brandForm.controls.email.value }}<br />{{ brandForm.controls.address.value }}</p>
             </aside>
@@ -98,7 +98,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
         @case ('region') {
           <form [formGroup]="regionForm" (ngSubmit)="saveRegion()" class="panel maxw-40" novalidate>
             <h2 class="panel-head t-md">Región y formato</h2>
-            <dl style="display: grid; grid-template-columns: auto 1fr; gap: .25rem var(--space-4); margin: 0"><dt class="muted">Idioma</dt><dd class="m-0">Español (México)</dd><dt class="muted">Moneda</dt><dd class="m-0">MXN</dd><dt class="muted">Unidades</dt><dd class="m-0">kg · cm · g · ml</dd><dt class="muted">Fecha</dt><dd class="m-0">DD/MM/AAAA</dd></dl>
+            <dl class="u-dl-grid-s"><dt class="muted">Idioma</dt><dd class="m-0">Español (México)</dd><dt class="muted">Moneda</dt><dd class="m-0">MXN</dd><dt class="muted">Unidades</dt><dd class="m-0">kg · cm · g · ml</dd><dt class="muted">Fecha</dt><dd class="m-0">DD/MM/AAAA</dd></dl>
             <div class="field"><label for="r-z">Zona horaria</label><select id="r-z" class="select" formControlName="timezone">@for (z of zones; track z) { <option [value]="z">{{ z }}</option> }</select></div>
             <div class="field"><label for="r-w">La semana inicia en</label><select id="r-w" class="select" formControlName="weekStart"><option value="mon">Lunes (propuesta inicial)</option><option value="sun">Domingo</option></select></div>
             <div class="form-actions"><button tuiButton type="submit" size="m">Guardar región</button></div>
@@ -121,7 +121,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
               <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Paciente</th><th scope="col">Uso</th><th scope="col" class="num">Cuota (MB)</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead><tbody>
                 @for (r of usage(); track r.id) {
                   <tr><td>{{ r.name }}</td><td class="minw-12"><div class="meter" role="img" [attr.aria-label]="r.pct + '% usado'"><span [style.inline-size.%]="r.pct" [style.background]="r.warn ? 'var(--warn)' : null"></span></div><span class="small muted">{{ bytes(r.used) }} ({{ r.pct }} %)@if (r.warn) { · <strong>cerca del límite</strong> }</span></td>
-                    <td class="num"><label class="visually-hidden" [for]="'q-' + r.id">Cuota de {{ r.name }} en MB</label><input [id]="'q-' + r.id" class="input" style="max-inline-size: 7rem; text-align: end" inputmode="decimal" [value]="r.quotaMb" #qi /></td>
+                    <td class="num"><label class="visually-hidden" [for]="'q-' + r.id">Cuota de {{ r.name }} en MB</label><input [id]="'q-' + r.id" class="input u-num-input" inputmode="decimal" [value]="r.quotaMb" #qi /></td>
                     <td><button tuiButton type="button" size="s" appearance="secondary" (click)="setQuota(r.id, qi.value)">Ampliar</button></td></tr>
                 }
               </tbody></table></div>

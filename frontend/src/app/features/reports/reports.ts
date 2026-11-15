@@ -62,7 +62,7 @@ const METRICS = [
               <h2 id="h-cum" class="panel-head t-md">Cumplimiento del periodo</h2>
               @if (overall().planned) {
                 <div class="stack--s"><p><span class="pct-big">{{ overall().pct }} %</span> <span class="muted">cumplido</span></p><div class="meter" role="img" [attr.aria-label]="overall().pct + '% de cumplimiento'"><span [style.inline-size.%]="overall().pct ?? 0"></span></div>
-                  <p><strong>{{ overall().done }}</strong> de {{ overall().planned }} comidas realizadas</p><p class="small muted">{{ overall().skipped }} omitidas · {{ overall().pending }} sin registro</p><p class="small muted">Criterio: realizadas ÷ programadas hasta hoy.</p></div>
+                  <p><strong>{{ overall().done }}</strong> de {{ overall().planned }} comidas realizadas</p><p class="small muted">{{ overall().skipped }} no comidas · {{ overall().pending }} sin registro</p><p class="small muted">Criterio: realizadas ÷ programadas hasta hoy.</p></div>
               } @else { <app-empty icon="calendar" title="Sin comidas programadas" text="No hay planes publicados en este periodo." /> }
             </section>
             <section class="panel" aria-labelledby="h-obj">

@@ -30,7 +30,7 @@ export class EmptyState {
   selector: 'app-skeleton',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div role="status" aria-label="Cargando" style="display: grid; gap: .75rem; padding: 1rem 1.25rem">
+    <div class="u-skel-stack" role="status" aria-label="Cargando">
       @for (r of rows(); track r) { <span class="skeleton" [style.block-size]="height()" [style.inline-size]="r % 3 === 0 ? '70%' : '100%'"></span> }
       <span class="visually-hidden">Cargando…</span>
     </div>
@@ -91,7 +91,7 @@ export class SearchBox {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (total() > 0) {
-      <nav class="row row--between" aria-label="Paginación" style="padding: .75rem 1.25rem">
+      <nav class="row row--between u-pad-pager" aria-label="Paginación">
         <p class="small muted" aria-live="polite">Mostrando {{ from() }}–{{ to() }} de {{ total() }}</p>
         <div class="row">
           <button tuiButton type="button" appearance="secondary" size="s" [disabled]="page() <= 1" (click)="pageChange.emit(page() - 1)"><app-icon name="chevron-left" [size]="16" /> Anterior</button>

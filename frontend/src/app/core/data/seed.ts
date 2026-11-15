@@ -147,6 +147,7 @@ function buildDishes(foods: FoodView[], editionId: Id): Dish[] {
           id: `${s.id}-v1`,
           versionNumber: 1,
           description: s.description,
+          image: { dataUrl: `/seed/dishes/${s.id.slice(2)}.webp`, alt: `${s.name}: fotografía de ejemplo (imagen sintética de prueba)` },
           recipeMode: s.mode ?? 'structured',
           instructionsText: s.free ?? '',
           steps: s.steps,
@@ -368,7 +369,7 @@ function buildTracking(plans: MealPlan[], dishes: Dish[]): TrackingEntry[] {
             itemId: item.id, dishId: item.dishId, dishVersion: item.dishVersion, dishName: dish.name, status,
             recordedAt: new Date(`${day.date}T${{ Desayuno: '08:10', 'Colación matutina': '11:00', Comida: '14:20', 'Colación vespertina': '17:30', Cena: '20:15' }[slot.name] ?? '12:00'}:00`).toISOString(),
             patientComment: hasComment ? comments[Math.floor(rnd() * comments.length)] : '',
-            photos: [], thread: [], needsReview: recent && (hasComment || status === 'skipped'),
+            photos: status === 'done' && rnd() < 0.2 ? [{ id: uid('ph'), dataUrl: `/seed/dishes/${item.dishId.slice(2)}.webp`, alt: `Foto de ${dish.name} enviada por la paciente`, uploadedAt: new Date(`${day.date}T12:00:00`).toISOString() }] : [], thread: [], needsReview: recent && (hasComment || status === 'skipped'),
           });
         }
       }

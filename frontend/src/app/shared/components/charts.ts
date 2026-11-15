@@ -192,8 +192,8 @@ export interface BarDatum {
         }
       </svg>
       <figcaption class="legend">
-        <span><i class="sw" style="background:var(--chart-soft);border:1.5px solid var(--chart-1)"></i>{{ aLabel() }}</span>
-        @if (bLabel()) { <span><i class="sw" style="background:var(--chart-1)"></i>{{ bLabel() }}</span> }
+        <span><i class="sw u-sw-soft"></i>{{ aLabel() }}</span>
+        @if (bLabel()) { <span><i class="sw u-sw-solid"></i>{{ bLabel() }}</span> }
       </figcaption>
     </figure>
   `,

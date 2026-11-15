@@ -51,7 +51,7 @@ import { FoodPicker } from './food-picker';
           <section class="panel" aria-labelledby="h-gen">
             <h2 id="h-gen" class="panel-head">Información general</h2>
             <div class="form-grid">
-              <div class="field" style="grid-column: 1 / -1"><label for="dn">Nombre del platillo</label><input id="dn" class="input" formControlName="name" maxlength="120" aria-describedby="dn-e" /><app-field-error id="dn-e" [control]="form.controls.name" /></div>
+              <div class="field u-col-full"><label for="dn">Nombre del platillo</label><input id="dn" class="input" formControlName="name" maxlength="120" aria-describedby="dn-e" /><app-field-error id="dn-e" [control]="form.controls.name" /></div>
               <div class="field"><label for="dc">Categoría</label><select id="dc" class="select" formControlName="category">@for (c of categories; track c) { <option [value]="c">{{ c }}</option> }</select></div>
               <div class="field"><label for="dsv">Porciones que rinde</label><input id="dsv" class="input" inputmode="decimal" formControlName="servings" aria-describedby="dsv-e" /><app-field-error id="dsv-e" [control]="form.controls.servings" /></div>
               <div class="field"><label for="dpt">Tiempo de preparación (min)</label><input id="dpt" class="input" type="number" min="0" formControlName="prepTimeMinutes" /></div>
@@ -98,16 +98,16 @@ import { FoodPicker } from './food-picker';
             <div class="panel-head"><h2 id="h-rec">Preparación</h2>
               <div class="seg" role="group" aria-label="Modalidad de receta"><button type="button" [attr.aria-pressed]="mode() === 'structured'" (click)="setMode('structured')">Receta estructurada</button><button type="button" [attr.aria-pressed]="mode() === 'free'" (click)="setMode('free')">Texto libre</button></div></div>
             @if (mode() === 'structured') {
-              <ol class="list-plain" style="gap: var(--space-2)">
+              <ol class="list-plain u-gap-2">
                 @for (s of steps(); track $index; let i = $index) {
                   <li class="step"><span class="n" aria-hidden="true">{{ i + 1 }}</span>
-                    <div class="field"><label [for]="'st' + i" class="visually-hidden">Paso {{ i + 1 }}</label><textarea [id]="'st' + i" class="textarea" style="min-block-size: 3rem" [value]="s" (input)="setStep(i, $any($event.target).value)"></textarea></div>
-                    <div class="row" style="gap: 0"><button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Subir paso ' + (i + 1)" [disabled]="i === 0" (click)="moveStep(i, -1)"><app-icon name="chevron-up" [size]="18" /></button><button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Bajar paso ' + (i + 1)" [disabled]="i === steps().length - 1" (click)="moveStep(i, 1)"><app-icon name="chevron-down" [size]="18" /></button><button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Quitar paso ' + (i + 1)" (click)="removeStep(i)"><app-icon name="x" [size]="18" /></button></div></li>
+                    <div class="field"><label [for]="'st' + i" class="visually-hidden">Paso {{ i + 1 }}</label><textarea [id]="'st' + i" class="textarea u-minh-3" [value]="s" (input)="setStep(i, $any($event.target).value)"></textarea></div>
+                    <div class="row u-gap-0"><button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Subir paso ' + (i + 1)" [disabled]="i === 0" (click)="moveStep(i, -1)"><app-icon name="chevron-up" [size]="18" /></button><button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Bajar paso ' + (i + 1)" [disabled]="i === steps().length - 1" (click)="moveStep(i, 1)"><app-icon name="chevron-down" [size]="18" /></button><button type="button" class="icon-btn icon-btn--s" [attr.aria-label]="'Quitar paso ' + (i + 1)" (click)="removeStep(i)"><app-icon name="x" [size]="18" /></button></div></li>
                 }
               </ol>
               <div><button tuiButton type="button" size="s" appearance="secondary" (click)="addStep()"><app-icon name="plus" [size]="16" /> Agregar paso</button></div>
             } @else {
-              <div class="field"><label for="dtx">Instrucciones</label><textarea id="dtx" class="textarea" style="min-block-size: 10rem" formControlName="instructionsText"></textarea></div>
+              <div class="field"><label for="dtx">Instrucciones</label><textarea id="dtx" class="textarea u-minh-10" formControlName="instructionsText"></textarea></div>
             }
             <div class="field"><label for="drc">Recomendaciones y observaciones</label><textarea id="drc" class="textarea" formControlName="recommendations"></textarea></div>
           </section>
@@ -133,7 +133,7 @@ import { FoodPicker } from './food-picker';
               @if (n.hasCustomFoods) { <div class="callout callout--warn"><app-icon name="alert" /><div class="callout-body">Incluye alimentos personalizados (no oficiales). Revisa su fuente en el catálogo.</div></div> }
             } @else { <p class="muted">Agrega ingredientes y un número de porciones válido para ver el cálculo.</p> }
           </section>
-          <div class="form-actions" style="justify-content: stretch">
+          <div class="form-actions u-jc-stretch">
             <a tuiButton appearance="secondary" size="m" [routerLink]="isEdit() ? ['/platillos', id()] : ['/platillos']">Cancelar</a>
             <button tuiButton type="submit" size="m">{{ isEdit() ? 'Guardar como versión ' + (baseVersion() + 1) : 'Crear platillo' }}</button>
           </div>

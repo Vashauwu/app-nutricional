@@ -219,7 +219,7 @@ const GROUPS: { id: string; label: string; tabs: TabId[] }[] = [
         </ng-container>
       </app-modal>
     } @else if (loading()) {
-      <div class="page" role="status" aria-label="Cargando expediente"><span class="skeleton" style="block-size: 4rem"></span><span class="skeleton" style="block-size: 18rem"></span></div>
+      <div class="page" role="status" aria-label="Cargando expediente"><span class="skeleton u-h-4"></span><span class="skeleton u-h-18"></span></div>
     } @else {
       <div class="page"><app-empty icon="users" title="Paciente no encontrado" text="Es posible que el enlace sea incorrecto."><a tuiButton routerLink="/pacientes" appearance="secondary" size="m">Volver a pacientes</a></app-empty></div>
     }

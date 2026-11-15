@@ -20,7 +20,8 @@ export interface ComboOption {
   styles: `
     :host { position: relative; display: block; }
     .box { position: relative; }
-    .box input { padding-inline-end: 4.5rem; }
+    .box input { padding-inline-end: 2.75rem; text-overflow: ellipsis; }
+    .box.has-value input { padding-inline-end: 4.75rem; }
     .btns { position: absolute; inset-block: 0; inset-inline-end: .25rem; display: flex; align-items: center; }
     .btns button { display: grid; place-items: center; inline-size: 2rem; block-size: 2rem; border: 0; border-radius: var(--radius-s); background: none; color: var(--muted); cursor: pointer; }
     .btns button:hover { background: color-mix(in srgb, var(--nutri-borde) 70%, transparent); color: var(--nutri-texto); }
@@ -34,7 +35,7 @@ export interface ComboOption {
   template: `
     <div class="field">
       <label [for]="id" [class.visually-hidden]="hideLabel()">{{ label() }}</label>
-      <div class="box">
+      <div class="box" [class.has-value]="value()">
         <input [id]="id" class="input" type="text" role="combobox" aria-autocomplete="list" [attr.aria-expanded]="open()" [attr.aria-controls]="id + '-l'" [attr.aria-activedescendant]="open() ? id + '-o' + active() : null"
           autocomplete="off" [placeholder]="placeholder()" [value]="text()" (input)="onInput($any($event.target).value)" (focus)="open.set(true)" (keydown)="onKey($event)" />
         <span class="btns">

@@ -19,7 +19,7 @@ import { Modal } from './modal';
     @media (prefers-reduced-motion: no-preference) { .toast { animation: up .2s ease-out; } @keyframes up { from { opacity: 0; transform: translateY(10px); } } }
   `,
   template: `
-    <div role="status" aria-live="polite" style="display: contents">
+    <div class="u-contents" role="status" aria-live="polite">
       @for (t of toasts.toasts(); track t.id) {
         <div class="toast" [class.error]="t.kind === 'error'">
           <app-icon [name]="t.kind === 'error' ? 'alert-circle' : t.kind === 'ok' ? 'check-circle' : 'info'" />

@@ -30,7 +30,7 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
       </section>
 
       <main class="panel-wrap" id="contenido">
-        <div style="position: absolute; inset-block-start: .5rem; inset-inline-end: .5rem"><app-theme-toggle /></div>
+        <div class="u-corner-tr"><app-theme-toggle /></div>
         <div class="card">
           <div>
             <h2>Iniciar sesión</h2>

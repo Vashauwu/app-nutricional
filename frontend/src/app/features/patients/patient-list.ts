@@ -7,6 +7,7 @@ import { DbService } from '../../core/data/db.service';
 import { PatientQuery, PatientRow, PatientsService } from '../../core/services/patients.service';
 import { GOAL_LABEL, Goal, PATIENT_STATUS_LABEL, PatientStatus } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, Pagination, PATIENT_TONE, SearchBox, Skeleton } from '../../shared/components/ui';
+import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { PageHeader } from '../../shared/components/page-header';
 import { Loadable, Page, loadable } from '../../shared/utils/loadable';
@@ -14,7 +15,7 @@ import { formatDate } from '../../shared/utils/format';
 
 @Component({
   selector: 'app-patient-list',
-  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton],
+  imports: [Combobox, PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .filters { display: grid; grid-template-columns: minmax(12rem, 2fr) repeat(2, minmax(10rem, 1fr)); gap: var(--space-3); padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
@@ -32,21 +33,8 @@ import { formatDate } from '../../shared/utils/format';
       <section class="panel panel--flush" aria-label="Listado de pacientes">
         <div class="filters">
           <app-search label="Buscar pacientes" placeholder="Nombre, correo o teléfono" [value]="search()" (valueChange)="onSearch($event)" />
-          <div class="field">
-            <label class="visually-hidden" for="f-status">Estado</label>
-            <select id="f-status" class="select" [value]="status()" (change)="onStatus($any($event.target).value)">
-              <option value="">Todos los estados</option>
-              @for (s of statuses; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
-              <option value="deleted">Desactivados</option>
-            </select>
-          </div>
-          <div class="field">
-            <label class="visually-hidden" for="f-goal">Objetivo</label>
-            <select id="f-goal" class="select" [value]="goal()" (change)="onGoal($any($event.target).value)">
-              <option value="">Todos los objetivos</option>
-              @for (g of goals; track g[0]) { <option [value]="g[0]">{{ g[1] }}</option> }
-            </select>
-          </div>
+          <app-combobox label="Estado" [hideLabel]="true" [allowAll]="true" allLabel="Todos los estados" placeholder="Todos los estados" [options]="statusOptions" [value]="status()" (valueChange)="onStatus($any($event))" />
+          <app-combobox label="Objetivo" [hideLabel]="true" [allowAll]="true" allLabel="Todos los objetivos" placeholder="Todos los objetivos" [options]="goalOptions" [value]="goal()" (valueChange)="onGoal($any($event))" />
         </div>
 
         @if (result(); as r) {
@@ -99,6 +87,8 @@ export class PatientList {
   protected readonly retry = signal(0);
   protected readonly statuses = Object.entries(PATIENT_STATUS_LABEL);
   protected readonly goals = Object.entries(GOAL_LABEL);
+  protected readonly statusOptions: ComboOption[] = [...this.statuses.map(([id, label]) => ({ id, label })), { id: 'deleted', label: 'Desactivados' }];
+  protected readonly goalOptions: ComboOption[] = this.goals.map(([id, label]) => ({ id, label }));
   protected readonly statusLabel = PATIENT_STATUS_LABEL;
   protected readonly goalLabel = GOAL_LABEL;
   protected readonly tone = PATIENT_TONE;

@@ -59,7 +59,7 @@ interface AlertGroup { patientId: string; name: string; critical: number; warnin
 
       @if (pending()) {
         <div class="grid grid--4" role="status" aria-busy="true" aria-label="Cargando resumen">
-          @for (i of tiles; track i) { <span class="skeleton" style="block-size: 6.5rem; border-radius: var(--radius-m)"></span> }
+          @for (i of tiles; track i) { <span class="skeleton u-skel-tile"></span> }
         </div>
       } @else {
         <section aria-label="Resumen" class="strip">

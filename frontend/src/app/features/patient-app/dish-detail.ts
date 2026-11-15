@@ -37,7 +37,7 @@ import { scaleEquivalents } from '../../core/nutrition/engine';
       @if (vm(); as v) {
         @if (v.dish && v.version) {
           <app-dish-thumb [category]="v.dish.category" [src]="v.version.image?.dataUrl" [alt]="v.version.image?.alt ?? ''" [size]="48" />
-          <header><h1 style="font-size: 1.625rem">{{ v.dish.name }}</h1><p class="small"><strong>{{ v.slot.name }}</strong></p><p class="muted">{{ v.version.description }}</p></header>
+          <header><h1 class="u-h1-md">{{ v.dish.name }}</h1><p class="small"><strong>{{ v.slot.name }}</strong></p><p class="muted">{{ v.version.description }}</p></header>
           @if (v.item.instructions) { <div class="callout callout--warn"><app-icon name="info" /><div class="callout-body"><strong>Indicación para este platillo</strong><p>{{ v.item.instructions }}</p></div></div> }
 
           <section class="panel" aria-labelledby="h-n">
@@ -69,7 +69,7 @@ import { scaleEquivalents } from '../../core/nutrition/engine';
             <h2 id="h-t" class="panel-head t-sm">Mi seguimiento</h2>
             <div class="row" role="group" aria-label="Estado de esta comida">
               <button tuiButton type="button" size="m" [appearance]="v.entry?.status === 'done' ? 'primary' : 'secondary'" [attr.aria-pressed]="v.entry?.status === 'done'" [disabled]="!online()" (click)="mark('done')"><app-icon name="check" [size]="18" /> Realizada</button>
-              <button tuiButton type="button" size="m" [appearance]="v.entry?.status === 'skipped' ? 'primary' : 'secondary'" [attr.aria-pressed]="v.entry?.status === 'skipped'" [disabled]="!online()" (click)="mark('skipped')"><app-icon name="skip" [size]="18" /> Omitida</button>
+              <button tuiButton type="button" size="m" [appearance]="v.entry?.status === 'skipped' ? 'primary' : 'secondary'" [attr.aria-pressed]="v.entry?.status === 'skipped'" [disabled]="!online()" (click)="mark('skipped')"><app-icon name="skip" [size]="18" /> No la comí</button>
             </div>
             @if (!online()) { <p class="small muted" role="status">Registrar, subir fotos y comentar requieren conexión.</p> }
             @if (v.entry; as e) {
@@ -85,7 +85,7 @@ import { scaleEquivalents } from '../../core/nutrition/engine';
                 <div class="field"><label for="cm">Comentario para tu nutrióloga</label><textarea id="cm" class="textarea" formControlName="body" maxlength="1000" [attr.disabled]="online() ? null : true"></textarea></div>
                 <div class="form-actions"><button tuiButton type="submit" size="m" [disabled]="!online() || !form.controls.body.value.trim()"><app-icon name="send" [size]="16" /> Enviar comentario</button></div>
               </form>
-            } @else { <p class="small muted">Marca la comida como realizada u omitida para poder agregar fotos y comentarios.</p> }
+            } @else { <p class="small muted">Marca la comida como realizada o «No la comí» para poder agregar fotos y comentarios.</p> }
           </section>
         } @else { <app-empty icon="dish" title="Este platillo ya no está disponible" /> }
       } @else { <app-empty icon="dish" title="No encontramos este platillo" text="Es posible que tu nutrióloga lo haya sustituido."><a tuiButton routerLink="/paciente" size="m" appearance="secondary">Volver a hoy</a></app-empty> }

@@ -39,7 +39,7 @@ import { PatientContext } from './patient-context';
           <details [open]="d.date === ctx.today">
             <summary>
               <span class="st" [class.ok]="d.state === 'ok'" [class.part]="d.state === 'part'" aria-hidden="true"><app-icon [name]="d.state === 'ok' ? 'check' : d.state === 'part' ? 'minus' : 'clock'" [size]="14" /></span>
-              <span class="grow-1 side"><strong>{{ longDate(d.date) }}</strong>@if (d.date === ctx.today) { <span class="badge badge--ok" style="margin-inline-start: .5rem">Hoy</span> }<br /><span class="small"><span class="count">{{ d.done }}/{{ d.total }}</span> <span class="muted">{{ d.state === 'ok' ? 'completo' : d.state === 'part' ? 'en progreso' : 'pendiente' }} · {{ f(d.kcal) }} kcal</span></span><span class="small muted preview">{{ d.preview }}</span></span>
+              <span class="grow-1 side"><strong>{{ longDate(d.date) }}</strong>@if (d.date === ctx.today) { <span class="badge badge--ok u-ms-2">Hoy</span> }<br /><span class="small"><span class="count">{{ d.done }}/{{ d.total }}</span> <span class="muted">{{ d.state === 'ok' ? 'completo' : d.state === 'part' ? 'en progreso' : 'pendiente' }} · {{ f(d.kcal) }} kcal</span></span><span class="small muted preview">{{ d.preview }}</span></span>
               <app-icon name="chevron-down" [size]="18" />
             </summary>
             <div class="body">

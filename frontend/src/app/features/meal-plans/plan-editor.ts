@@ -13,6 +13,7 @@ import { Dish, DishVersion, GOAL_LABEL, NutriAlert, PLAN_STATUS_LABEL, PlanDay, 
 import { AlertItem, Badge, EmptyState, PLAN_TONE } from '../../shared/components/ui';
 import { CompareRow, EqChips } from '../../shared/components/nutrition-bits';
 import { ActionMenu, MenuItem } from '../../shared/components/action-menu';
+import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
 import { ageFrom, addDays, fmtCompact, formatDate, formatDateTime, longDate, normalizeText, shortDate, startOfWeek, todayIso, weekdayShort } from '../../shared/utils/format';
@@ -43,7 +44,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
 @Component({
   selector: 'app-plan-editor',
-  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, ActionMenu, CompareRow, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPreview],
+  imports: [Combobox, RouterLink, TuiButton, Icon, Badge, EmptyState, AlertItem, Modal, ActionMenu, CompareRow, CdkDropListGroup, CdkDropList, CdkDrag, CdkDragHandle, CdkDragPreview],
   providers: [PlanEditorStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './plan-editor.scss',
@@ -101,9 +102,9 @@ const SAVE_TEXT: Record<SaveState, string> = {
         <aside class="lib panel" [class.closed]="!libOpen()" aria-label="Biblioteca de platillos">
           <h2 class="panel-head t-sm">Biblioteca</h2>
           <div class="field"><label class="visually-hidden" for="lib-s">Buscar platillo</label><div class="input-affix"><app-icon name="search" [size]="18" /><input id="lib-s" class="input" type="search" placeholder="Buscar platillo…" [value]="libSearch()" (input)="libSearch.set($any($event.target).value)" /></div></div>
-          <div class="field"><label class="visually-hidden" for="lib-c">Categoría</label><select id="lib-c" class="select" (change)="libCat.set($any($event.target).value)"><option value="">Todas las categorías</option>@for (c of categories(); track c) { <option [value]="c">{{ c }}</option> }</select></div>
+          <app-combobox label="Categoría" [hideLabel]="true" [allowAll]="true" allLabel="Todas las categorías" placeholder="Todas las categorías" [options]="categoryOptions()" [value]="libCat()" (valueChange)="libCat.set($event)" />
           <p class="small muted">Arrastra al calendario o usa "Agregar a…".</p>
-          <div cdkDropList [cdkDropListData]="libRef" [cdkDropListSortingDisabled]="true" [cdkDropListEnterPredicate]="noEnter" class="stack--s" role="list">
+          <div cdkDropList [cdkDropListData]="libRef" [cdkDropListSortingDisabled]="true" [cdkDropListEnterPredicate]="noEnter" class="stack--s" [attr.role]="library().length ? 'list' : null">
             @for (d of library(); track d.id) {
               <div class="dish-card" role="listitem" cdkDrag [cdkDragData]="d" [cdkDragDisabled]="readOnly()">
                 <div class="cdk-drag-preview" *cdkDragPreview>{{ d.name }}</div>
@@ -137,7 +138,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
               @for (v of visibleVMs(); track v.day.date) {
                 <article class="day" [class.sel]="selected() === v.day.date" [class.today]="v.day.date === today">
                   <header>
-                    <div class="row row--between" style="gap: .25rem"><h3><button type="button" class="link-btn" style="text-decoration: none; color: inherit" (click)="selected.set(v.day.date)" [attr.aria-pressed]="selected() === v.day.date">{{ cap(wd(v.day.date)) }} {{ sd(v.day.date) }}</button></h3>
+                    <div class="row row--between u-gap-1"><h3><button type="button" class="link-btn u-plain-link" (click)="selected.set(v.day.date)" [attr.aria-pressed]="selected() === v.day.date">{{ cap(wd(v.day.date)) }} {{ sd(v.day.date) }}</button></h3>
                       @if (v.alerts) { <app-badge tone="crit" icon="alert"><span class="visually-hidden">Alertas:</span> {{ v.alerts }}</app-badge> }</div>
                     <div class="meter" role="img" [attr.aria-label]="c(v.totals.nutrients.energy) + ' de ' + c(store.targets()?.energy) + ' kcal'"><span [style.inline-size.%]="v.pct > 100 ? 100 : v.pct" [style.background]="v.over ? 'var(--danger)' : null"></span></div>
                     <span class="small mono">{{ c(v.totals.nutrients.energy) }} / {{ c(store.targets()?.energy) }} kcal</span>
@@ -146,7 +147,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
                   @for (s of v.slots; track s.slot.id) {
                     <div class="slot">
                       <div class="sh"><span>{{ s.slot.name }}</span><span class="mono">{{ c(s.kcal) }} kcal</span></div>
-                      <div class="drop" cdkDropList [cdkDropListData]="slotRef(v.day.date, s.slot.id)" [cdkDropListDisabled]="readOnly()" (cdkDropListDropped)="onDrop($event, v.day.date, s.slot.id)" role="list" [attr.aria-label]="s.slot.name + ' del ' + sd(v.day.date)">
+                      <div class="drop" cdkDropList [cdkDropListData]="slotRef(v.day.date, s.slot.id)" [cdkDropListDisabled]="readOnly()" (cdkDropListDropped)="onDrop($event, v.day.date, s.slot.id)" [attr.role]="s.items.length ? 'list' : null" [attr.aria-label]="s.slot.name + ' del ' + sd(v.day.date)">
                         @for (it of s.items; track it.item.id) {
                           <div class="item" role="listitem" cdkDrag [cdkDragData]="it.item.id" [cdkDragDisabled]="readOnly()" [class.al-critical]="it.alert === 'critical'" [class.al-warning]="it.alert === 'warning'">
                             <span class="grip" cdkDragHandle aria-hidden="true"><app-icon name="grip" [size]="16" /></span>
@@ -156,7 +157,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
                               <span>{{ c(it.totals.nutrients.energy) }} kcal</span>
                               @if (it.item.servings !== '1') { <span>× {{ it.item.servings }}</span> }
                               @if (it.alert) { <span class="flag" [class.crit]="it.alert === 'critical'" [attr.title]="it.alert === 'critical' ? 'Alerta crítica' : 'Advertencia'"><app-icon [name]="it.alert === 'critical' ? 'alert' : 'alert-circle'" [size]="12" /> {{ it.alert === 'critical' ? 'Crítica' : 'Aviso' }}</span> }
-                              @if (it.latest > it.item.dishVersion) { <span style="color: var(--info)">Nueva versión v{{ it.latest }}</span> }
+                              @if (it.latest > it.item.dishVersion) { <span class="u-c-info">Nueva versión v{{ it.latest }}</span> }
                             </div>
                           </div>
                         } @empty { <span class="hint">{{ readOnly() ? 'Vacío' : 'Suelta un platillo aquí' }}</span> }
@@ -177,7 +178,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
             <div>
               @for (m of selEq(); track m.key) { <div class="eq-row"><span>{{ m.label }}</span><span>{{ c(m.planned, 1) }} / {{ c(m.target, 1) }}</span><span [style.color]="m.status === 'ok' ? 'var(--ok)' : m.status === 'over' ? 'var(--danger)' : 'var(--warn)'">{{ m.status === 'ok' ? 'En meta' : m.status === 'over' ? 'Excede' : 'Faltan' }}</span></div> }
             </div>
-            <div class="field"><label for="dn">Indicaciones especiales del día</label><textarea id="dn" class="textarea" style="min-block-size: 4rem" [value]="sv.day.notes" [disabled]="readOnly()" (change)="store.setDayNotes(sv.day.date, $any($event.target).value)"></textarea></div>
+            <div class="field"><label for="dn">Indicaciones especiales del día</label><textarea id="dn" class="textarea u-minh-4" [value]="sv.day.notes" [disabled]="readOnly()" (change)="store.setDayNotes(sv.day.date, $any($event.target).value)"></textarea></div>
             @if (!readOnly()) {
               <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="openDupDay()"><app-icon name="copy" [size]="16" /> Duplicar día</button><button tuiButton type="button" size="s" appearance="secondary-destructive" (click)="clearDay(sv.day.date)">Vaciar día</button></div>
             }
@@ -260,7 +261,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
       <app-modal [(open)]="targetsOpen" title="Objetivos diarios" size="wide">
         <p class="small muted">Las propuestas son orientativas y siempre editables. Se guarda la versión de objetivos usada en cada plan (v{{ store.targets()?.version }}).</p>
         <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Proponer según el paciente</button></div>
-        @if (proposalNotes().length) { <div class="callout"><app-icon name="info" /><ul class="callout-body" style="margin: 0; padding-inline-start: 1rem">@for (n of proposalNotes(); track n) { <li class="small">{{ n }}</li> }</ul></div> }
+        @if (proposalNotes().length) { <div class="callout"><app-icon name="info" /><ul class="callout-body u-list-tight">@for (n of proposalNotes(); track n) { <li class="small">{{ n }}</li> }</ul></div> }
         <div class="form-grid">
           @for (k of macroKeys; track k.key) { <div class="field"><label [for]="'tg-' + k.key">{{ k.label }}</label><input [id]="'tg-' + k.key" class="input" inputmode="decimal" [value]="tgDraft()[k.key]" (input)="setTg(k.key, $any($event.target).value)" /></div> }
         </div>
@@ -302,7 +303,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
         } @else {
           <p class="small muted">Copia exacta de lo que vio la paciente en cada publicación.</p>
           @for (p of pubsDesc(); track p.versionNumber) {
-            <details class="panel" style="padding: var(--space-3) var(--space-4)"><summary><strong>Versión {{ p.versionNumber }}</strong> · {{ fdt(p.publishedAt) }} · {{ p.by }} — {{ p.summary }}</summary>
+            <details class="panel u-pad-3-4"><summary><strong>Versión {{ p.versionNumber }}</strong> · {{ fdt(p.publishedAt) }} · {{ p.by }} — {{ p.summary }}</summary>
               <div class="stack--s mt-3">@for (d of p.days; track d.date) { <p class="small"><strong>{{ cap(wd(d.date)) }} {{ sd(d.date) }}:</strong> {{ dayNames(d) }}</p> }</div></details>
           } @empty { <app-empty icon="send" title="Aún sin publicaciones" /> }
         }
@@ -417,6 +418,7 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly stateIcon = computed(() => ({ idle: 'check', dirty: 'clock', saving: 'refresh', saved: 'check-circle', error: 'alert-circle', offline: 'wifi-off', conflict: 'alert' } as const)[this.store.saveState()]);
   protected readonly subgroups = this.data.activeSubgroups;
   protected readonly categories = computed(() => [...new Set(this.data.db().dishes.map((d) => d.category))]);
+  protected readonly categoryOptions = computed<ComboOption[]>(() => this.categories().map((c) => ({ id: c, label: c })));
   protected readonly slotNames = computed(() => [...new Set(this.store.days().flatMap((d) => d.slots.map((s) => s.name)))]);
   protected readonly emptyDays = computed(() => this.store.days().filter((d) => !d.slots.some((s) => s.items.length)).length);
 

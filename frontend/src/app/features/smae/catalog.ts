@@ -12,6 +12,7 @@ import { CustomFood } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, SearchBox, Skeleton } from '../../shared/components/ui';
 import { FieldError, decimalValidator, positiveDecimalValidator } from '../../shared/components/forms';
 import { PageHeader } from '../../shared/components/page-header';
+import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
 import { Macros } from '../../shared/components/nutrition-bits';
@@ -24,7 +25,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
 
 @Component({
   selector: 'app-catalog',
-  imports: [ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Modal, FieldError, Macros, PageHeader],
+  imports: [Combobox, ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Modal, FieldError, Macros, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .gchips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
@@ -51,7 +52,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
           <section class="panel panel--flush" aria-label="Alimentos del catálogo">
             <div class="search-row">
               <app-search label="Buscar alimentos" placeholder="Buscar alimento o etiqueta" [value]="search()" (valueChange)="search.set($event); limit.set(step)" />
-              <div class="field"><label class="visually-hidden" for="src">Origen</label><select id="src" class="select" [value]="source()" (change)="source.set($any($event.target).value); limit.set(step)"><option value="all">Oficiales y personalizados</option><option value="smae">Solo catálogo SMAE</option><option value="custom">Solo personalizados</option></select></div>
+              <app-combobox label="Origen" [hideLabel]="true" [allowAll]="true" allLabel="Oficiales y personalizados" placeholder="Oficiales y personalizados" [options]="sourceOptions" [value]="source() === 'all' ? '' : source()" (valueChange)="source.set($any($event) || 'all'); limit.set(step)" />
             </div>
             <div class="gchips" role="group" aria-label="Grupo de alimentos">
               <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === ''" (click)="groupId.set(''); limit.set(step)">Todos</button>
@@ -72,7 +73,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
                     }
                   </tbody></table></div>
                   <p class="small muted p-3-5" aria-live="polite">{{ v.items.length }} de {{ v.total }} alimentos</p>
-                  @if (v.items.length < v.total) { <div class="row" style="justify-content: center; padding-block-end: var(--space-4)"><button tuiButton type="button" appearance="secondary" size="m" (click)="limit.set(limit() + step)">Cargar más</button></div> }
+                  @if (v.items.length < v.total) { <div class="row u-center-pb-4"><button tuiButton type="button" appearance="secondary" size="m" (click)="limit.set(limit() + step)">Cargar más</button></div> }
                 } @else { <app-empty icon="search" title="Sin resultados" text="Prueba con otra búsqueda o grupo." /> }
               }
             }
@@ -84,7 +85,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
             <p class="small muted px-5">Se identifican como no oficiales en platillos y cálculos. Solo tienen equivalencia SMAE si tú la asignas, y queda registrado quién, cuándo y con qué criterio.</p>
             <ul class="list-plain list-rows">
               @for (f of customs(); track f.id) {
-                <li style="align-items: flex-start; flex-wrap: wrap">
+                <li class="u-ai-start-wrap">
                   <div class="grow minw-14"><strong>{{ f.name }}</strong> @if (f.brand) { <span class="muted">· {{ f.brand }}</span> } @if (f.status === 'inactive') { <app-badge icon="ban">Inactivo</app-badge> }
                     <p class="small muted">{{ f.description }}</p>
                     <p class="small">Fuente: {{ source_[f.sourceType] }} — {{ f.sourceReference }}</p>
@@ -150,7 +151,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
           <div class="field"><label for="f-b">Marca <span class="muted">opcional</span></label><input id="f-b" class="input" formControlName="brand" /></div>
         </div>
         <div class="field"><label for="f-d">Descripción</label><input id="f-d" class="input" formControlName="description" /></div>
-        <fieldset class="fieldset-reset"><legend class="eyebrow" style="margin-block-end: var(--space-2)">Composición para la cantidad base</legend>
+        <fieldset class="fieldset-reset"><legend class="eyebrow u-mb-2">Composición para la cantidad base</legend>
           <div class="form-grid">
             <div class="field"><label for="f-q">Cantidad base (g)</label><input id="f-q" class="input" inputmode="decimal" formControlName="baseQuantity" /><app-field-error [control]="foodForm.controls.baseQuantity" /></div>
             <div class="field"><label for="f-e">Energía (kcal)</label><input id="f-e" class="input" inputmode="decimal" formControlName="energy" /><app-field-error [control]="foodForm.controls.energy" /></div>
@@ -204,6 +205,7 @@ export class Catalog {
   protected readonly subgroups = this.data.activeSubgroups;
   protected readonly search = signal('');
   protected readonly source = signal<'all' | 'smae' | 'custom'>('all');
+  protected readonly sourceOptions: ComboOption[] = [{ id: 'smae', label: 'Solo catálogo SMAE' }, { id: 'custom', label: 'Solo personalizados' }];
   protected readonly groupId = signal('');
   protected readonly limit = signal(STEP);
   protected readonly retry = signal(0);

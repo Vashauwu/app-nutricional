@@ -8,6 +8,7 @@ import { DishQuery, DishRow, DishesService } from '../../core/services/dishes.se
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { Badge, EmptyState, LoadError, SearchBox, Skeleton } from '../../shared/components/ui';
 import { DishThumb, EqChips, Macros } from '../../shared/components/nutrition-bits';
+import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { PageHeader } from '../../shared/components/page-header';
 import { Loadable, loadable } from '../../shared/utils/loadable';
@@ -17,7 +18,7 @@ const STEP = 12;
 
 @Component({
   selector: 'app-dish-library',
-  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, DishThumb, Macros, EqChips, PageHeader],
+  imports: [Combobox, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, DishThumb, Macros, EqChips, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .filters { display: grid; gap: var(--space-3); grid-template-columns: minmax(12rem, 2fr) repeat(3, minmax(9rem, 1fr)); }
@@ -40,9 +41,9 @@ const STEP = 12;
       <section class="panel" aria-label="Filtros">
         <div class="filters">
           <app-search label="Buscar platillos" placeholder="Nombre, ingrediente o etiqueta" [value]="search()" (valueChange)="set(search, $event)" />
-          <div class="field"><label class="visually-hidden" for="d-cat">Categoría</label><select id="d-cat" class="select" [value]="category()" (change)="set(category, $any($event.target).value)"><option value="">Todas las categorías</option>@for (c of categories; track c) { <option [value]="c">{{ c }}</option> }</select></div>
-          <div class="field"><label class="visually-hidden" for="d-sg">Grupo SMAE</label><select id="d-sg" class="select" [value]="subgroup()" (change)="set(subgroup, $any($event.target).value)"><option value="">Todos los grupos SMAE</option>@for (s of subgroups(); track s.id) { <option [value]="s.code">{{ s.name }}</option> }</select></div>
-          <div class="field"><label class="visually-hidden" for="d-st">Estado</label><select id="d-st" class="select" [value]="status()" (change)="set(status, $any($event.target).value)"><option value="">Activos e inactivos</option><option value="active">Activos</option><option value="inactive">Inactivos</option></select></div>
+          <app-combobox label="Categoría" [hideLabel]="true" [allowAll]="true" allLabel="Todas las categorías" placeholder="Todas las categorías" [options]="categoryOptions" [value]="category()" (valueChange)="set(category, $event)" />
+          <app-combobox label="Grupo SMAE" [hideLabel]="true" [allowAll]="true" allLabel="Todos los grupos SMAE" placeholder="Todos los grupos SMAE" [options]="subgroupOptions()" [value]="subgroup()" (valueChange)="set(subgroup, $event)" />
+          <app-combobox label="Estado" [hideLabel]="true" [allowAll]="true" allLabel="Activos e inactivos" placeholder="Activos e inactivos" [options]="statusOptions" [value]="status()" (valueChange)="set(status, $event)" />
         </div>
       </section>
 
@@ -66,7 +67,7 @@ const STEP = 12;
                     <h2>{{ row.dish.name }}</h2>
                     <app-macros [n]="row.current.nutrition.perServing" />
                     <app-eq-chips [eq]="row.current.nutrition.equivalents" />
-                    @if (row.current.nutrition.hasCustomFoods) { <span class="small" style="color: var(--warn)"><app-icon name="alert" [size]="14" /> Incluye alimentos personalizados</span> }
+                    @if (row.current.nutrition.hasCustomFoods) { <span class="small u-c-warn"><app-icon name="alert" [size]="14" /> Incluye alimentos personalizados</span> }
                   </article>
                 }
               </div>
@@ -99,6 +100,9 @@ export class DishLibrary {
   protected readonly skeletons = [1, 2, 3, 4, 5, 6];
   protected readonly categories = this.dishes.categories();
   protected readonly subgroups = this.data.activeSubgroups;
+  protected readonly categoryOptions: ComboOption[] = this.categories.map((c) => ({ id: c, label: c }));
+  protected readonly subgroupOptions = computed<ComboOption[]>(() => this.subgroups().map((s) => ({ id: s.code, label: s.name })));
+  protected readonly statusOptions: ComboOption[] = [{ id: 'active', label: 'Activos' }, { id: 'inactive', label: 'Inactivos' }];
 
   private readonly query = computed(() => ({
     q: { search: this.search(), category: this.category(), subgroupCode: this.subgroup(), status: this.status(), limit: this.limit() } satisfies DishQuery,

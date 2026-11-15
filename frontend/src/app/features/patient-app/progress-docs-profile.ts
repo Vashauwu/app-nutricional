@@ -119,7 +119,7 @@ export class PatientDocuments {
       @if (p(); as pt) {
         <section class="panel" aria-labelledby="h-d">
           <h2 id="h-d" class="panel-head t-sm">Mis datos</h2>
-          <dl style="display: grid; grid-template-columns: auto 1fr; gap: .375rem var(--space-4); margin: 0"><dt class="muted">Nombre</dt><dd class="m-0">{{ pt.profile.firstName }} {{ pt.profile.lastName }}</dd><dt class="muted">Edad</dt><dd class="m-0">{{ age() === '—' ? '—' : age() + ' años' }}</dd><dt class="muted">Correo</dt><dd class="m-0">{{ pt.profile.email }}</dd><dt class="muted">Objetivo</dt><dd class="m-0">{{ goal[pt.goal] }}</dd></dl>
+          <dl class="u-dl-grid"><dt class="muted">Nombre</dt><dd class="m-0">{{ pt.profile.firstName }} {{ pt.profile.lastName }}</dd><dt class="muted">Edad</dt><dd class="m-0">{{ age() === '—' ? '—' : age() + ' años' }}</dd><dt class="muted">Correo</dt><dd class="m-0">{{ pt.profile.email }}</dd><dt class="muted">Objetivo</dt><dd class="m-0">{{ goal[pt.goal] }}</dd></dl>
           <p class="small muted">Para corregir tus datos o ejercer tus derechos ARCO, contacta a tu nutrióloga{{ contact() ? ': ' + contact() : '' }}.</p>
         </section>
         <section class="panel" aria-labelledby="h-a">
