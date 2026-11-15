@@ -11,6 +11,12 @@
   --nutri-texto: #514653;
   --nutri-borde: #e9e3e5;
 
+  // Tinta de marca: el ciruela del logotipo (identidad definitiva, PRODUCT.md). Cada consulta puede reemplazarla en Configuración.
+  --brand-ink: #4e344c;
+  // Medidas compartidas por todas las pantallas (una sola fuente de verdad).
+  --page-max: 78rem;
+  --field-h: 2.75rem;
+
   --nutri-font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --nutri-font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
 
@@ -36,9 +42,9 @@
   --tui-background-base-alt: color-mix(in srgb, var(--nutri-marfil) 70%, var(--nutri-borde));
   --tui-background-elevation-1: var(--surface);
 
-  --tui-background-accent-1: var(--nutri-texto);
-  --tui-background-accent-1-hover: var(--nutri-texto-fuerte);
-  --tui-background-accent-1-pressed: color-mix(in srgb, var(--nutri-texto) 74%, black);
+  --tui-background-accent-1: var(--brand-ink);
+  --tui-background-accent-1-hover: color-mix(in srgb, var(--brand-ink) 86%, black);
+  --tui-background-accent-1-pressed: color-mix(in srgb, var(--brand-ink) 74%, black);
   --tui-text-primary-on-accent-1: var(--nutri-marfil);
 
   --tui-text-primary: var(--nutri-texto);
@@ -49,7 +55,7 @@
 
   --tui-border-normal: var(--nutri-borde);
   --tui-border-hover: color-mix(in srgb, var(--nutri-borde) 60%, var(--nutri-texto));
-  --tui-border-focus: var(--nutri-texto);
+  --tui-border-focus: var(--brand-ink);
 }
 
 // Superficies y estado neutros (modo claro). Los gráficos usan estos tokens.
@@ -68,6 +74,7 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
   --nutri-marfil: #1d181f;
+  --brand-ink: #efe6ee;
   --nutri-texto: #efe6ee;
   --nutri-borde: #3b323d;
   --nutri-rosa: #5c3345;

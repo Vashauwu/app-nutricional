@@ -9,7 +9,7 @@ import { InsightsService } from '../../core/services/insights.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { ToastService } from '../../core/services/ui.services';
 import { DOC_CATEGORY_LABEL, GOAL_LABEL, PatientDocument } from '../../shared/models/domain';
-import { BarChart, LineChart, Ring } from '../../shared/components/charts';
+import { BarChart, LineChart } from '../../shared/components/charts';
 import { Icon } from '../../shared/components/icon';
 import { FieldError } from '../../shared/components/forms';
 import { Modal } from '../../shared/components/modal';
@@ -19,19 +19,29 @@ import { PatientContext } from './patient-context';
 
 @Component({
   selector: 'app-patient-progress',
-  imports: [LineChart, BarChart, Ring, EmptyState],
+  imports: [LineChart, BarChart, EmptyState],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    .big { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-inline-end: .375rem; }
+    details.what summary { cursor: pointer; font-size: .875rem; font-weight: 600; min-block-size: 2rem; display: flex; align-items: center; }
+    details.what[open] summary { margin-block-end: .25rem; }
+  `,
   template: `
     <div class="stack">
-      <h1 style="font-size: 1.5rem">Mi progreso</h1>
+      <h1 class="t-lg">Mi progreso</h1>
       <section class="panel" aria-labelledby="h-c">
-        <h2 id="h-c" class="panel-head" style="font-size: 1.0625rem">Cumplimiento</h2>
-        <p class="small muted">Es independiente de tu evolución física: refleja cuántas comidas marcaste como realizadas.</p>
-        <div class="row"><app-ring [pct]="comp().pct ?? 0" label="en 2 semanas" [size]="110" /><div><p><strong>{{ comp().done }}</strong> de {{ comp().planned }} comidas</p><p class="small muted">{{ comp().skipped }} omitidas · {{ comp().pending }} sin registro</p></div></div>
-        <app-bar-chart [data]="weekly()" aLabel="Programadas" bLabel="Realizadas" title="Cumplimiento por semana" />
+        <h2 id="h-c" class="panel-head t-sm">Cumplimiento</h2>
+        <div class="stack--s">
+          <p><span class="big">{{ comp().pct ?? 0 }} %</span> <span class="muted">de tus comidas en las últimas 2 semanas</span></p>
+          <div class="meter" role="img" [attr.aria-label]="(comp().pct ?? 0) + '% de cumplimiento'"><span [style.inline-size.%]="comp().pct ?? 0"></span></div>
+          <p class="small"><strong>{{ comp().done }}</strong> de {{ comp().planned }} comidas realizadas · {{ comp().skipped }} que no comiste · {{ comp().pending }} sin registro</p>
+        </div>
+        <details class="what"><summary>¿Qué significa?</summary><p class="small muted">Es independiente de tu evolución física: solo refleja cuántas comidas marcaste como realizadas.</p></details>
+        @if (weekly().length) { <app-bar-chart [data]="weekly()" aLabel="Programadas" bLabel="Realizadas" title="Cumplimiento por semana" /> }
+        @else { <p class="small muted">Aún no hay semanas completas para graficar.</p> }
       </section>
       <section class="panel" aria-labelledby="h-m">
-        <h2 id="h-m" class="panel-head" style="font-size: 1.0625rem">Mi evolución</h2>
+        <h2 id="h-m" class="panel-head t-sm">Mi evolución</h2>
         @if (!patient()?.measurementsVisibleToPatient) {
           <app-empty icon="scale" title="Tu nutrióloga aún no habilita esta sección" text="Podrá mostrarte tus mediciones cuando lo considere oportuno." />
         } @else if (weight().length) {
@@ -52,7 +62,7 @@ export class PatientProgress {
     this.data.version();
     const id = this.patient()?.id;
     if (!id) return [];
-    return this.insights.weeklyCompliance(id, 4).map((w) => ({ label: shortDate(w.label), a: w.result.planned, b: w.result.done }));
+    return this.insights.weeklyCompliance(id, 4).filter((w) => w.result.planned > 0).map((w) => ({ label: shortDate(w.label), a: w.result.planned, b: w.result.done }));
   });
   protected readonly weight = computed(() => (this.patient() ? this.insights.anthropometrics(this.patient()!).weight : []));
   protected readonly last = computed(() => this.patient()?.measurements.slice().sort((a, b) => b.measuredAt.localeCompare(a.measuredAt))[0]);
@@ -65,7 +75,7 @@ export class PatientProgress {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="stack">
-      <h1 style="font-size: 1.5rem">Mis archivos</h1>
+      <h1 class="t-lg">Mis archivos</h1>
       <p class="muted">Documentos que tu nutrióloga decidió compartir contigo.</p>
       <section class="panel panel--flush">
         <ul class="list-plain list-rows">
@@ -105,29 +115,29 @@ export class PatientDocuments {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="stack">
-      <h1 style="font-size: 1.5rem">Mi perfil</h1>
+      <h1 class="t-lg">Mi perfil</h1>
       @if (p(); as pt) {
         <section class="panel" aria-labelledby="h-d">
-          <h2 id="h-d" class="panel-head" style="font-size: 1.0625rem">Mis datos</h2>
-          <dl style="display: grid; grid-template-columns: auto 1fr; gap: .375rem var(--space-4); margin: 0"><dt class="muted">Nombre</dt><dd style="margin: 0">{{ pt.profile.firstName }} {{ pt.profile.lastName }}</dd><dt class="muted">Edad</dt><dd style="margin: 0">{{ age() === '—' ? '—' : age() + ' años' }}</dd><dt class="muted">Correo</dt><dd style="margin: 0">{{ pt.profile.email }}</dd><dt class="muted">Objetivo</dt><dd style="margin: 0">{{ goal[pt.goal] }}</dd></dl>
+          <h2 id="h-d" class="panel-head t-sm">Mis datos</h2>
+          <dl style="display: grid; grid-template-columns: auto 1fr; gap: .375rem var(--space-4); margin: 0"><dt class="muted">Nombre</dt><dd class="m-0">{{ pt.profile.firstName }} {{ pt.profile.lastName }}</dd><dt class="muted">Edad</dt><dd class="m-0">{{ age() === '—' ? '—' : age() + ' años' }}</dd><dt class="muted">Correo</dt><dd class="m-0">{{ pt.profile.email }}</dd><dt class="muted">Objetivo</dt><dd class="m-0">{{ goal[pt.goal] }}</dd></dl>
           <p class="small muted">Para corregir tus datos o ejercer tus derechos ARCO, contacta a tu nutrióloga{{ contact() ? ': ' + contact() : '' }}.</p>
         </section>
         <section class="panel" aria-labelledby="h-a">
-          <h2 id="h-a" class="panel-head" style="font-size: 1.0625rem">Mis aceptaciones</h2>
+          <h2 id="h-a" class="panel-head t-sm">Mis aceptaciones</h2>
           <ul class="list-plain">@for (a of accepted(); track a.id) { <li class="small"><app-icon name="check-circle" [size]="16" /> {{ a.title }} (v{{ a.version }}) · {{ fdt(a.at) }}</li> }</ul>
         </section>
         <section class="panel" aria-labelledby="h-s">
-          <h2 id="h-s" class="panel-head" style="font-size: 1.0625rem">Sesiones</h2>
+          <h2 id="h-s" class="panel-head t-sm">Sesiones</h2>
           <ul class="list-plain">@for (s of sessions(); track s.id) { <li class="small">{{ s.device }} · {{ s.browser }} @if (s.id === auth.currentSessionId()) { <strong>(este dispositivo)</strong> } <br /><span class="muted">Última actividad {{ fdt(s.lastSeenAt) }}</span></li> }</ul>
           <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="others()">Cerrar las demás sesiones</button></div>
         </section>
         <section class="panel" aria-labelledby="h-p">
-          <h2 id="h-p" class="panel-head" style="font-size: 1.0625rem">Este dispositivo</h2>
+          <h2 id="h-p" class="panel-head t-sm">Este dispositivo</h2>
           <p class="small muted">Al cerrar sesión se borra la información guardada para uso sin conexión.</p>
           <div class="row"><button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="logout()"><app-icon name="log-out" [size]="18" /> Cerrar sesión</button></div>
         </section>
         <section class="panel" aria-labelledby="h-c">
-          <h2 id="h-c" class="panel-head" style="font-size: 1.0625rem">Privacidad y cuenta</h2>
+          <h2 id="h-c" class="panel-head t-sm">Privacidad y cuenta</h2>
           <p class="small"><a routerLink="/privacidad">Aviso de privacidad</a> · <a routerLink="/terminos">Términos de uso</a></p>
           <p class="small muted">Si ya no quieres usar la plataforma, puedes dar de baja tu cuenta. Tu expediente clínico se conserva bloqueado el tiempo que exige la ley.</p>
           <div class="row"><button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="openDelete()"><app-icon name="trash" [size]="18" /> Eliminar mi cuenta</button></div>

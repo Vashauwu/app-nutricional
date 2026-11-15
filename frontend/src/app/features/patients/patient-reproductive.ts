@@ -96,13 +96,13 @@ function ago(iso: string): string {
           <div class="facts">
             @if (repro().periods.length > 1) {
               <div>
-                <h3 class="small muted" style="margin: 0 0 .25rem">Fechas anteriores de última menstruación</h3>
+                <h3 class="small muted m-0-sm">Fechas anteriores de última menstruación</h3>
                 <ul class="hist">@for (p of repro().periods.slice(1, 7); track p.id) { <li><span>{{ fd(p.date) }}</span><span class="muted small">{{ ago(p.date) }}</span></li> }</ul>
               </div>
             }
             @if (pastPregnancies().length) {
               <div>
-                <h3 class="small muted" style="margin: 0 0 .25rem">Embarazos anteriores</h3>
+                <h3 class="small muted m-0-sm">Embarazos anteriores</h3>
                 <ul class="hist">@for (g of pastPregnancies(); track g.id) { <li><span>{{ fd(g.recordedOn) }} – {{ fd(g.endedOn) }}</span><app-badge>{{ g.currentWeeks }} sem.</app-badge></li> }</ul>
               </div>
             }

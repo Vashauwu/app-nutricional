@@ -419,7 +419,7 @@ function buildSettings(): Settings {
   return {
     brand: {
       businessName: 'Nutrición Integral', tagline: 'Alimentación consciente, resultados sostenibles',
-      primary: '#514653', secondary: '#DDD6F2', phone: '55 5555 0100', email: 'contacto@nutricion-integral.example',
+      primary: '#4E344C', secondary: '#DDD6F2', phone: '55 5555 0100', email: 'contacto@nutricion-integral.example',
       address: 'Av. Ejemplo 123, Col. Centro, CDMX', credentials: 'Licenciada en Nutrición · Esp. en Nutrición Clínica', licenseNumber: 'Cédula 1234567 (ejemplo)',
     },
     region: { timezone: 'America/Mexico_City', weekStart: 'mon' },

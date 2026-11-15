@@ -65,10 +65,12 @@ const CATEGORY_TONE: Record<string, string> = { Desayuno: 'mantequilla', Comida:
   styles: `
     :host { display: block; }
     .t { display: grid; place-items: center; inline-size: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius-s); color: var(--nutri-texto-fuerte); overflow: hidden; }
+    /* Sin fotografía: una franja baja (no un bloque liso) para que la información clínica suba en la tarjeta. */
+    .t.empty { aspect-ratio: auto; block-size: 4.25rem; }
     img { inline-size: 100%; block-size: 100%; object-fit: cover; }
   `,
   template: `
-    <div class="t" [class]="'t tone-' + tone()">
+    <div class="t" [class]="'t tone-' + tone()" [class.empty]="!src()">
       @if (src()) { <img [src]="src()" [alt]="alt()" loading="lazy" decoding="async" /> } @else { <app-icon [name]="icon()" [size]="size()" /> }
     </div>
   `,

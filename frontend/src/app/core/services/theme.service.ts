@@ -3,6 +3,8 @@ import { TUI_DARK_MODE } from '@taiga-ui/core';
 
 export type ThemePref = 'system' | 'light' | 'dark';
 const KEY = 'nutri-theme';
+const DENSITY_KEY = 'nutri-density';
+export type Density = 'comfortable' | 'compact';
 
 /**
  * Tema claro/oscuro. Por defecto sigue el sistema; la elección se recuerda en el
@@ -14,11 +16,16 @@ export class ThemeService {
   private readonly tuiDark = inject(TUI_DARK_MODE);
   readonly pref = signal<ThemePref>(this.read());
   readonly dark = signal(false);
+  /** Densidad de tablas: preferencia de interfaz de cada persona, recordada en el dispositivo. */
+  readonly density = signal<Density>(this.readDensity());
 
   constructor() {
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const system = signal(mq.matches);
     mq.addEventListener('change', (e) => system.set(e.matches));
+    effect(() => {
+      document.documentElement.dataset['density'] = this.density();
+    });
     effect(() => {
       const isDark = this.pref() === 'dark' || (this.pref() === 'system' && system());
       this.dark.set(isDark);
@@ -36,6 +43,15 @@ export class ThemeService {
     } catch {
       return 'system';
     }
+  }
+
+  private readDensity(): Density {
+    try { return localStorage.getItem(DENSITY_KEY) === 'compact' ? 'compact' : 'comfortable'; } catch { return 'comfortable'; }
+  }
+
+  setDensity(d: Density): void {
+    this.density.set(d);
+    try { localStorage.setItem(DENSITY_KEY, d); } catch { /* sin almacenamiento: vale para esta sesión */ }
   }
 
   set(p: ThemePref): void {

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, afterNextRender, computed, inject, input, signal } from '@angular/core';
 import { formatDate, shortDate } from '../utils/format';
 
 export interface LinePoint {
@@ -10,6 +10,19 @@ export interface LineSeries {
   label: string;
   color?: string;
   points: LinePoint[];
+}
+
+/**
+ * Las gráficas se dibujan al ancho real del contenedor (1 unidad = 1 píxel): así el texto de los ejes mide 12 px
+ * también en un celular, en lugar de encogerse con el SVG.
+ */
+function observeWidth(host: ElementRef<HTMLElement>, destroy: DestroyRef, width: (w: number) => void): void {
+  afterNextRender(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([e]) => { const w = Math.round(e.contentRect.width); if (w > 0) width(Math.max(260, w)); });
+    ro.observe(host.nativeElement);
+    destroy.onDestroy(() => ro.disconnect());
+  });
 }
 
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'];
@@ -27,13 +40,13 @@ const DASH = ['', '6 4', '2 4', '10 3 2 3'];
     :host { display: block; }
     svg { inline-size: 100%; block-size: auto; overflow: visible; }
     .grid { stroke: var(--nutri-borde); stroke-width: 1; }
-    text { font-size: 11px; fill: var(--nutri-texto-suave); font-family: var(--nutri-font-ui); }
+    text { font-size: 12px; fill: var(--nutri-texto-suave); font-family: var(--nutri-font-ui); font-variant-numeric: tabular-nums; }
     .legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin-block-start: .5rem; font-size: .875rem; }
     .legend span { display: inline-flex; align-items: center; gap: .4rem; }
     .legend svg { inline-size: 24px; block-size: 8px; }
   `,
   template: `
-    <figure style="margin: 0">
+    <figure class="m-0">
       <svg [attr.viewBox]="'0 0 ' + w + ' ' + h" role="img" [attr.aria-label]="title()">
         @for (t of yTicks(); track t.y) {
           <line class="grid" [attr.x1]="padL" [attr.x2]="w - padR" [attr.y1]="t.y" [attr.y2]="t.y" />
@@ -75,8 +88,10 @@ export class LineChart {
   readonly yMin = input<number | null>(null);
   readonly yMax = input<number | null>(null);
 
-  protected readonly w = 640;
+  private readonly width = signal(640);
+  protected get w(): number { return this.width(); }
   protected readonly h = 260;
+  constructor() { observeWidth(inject(ElementRef), inject(DestroyRef), (v) => this.width.set(v)); }
   protected readonly padL = 44;
   protected readonly padR = 16;
   private readonly padT = 12;
@@ -119,7 +134,9 @@ export class LineChart {
 
   protected readonly xTicks = computed(() => {
     const dates = this.allDates();
-    const step = Math.max(1, Math.ceil(dates.length / 6));
+    // Una etiqueta cada ~76 px como máximo, para que no se encimen en pantallas angostas.
+    const maxTicks = Math.max(2, Math.floor((this.w - this.padL - this.padR) / 76));
+    const step = Math.max(1, Math.ceil(dates.length / maxTicks));
     return dates.filter((_, i) => i % step === 0).map((d) => ({ x: this.xOf()(d), label: shortDate(d) }));
   });
 
@@ -155,12 +172,12 @@ export interface BarDatum {
     :host { display: block; }
     svg { inline-size: 100%; block-size: auto; }
     .grid { stroke: var(--nutri-borde); }
-    text { font-size: 11px; fill: var(--nutri-texto-suave); font-family: var(--nutri-font-ui); }
+    text { font-size: 12px; fill: var(--nutri-texto-suave); font-family: var(--nutri-font-ui); font-variant-numeric: tabular-nums; }
     .legend { display: flex; flex-wrap: wrap; gap: .5rem 1rem; margin-block-start: .5rem; font-size: .875rem; }
     .sw { display: inline-block; inline-size: .9rem; block-size: .9rem; border-radius: 3px; vertical-align: -2px; margin-inline-end: .35rem; }
   `,
   template: `
-    <figure style="margin: 0">
+    <figure class="m-0">
       <svg [attr.viewBox]="'0 0 ' + w + ' ' + h" role="img" [attr.aria-label]="title()">
         @for (t of ticks(); track t.y) {
           <line class="grid" [attr.x1]="padL" [attr.x2]="w - 8" [attr.y1]="t.y" [attr.y2]="t.y" />
@@ -186,8 +203,10 @@ export class BarChart {
   readonly aLabel = input('Planeado');
   readonly bLabel = input('');
   readonly title = input('Gráfica de barras');
-  protected readonly w = 640;
+  private readonly width = signal(640);
+  protected get w(): number { return this.width(); }
   protected readonly h = 240;
+  constructor() { observeWidth(inject(ElementRef), inject(DestroyRef), (v) => this.width.set(v)); }
   protected readonly padL = 44;
 
   private readonly max = computed(() => Math.max(1, ...this.data().flatMap((d) => [d.a, d.b ?? 0])) * 1.1);
@@ -218,7 +237,7 @@ export class BarChart {
   styles: `
     :host { display: inline-grid; place-items: center; position: relative; }
     .c { position: absolute; display: grid; text-align: center; line-height: 1.1; }
-    .c strong { font-family: var(--nutri-font-display); font-size: 1.5rem; }
+    .c strong { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
     .c span { font-size: .75rem; color: var(--nutri-texto-suave); }
   `,
   template: `

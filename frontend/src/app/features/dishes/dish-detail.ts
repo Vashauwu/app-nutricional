@@ -44,7 +44,7 @@ import { fmt, fmtCompact, formatDate, formatDateTime } from '../../shared/utils/
 
         <div class="ver-row" role="group" aria-label="Versión del platillo">
           <label for="ver" class="small"><strong>Versión</strong></label>
-          <select id="ver" class="select" style="max-inline-size: 16rem" (change)="view.set(+$any($event.target).value)">
+          <select id="ver" class="select maxw-16" (change)="view.set(+$any($event.target).value)">
             @for (x of versionsDesc(); track x.versionNumber) { <option [value]="x.versionNumber" [selected]="x.versionNumber === v().versionNumber">v{{ x.versionNumber }}{{ x.versionNumber === d.currentVersion ? ' (vigente)' : '' }} · {{ fd(x.createdAt) }}</option> }
           </select>
           @if (v().versionNumber !== d.currentVersion) { <app-badge tone="warn" icon="history">Versión histórica de solo lectura</app-badge> }
@@ -54,7 +54,7 @@ import { fmt, fmtCompact, formatDate, formatDateTime } from '../../shared/utils/
         <div class="hero">
           <app-dish-thumb [category]="d.category" [src]="v().image?.dataUrl" [alt]="v().image?.alt ?? ''" [size]="48" />
           <section class="panel" aria-labelledby="h-nut">
-            <h2 id="h-nut" class="panel-head" style="font-size: 1.125rem">Valor nutricional por porción</h2>
+            <h2 id="h-nut" class="panel-head t-md">Valor nutricional por porción</h2>
             <div class="tiles">
               <div><b>{{ c(v().nutrition.perServing.energy) }}</b><span>kcal</span></div>
               <div><b>{{ c(v().nutrition.perServing.protein, 1) }} g</b><span>Proteínas</span></div>
@@ -79,7 +79,7 @@ import { fmt, fmtCompact, formatDate, formatDateTime } from '../../shared/utils/
 
         <div class="grid grid--2">
           <section class="panel" aria-labelledby="h-prep">
-            <h2 id="h-prep" class="panel-head" style="font-size: 1.125rem">Preparación</h2>
+            <h2 id="h-prep" class="panel-head t-md">Preparación</h2>
             @if (v().recipeMode === 'structured') {
               <ol class="steps">@for (s of v().steps; track $index) { <li>{{ s }}</li> } @empty { <li class="muted">Sin pasos capturados.</li> }</ol>
             } @else { <pre>{{ v().instructionsText }}</pre> }
@@ -87,7 +87,7 @@ import { fmt, fmtCompact, formatDate, formatDateTime } from '../../shared/utils/
           </section>
 
           <section class="panel" aria-labelledby="h-prov">
-            <h2 id="h-prov" class="panel-head" style="font-size: 1.125rem">Cálculo reproducible</h2>
+            <h2 id="h-prov" class="panel-head t-md">Cálculo reproducible</h2>
             <p class="small">Calculado el {{ fdt(v().nutrition.calculatedAt) }} con el motor <code>{{ v().nutrition.engineVersion }}</code> y {{ editionName() }}. Se conservan las cantidades originales, las normalizadas y las fuentes de cada ingrediente.</p>
             <p class="small muted">Versión {{ v().versionNumber }} · {{ v().createdBy }} · {{ fdt(v().createdAt) }}<br />Motivo: {{ v().changeReason }}</p>
           </section>
@@ -95,7 +95,7 @@ import { fmt, fmtCompact, formatDate, formatDateTime } from '../../shared/utils/
 
         <section class="panel panel--flush" aria-labelledby="h-sub">
           <div class="panel-head"><h2 id="h-sub">Sustituciones autorizadas</h2><button tuiButton type="button" size="s" (click)="openSuggest()"><app-icon name="swap" [size]="16" /> Sugerir sustitutos</button></div>
-          <p class="small muted" style="padding: 0 var(--space-5)">Las pacientes solo ven alternativas que tú autorizas; no pueden modificar la composición nutricional.</p>
+          <p class="small muted px-5">Las pacientes solo ven alternativas que tú autorizas; no pueden modificar la composición nutricional.</p>
           <ul class="list-plain list-rows">
             @for (s of v().substitutions; track s.id) {
               <li><div class="grow"><strong>{{ s.label }}</strong><p class="small muted">{{ s.rule }} · autorizó {{ s.approvedBy }} el {{ fd(s.approvedAt) }}@if (s.note) { · {{ s.note }} }</p><app-macros [n]="s.diff" /> <span class="small muted">(diferencia por porción)</span></div>
@@ -116,7 +116,7 @@ import { fmt, fmtCompact, formatDate, formatDateTime } from '../../shared/utils/
 
       <app-modal [(open)]="suggestOpen" title="Sugerir sustitutos" size="wide">
         <p class="small muted">Candidatos de la misma categoría con energía similar. Elige un paciente para revisar alergias y restricciones. Cada sustituto exige tu autorización.</p>
-        <div class="field" style="max-inline-size: 24rem"><label for="sp">Evaluar contra el paciente</label><select id="sp" class="select" (change)="ctxPatient.set($any($event.target).value); refreshCandidates()"><option value="">Sin paciente específico</option>@for (p of patientList(); track p.id) { <option [value]="p.id">{{ name(p) }}</option> }</select></div>
+        <div class="field maxw-24"><label for="sp">Evaluar contra el paciente</label><select id="sp" class="select" (change)="ctxPatient.set($any($event.target).value); refreshCandidates()"><option value="">Sin paciente específico</option>@for (p of patientList(); track p.id) { <option [value]="p.id">{{ name(p) }}</option> }</select></div>
         <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Platillo</th><th scope="col" class="num">Δ kcal</th><th scope="col" class="num">Δ P / C / L (g)</th><th scope="col">Motivo de la sugerencia</th><th scope="col"><span class="visually-hidden">Acción</span></th></tr></thead><tbody>
           @for (cnd of candidates(); track cnd.dish.id) {
             <tr><td><strong>{{ cnd.dish.name }}</strong>@for (cf of cnd.conflicts; track cf) { <div><app-badge tone="crit" icon="alert">{{ cf }}</app-badge></div> }</td>

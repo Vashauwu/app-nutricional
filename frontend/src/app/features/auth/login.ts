@@ -19,14 +19,14 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
     <div class="auth">
       <section class="hero" aria-label="Presentación">
         <span class="mark">
-          @if (brand().logoDataUrl) { <img class="logo" [src]="brand().logoDataUrl" alt="" /> } @else { <span class="logo" aria-hidden="true">{{ brand().businessName.trim()[0] }}</span> }
+          @if (brand().logoDataUrl) { <img class="logo" [src]="brand().logoDataUrl" alt="" /> } @else { <img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> }
           {{ brand().businessName }}
         </span>
         <div>
           <h1>Tu plan, claro y a tu ritmo.</h1>
           <p>{{ brand().tagline }}</p>
         </div>
-        <p class="small" style="margin: 0">Plataforma de gestión nutricional</p>
+        <p class="small m-0">Plataforma de gestión nutricional</p>
       </section>
 
       <main class="panel-wrap" id="contenido">

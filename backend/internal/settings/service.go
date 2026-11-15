@@ -86,7 +86,7 @@ const MB = 1024 * 1024
 // Defaults son los valores iniciales; las reglas y umbrales clínicos DEBE validarlos la nutrióloga (§14).
 func Defaults() All {
 	return All{
-		Brand:   Brand{BusinessName: "Nutrición", Tagline: "", Primary: "#514653", Secondary: "#DDD6F2"},
+		Brand:   Brand{BusinessName: "Nutrición", Tagline: "", Primary: "#4E344C", Secondary: "#DDD6F2"},
 		Region:  Region{Timezone: "America/Mexico_City", WeekStart: "mon"},
 		Storage: Storage{DefaultQuotaBytes: 50 * MB, MaxImageBytes: 10 * MB, MaxPdfBytes: 15 * MB, WarnThresholdPct: 80},
 		Alerts: Alerts{
@@ -223,7 +223,7 @@ func (s *Service) UpdateBrand(ctx context.Context, a Actor, b Brand) (Brand, err
 		errs["business_name"] = "el nombre comercial es obligatorio (máx. 80 caracteres)"
 	}
 	if !hexRe.MatchString(b.Primary) {
-		errs["primary"] = "usa un color hexadecimal, p. ej. #514653"
+		errs["primary"] = "usa un color hexadecimal, p. ej. #4E344C"
 	} else if Contrast(b.Primary, ivory) < 4.5 {
 		errs["primary"] = "contraste insuficiente (mínimo 4.5:1 sobre el fondo) para botones y texto"
 	}

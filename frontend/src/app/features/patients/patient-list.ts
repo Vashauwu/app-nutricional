@@ -8,12 +8,13 @@ import { PatientQuery, PatientRow, PatientsService } from '../../core/services/p
 import { GOAL_LABEL, Goal, PATIENT_STATUS_LABEL, PatientStatus } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, Pagination, PATIENT_TONE, SearchBox, Skeleton } from '../../shared/components/ui';
 import { Icon } from '../../shared/components/icon';
+import { PageHeader } from '../../shared/components/page-header';
 import { Loadable, Page, loadable } from '../../shared/utils/loadable';
 import { formatDate } from '../../shared/utils/format';
 
 @Component({
   selector: 'app-patient-list',
-  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton],
+  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .filters { display: grid; grid-template-columns: minmax(12rem, 2fr) repeat(2, minmax(10rem, 1fr)); gap: var(--space-3); padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
@@ -24,10 +25,9 @@ import { formatDate } from '../../shared/utils/format';
   `,
   template: `
     <div class="page">
-      <header class="page-header">
-        <div><h1>Pacientes</h1><p class="sub">Busca por nombre, correo o teléfono, y filtra por estado y objetivo.</p></div>
-        <div class="actions"><a tuiButton routerLink="/pacientes/nuevo" size="m"><app-icon name="user-plus" [size]="18" /> Nuevo paciente</a></div>
-      </header>
+      <app-page-header title="Pacientes" sub="Busca por nombre, correo o teléfono, y filtra por estado y objetivo.">
+        <a tuiButton routerLink="/pacientes/nuevo" size="m"><app-icon name="user-plus" [size]="18" /> Nuevo paciente</a>
+      </app-page-header>
 
       <section class="panel panel--flush" aria-label="Listado de pacientes">
         <div class="filters">
@@ -55,19 +55,20 @@ import { formatDate } from '../../shared/utils/format';
           @else {
             @if (r.data.items.length) {
               <div class="table-wrap">
-                <table class="table">
+                <table class="table table--cards">
                   <caption class="visually-hidden">Pacientes</caption>
-                  <thead><tr><th scope="col">Paciente</th><th scope="col">Edad</th><th scope="col">Objetivo</th><th scope="col">Estado</th><th scope="col">Plan</th><th scope="col">Cumplimiento</th><th scope="col">Registro</th></tr></thead>
+                  <thead><tr><th scope="col">Paciente</th><th scope="col">Edad</th><th scope="col">Objetivo</th><th scope="col">Estado</th><th scope="col">Plan</th><th scope="col">Cumplimiento</th><th scope="col">Consentimiento</th><th scope="col">Alta</th></tr></thead>
                   <tbody>
                     @for (row of r.data.items; track row.patient.id) {
-                      <tr>
-                        <td><div class="name"><span class="avatar" aria-hidden="true">{{ row.name[0] }}</span><div><a class="row-link" [routerLink]="['/pacientes', row.patient.id]">{{ row.name }}</a><div class="small muted">{{ row.patient.profile.email }}</div></div></div></td>
-                        <td class="mono">{{ row.age }}</td>
-                        <td>{{ goalLabel[row.patient.goal] }}</td>
-                        <td><app-badge [tone]="tone[row.patient.status]">{{ statusLabel[row.patient.status] }}</app-badge></td>
-                        <td>@if (row.planName) { <span class="small">{{ row.planName }}</span> } @else { <span class="muted small">Sin plan</span> }</td>
-                        <td>@if (row.compliance !== null) { <div class="cell-compliance"><div class="meter"><span [style.inline-size.%]="row.compliance"></span></div><span class="mono">{{ row.compliance }}%</span></div> } @else { <span class="muted">—</span> }</td>
-                        <td>@if (row.consentComplete) { <app-badge tone="ok" icon="check">Completo</app-badge> } @else { <app-badge tone="warn" icon="lock">Pendiente</app-badge> }<div class="small muted">Alta {{ fd(row.patient.createdAt) }}</div></td>
+                      <tr class="clickable">
+                        <td class="cell-main"><div class="name"><span class="avatar" aria-hidden="true">{{ row.name[0] }}</span><div><a class="row-link" [routerLink]="['/pacientes', row.patient.id]">{{ row.name }}</a><div class="small muted">{{ row.patient.profile.email }}</div></div></div></td>
+                        <td class="mono" data-label="Edad">{{ row.age }}</td>
+                        <td data-label="Objetivo">{{ goalLabel[row.patient.goal] }}</td>
+                        <td data-label="Estado"><app-badge [tone]="tone[row.patient.status]">{{ statusLabel[row.patient.status] }}</app-badge></td>
+                        <td data-label="Plan">@if (row.planName) { <span class="small">{{ row.planName }}</span> } @else { <span class="muted small">Sin plan</span> }</td>
+                        <td data-label="Cumplimiento">@if (row.compliance !== null) { <div class="cell-compliance"><div class="meter"><span [style.inline-size.%]="row.compliance"></span></div><span class="mono">{{ row.compliance }}%</span></div> } @else { <span class="muted">—</span> }</td>
+                        <td data-label="Consentimiento">@if (row.consentComplete) { <app-badge tone="ok" icon="check">Completo</app-badge> } @else { <app-badge tone="warn" icon="lock">Pendiente</app-badge> }</td>
+                        <td class="mono small muted" data-label="Alta">{{ fd(row.patient.createdAt) }}</td>
                       </tr>
                     }
                   </tbody>

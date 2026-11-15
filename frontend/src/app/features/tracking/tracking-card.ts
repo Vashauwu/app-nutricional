@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, output, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
@@ -20,10 +20,13 @@ import { formatDate, formatDateTime } from '../../shared/utils/format';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     article { border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); padding: var(--space-4) var(--space-5); display: grid; gap: var(--space-3); }
-    article.review { border-inline-start: 4px solid var(--brand-primary); }
+    article.review { background: color-mix(in srgb, var(--nutri-lavanda) 30%, var(--surface)); }
+    .sel { display: flex; align-items: center; gap: .5rem; }
+    .sel input { inline-size: 1.25rem; block-size: 1.25rem; accent-color: var(--brand-ink); }
     .top { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; }
     h3 { font-size: 1.0625rem; }
-    blockquote { margin: 0; padding: .5rem .75rem; border-inline-start: 3px solid var(--nutri-lavanda); background: var(--nutri-marfil); border-radius: 0 var(--radius-s) var(--radius-s) 0; }
+    blockquote { margin: 0; padding: .625rem .875rem; background: var(--nutri-marfil); border: 1px solid var(--line); border-radius: var(--radius-s); }
+    .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
     .photos { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .photos button { padding: 0; border: 1px solid var(--line); border-radius: var(--radius-s); overflow: hidden; cursor: pointer; inline-size: 5.5rem; block-size: 5.5rem; background: none; }
     .photos img { inline-size: 100%; block-size: 100%; object-fit: cover; }
@@ -38,6 +41,9 @@ import { formatDate, formatDateTime } from '../../shared/utils/format';
   template: `
     <article [class.review]="entry().needsReview">
       <div class="top">
+        @if (selectable()) {
+          <label class="sel"><input type="checkbox" [checked]="selected()" (change)="toggled.emit()" [attr.aria-label]="'Seleccionar el registro de ' + entry().dishName" /></label>
+        }
         @if (showPatient()) { <a [routerLink]="['/pacientes', entry().patientId]"><strong>{{ patientName() }}</strong></a> · }
         <span>{{ fd(entry().date) }} · {{ entry().slotName }}</span>
         <app-badge [tone]="entry().status === 'done' ? 'ok' : 'warn'" [icon]="entry().status === 'done' ? 'check' : 'skip'">{{ entry().status === 'done' ? 'Realizada' : 'Omitida' }}</app-badge>
@@ -57,11 +63,18 @@ import { formatDate, formatDateTime } from '../../shared/utils/format';
         </div>
       }
       @if (canReply()) {
-        <form [formGroup]="form" (ngSubmit)="reply()">
-          <div class="field grow"><label [for]="'r-' + entry().id" class="visually-hidden">Responder</label><textarea [id]="'r-' + entry().id" class="textarea" formControlName="body" placeholder="Responder sobre esta comida…" maxlength="1000"></textarea></div>
-          <button tuiButton type="submit" size="m" [disabled]="!form.controls.body.value.trim()"><app-icon name="send" [size]="16" /> Responder</button>
-          @if (entry().needsReview) { <button tuiButton type="button" size="m" appearance="secondary" (click)="reviewed()">Marcar revisado</button> }
-        </form>
+        @if (replying()) {
+          <form [formGroup]="form" (ngSubmit)="reply()">
+            <div class="field grow"><label [for]="'r-' + entry().id" class="visually-hidden">Responder</label><textarea #ta [id]="'r-' + entry().id" class="textarea" formControlName="body" placeholder="Responder sobre esta comida…" maxlength="1000"></textarea></div>
+            <button tuiButton type="submit" size="m" [disabled]="!form.controls.body.value.trim()"><app-icon name="send" [size]="16" /> Enviar</button>
+            <button tuiButton type="button" size="m" appearance="flat" (click)="replying.set(false)">Cancelar</button>
+          </form>
+        } @else {
+          <div class="actions">
+            <button tuiButton type="button" size="s" appearance="secondary" (click)="openReply()"><app-icon name="message" [size]="16" /> Responder</button>
+            @if (entry().needsReview) { <button tuiButton type="button" size="s" appearance="flat" (click)="reviewed()"><app-icon name="check" [size]="16" /> Marcar revisado</button> }
+          </div>
+        }
       }
     </article>
     <app-modal [open]="!!photo()" (closed)="photo.set(null)" [title]="photo()?.alt ?? 'Fotografía'" size="wide">
@@ -78,6 +91,12 @@ export class TrackingCard {
   private readonly fb = inject(FormBuilder);
   readonly entry = input.required<TrackingEntry>();
   readonly showPatient = input(true);
+  /** Selección para acciones en lote (solo registros por revisar). */
+  readonly selectable = input(false);
+  readonly selected = input(false);
+  readonly toggled = output<void>();
+  protected readonly replying = signal(false);
+  private readonly ta = viewChild<ElementRef<HTMLTextAreaElement>>('ta');
   protected readonly photo = signal<TrackingPhoto | null>(null);
   protected readonly fd = formatDate;
   protected readonly fdt = formatDateTime;
@@ -85,9 +104,14 @@ export class TrackingCard {
   protected readonly canReply = computed(() => this.auth.role() === 'nutritionist');
   protected readonly patientName = computed(() => (this.data.version(), this.patients.get(this.entry().patientId) ? this.patients.fullName(this.patients.get(this.entry().patientId)!) : '—'));
 
+  protected openReply(): void {
+    this.replying.set(true);
+    setTimeout(() => this.ta()?.nativeElement.focus());
+  }
+
   protected reply(): void {
     this.tracking.addComment(this.entry().id, 'nutritionist', this.auth.user()?.name ?? 'Nutrióloga', this.form.controls.body.value).subscribe({
-      next: () => { this.form.reset({ body: '' }); this.toast.ok('Respuesta enviada. La paciente la verá de inmediato.'); },
+      next: () => { this.form.reset({ body: '' }); this.replying.set(false); this.toast.ok('Respuesta enviada. La paciente la verá de inmediato.'); },
       error: (e: unknown) => this.toast.error(e instanceof Error ? e.message : 'No se pudo enviar.'),
     });
   }

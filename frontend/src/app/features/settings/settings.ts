@@ -11,6 +11,8 @@ import { ConfirmService, ToastService, contrastRatio, isHex } from '../../core/s
 import { ClinicalRule, ConsentType } from '../../shared/models/domain';
 import { FieldError, decimalValidator } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
+import { FileDrop } from '../../shared/components/file-drop';
+import { PageHeader } from '../../shared/components/page-header';
 import { Modal } from '../../shared/components/modal';
 import { Badge, EmptyState, Pagination } from '../../shared/components/ui';
 import { processImage } from '../../shared/utils/image';
@@ -22,7 +24,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
 
 @Component({
   selector: 'app-settings',
-  imports: [ReactiveFormsModule, TuiButton, Icon, Modal, Badge, EmptyState, Pagination, FieldError],
+  imports: [ReactiveFormsModule, TuiButton, Icon, Modal, Badge, EmptyState, Pagination, FieldError, FileDrop, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .preview { display: grid; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-m); border: 1px solid var(--line); background: var(--nutri-marfil); }
@@ -30,26 +32,44 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
     .color { display: flex; gap: var(--space-2); align-items: center; } .color input[type='color'] { inline-size: 3rem; block-size: var(--tap); padding: 0; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); }
     .layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr); align-items: start; } @media (max-width: 62rem) { .layout { grid-template-columns: minmax(0, 1fr); } }
     textarea.doc { min-block-size: 12rem; }
+    .st-layout { display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: var(--space-5); align-items: start; }
+    .st-content { min-inline-size: 0; }
+    .st-nav { position: sticky; inset-block-start: 4.75rem; display: grid; gap: .125rem; }
+    .st-group { margin: var(--space-3) 0 .125rem; padding: 0 .75rem; font-size: .75rem; font-weight: 600; color: var(--muted); }
+    .st-group:first-child { margin-block-start: 0; }
+    .st-nav button { min-block-size: var(--tap); padding: 0 .75rem; border: 0; border-radius: var(--radius-s); background: none; font: inherit; font-weight: 500; color: var(--nutri-texto); text-align: start; cursor: pointer; }
+    .st-nav button:hover { background: color-mix(in srgb, var(--nutri-lavanda) 40%, transparent); }
+    .st-nav button[aria-selected='true'] { background: var(--brand-secondary); color: var(--nutri-texto-fuerte); font-weight: 600; }
+    @media (max-width: 52rem) {
+      .st-layout { grid-template-columns: minmax(0, 1fr); }
+      .st-nav { position: static; display: flex; overflow-x: auto; gap: .25rem; padding-block-end: .25rem; border-block-end: 1px solid var(--line); }
+      .st-nav .st-group { display: none; } .st-nav button { flex: none; }
+    }
   `,
   template: `
     <div class="page">
-      <header class="page-header"><div><h1>Configuración</h1><p class="sub">Identidad visual, región, cuotas, alertas, consentimientos, sesiones y auditoría.</p></div></header>
+      <app-page-header title="Configuración" sub="Tu marca, tus reglas clínicas y la seguridad de la cuenta." />
 
-      <div class="tabs" role="tablist" aria-label="Secciones de configuración" (keydown)="onTabKey($event)">
-        @for (t of tabs; track t.id) { <button type="button" role="tab" [id]="'st-' + t.id" [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button> }
+      <div class="st-layout">
+      <div class="st-nav" role="tablist" aria-orientation="vertical" aria-label="Secciones de configuración" (keydown)="onTabKey($event)">
+        @for (g of groups(); track g.title) {
+          <p class="st-group" role="presentation">{{ g.title }}</p>
+          @for (t of g.tabs; track t.id) { <button type="button" role="tab" [id]="'st-' + t.id" [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button> }
+        }
       </div>
+      <div class="st-content" role="tabpanel" [attr.aria-labelledby]="'st-' + tab()">
 
       @switch (tab()) {
         @case ('marca') {
           <div class="layout">
             <form [formGroup]="brandForm" (ngSubmit)="saveBrand()" class="panel" novalidate>
-              <h2 class="panel-head" style="font-size: 1.125rem">Identidad de la nutrióloga</h2>
+              <h2 class="panel-head t-md">Identidad de la nutrióloga</h2>
               <p class="small muted">Se aplica sin cambios de código: encabezados, PDF e impresiones.</p>
               <div class="form-grid">
                 <div class="field"><label for="b-n">Nombre comercial</label><input id="b-n" class="input" formControlName="businessName" /><app-field-error [control]="brandForm.controls.businessName" /></div>
                 <div class="field"><label for="b-t">Lema</label><input id="b-t" class="input" formControlName="tagline" /></div>
                 <div class="field"><label for="b-p">Color principal</label><div class="color"><input type="color" aria-label="Elegir color principal" [value]="brandForm.controls.primary.value" (input)="brandForm.controls.primary.setValue($any($event.target).value)" /><input id="b-p" class="input" formControlName="primary" /></div>
-                  <app-field-error [control]="brandForm.controls.primary" [messages]="{ pattern: 'Usa un color hexadecimal, p. ej. #514653.' }" />
+                  <app-field-error [control]="brandForm.controls.primary" [messages]="{ pattern: 'Usa un color hexadecimal, p. ej. #4E344C.' }" />
                   @if (primaryContrast() < 4.5) { <p class="error" role="alert">Contraste bajo ({{ primaryContrast().toFixed(1) }}:1). Para botones y texto se requiere al menos 4.5:1; no se aplicará.</p> } @else { <span class="hint">Contraste {{ primaryContrast().toFixed(1) }}:1 · cumple WCAG AA.</span> }</div>
                 <div class="field"><label for="b-s">Color secundario (superficies)</label><div class="color"><input type="color" aria-label="Elegir color secundario" [value]="brandForm.controls.secondary.value" (input)="brandForm.controls.secondary.setValue($any($event.target).value)" /><input id="b-s" class="input" formControlName="secondary" /></div><app-field-error [control]="brandForm.controls.secondary" [messages]="{ pattern: 'Usa un color hexadecimal.' }" /></div>
                 <div class="field"><label for="b-ph">Teléfono</label><input id="b-ph" class="input" formControlName="phone" /></div>
@@ -58,14 +78,14 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
               <div class="field"><label for="b-ad">Dirección</label><input id="b-ad" class="input" formControlName="address" /></div>
               <div class="form-grid"><div class="field"><label for="b-cr">Credenciales profesionales</label><input id="b-cr" class="input" formControlName="credentials" /></div><div class="field"><label for="b-li">Cédula o registro</label><input id="b-li" class="input" formControlName="licenseNumber" /></div></div>
               <div class="form-grid">
-                <div class="field"><label for="b-lg">Logotipo</label><input id="b-lg" class="input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onImage($event, 'logo')" /></div>
-                <div class="field"><label for="b-fo">Fotografía profesional</label><input id="b-fo" class="input" type="file" accept="image/png,image/jpeg,image/webp" (change)="onImage($event, 'photo')" /></div>
+                <app-file-drop label="Logotipo" hint="Cuadrado, PNG o JPG." [current]="logo() ?? ''" (picked)="pickImage($event, 'logo')" (cleared)="logo.set(undefined)" />
+                <app-file-drop label="Fotografía profesional" hint="Aparece en PDF e impresiones." [current]="photo() ?? ''" (picked)="pickImage($event, 'photo')" (cleared)="photo.set(undefined)" />
               </div>
               @if (imgError()) { <p class="error" role="alert">{{ imgError() }}</p> }
               <div class="form-actions"><button tuiButton type="submit" size="m">Guardar identidad</button></div>
             </form>
             <aside class="preview" aria-label="Vista previa de la marca">
-              <p class="eyebrow">Vista previa (PDF / encabezado)</p>
+              <p class="small muted"><strong>Vista previa</strong> (PDF y encabezado)</p>
               <div class="row">@if (logo()) { <img class="pv-logo" [src]="logo()" alt="" /> } @else { <span class="pv-logo" [style.background]="brandForm.controls.secondary.value">{{ initial() }}</span> }
                 <div><strong style="font-size: 1.25rem; font-family: var(--nutri-font-display)">{{ brandForm.controls.businessName.value }}</strong><p class="small muted">{{ brandForm.controls.tagline.value }}</p></div></div>
               <hr style="border: 0; border-block-start: 3px solid; inline-size: 100%" [style.border-color]="brandForm.controls.primary.value" />
@@ -76,9 +96,9 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
           </div>
         }
         @case ('region') {
-          <form [formGroup]="regionForm" (ngSubmit)="saveRegion()" class="panel" style="max-inline-size: 40rem" novalidate>
-            <h2 class="panel-head" style="font-size: 1.125rem">Región y formato</h2>
-            <dl style="display: grid; grid-template-columns: auto 1fr; gap: .25rem var(--space-4); margin: 0"><dt class="muted">Idioma</dt><dd style="margin: 0">Español (México)</dd><dt class="muted">Moneda</dt><dd style="margin: 0">MXN</dd><dt class="muted">Unidades</dt><dd style="margin: 0">kg · cm · g · ml</dd><dt class="muted">Fecha</dt><dd style="margin: 0">DD/MM/AAAA</dd></dl>
+          <form [formGroup]="regionForm" (ngSubmit)="saveRegion()" class="panel maxw-40" novalidate>
+            <h2 class="panel-head t-md">Región y formato</h2>
+            <dl style="display: grid; grid-template-columns: auto 1fr; gap: .25rem var(--space-4); margin: 0"><dt class="muted">Idioma</dt><dd class="m-0">Español (México)</dd><dt class="muted">Moneda</dt><dd class="m-0">MXN</dd><dt class="muted">Unidades</dt><dd class="m-0">kg · cm · g · ml</dd><dt class="muted">Fecha</dt><dd class="m-0">DD/MM/AAAA</dd></dl>
             <div class="field"><label for="r-z">Zona horaria</label><select id="r-z" class="select" formControlName="timezone">@for (z of zones; track z) { <option [value]="z">{{ z }}</option> }</select></div>
             <div class="field"><label for="r-w">La semana inicia en</label><select id="r-w" class="select" formControlName="weekStart"><option value="mon">Lunes (propuesta inicial)</option><option value="sun">Domingo</option></select></div>
             <div class="form-actions"><button tuiButton type="submit" size="m">Guardar región</button></div>
@@ -87,7 +107,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
         @case ('almacenamiento') {
           <div class="stack">
             <form [formGroup]="storageForm" (ngSubmit)="saveStorage()" class="panel" novalidate>
-              <h2 class="panel-head" style="font-size: 1.125rem">Cuotas y límites de carga</h2>
+              <h2 class="panel-head t-md">Cuotas y límites de carga</h2>
               <div class="form-grid">
                 <div class="field"><label for="s-q">Cuota base por paciente (MB)</label><input id="s-q" class="input" inputmode="decimal" formControlName="quotaMb" /><app-field-error [control]="storageForm.controls.quotaMb" /></div>
                 <div class="field"><label for="s-i">Máximo por imagen (MB)</label><input id="s-i" class="input" inputmode="decimal" formControlName="imageMb" /><app-field-error [control]="storageForm.controls.imageMb" /></div>
@@ -100,7 +120,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
               <div class="panel-head"><h2 id="h-use">Uso por paciente</h2><span class="small muted">Las ampliaciones individuales las autorizas tú.</span></div>
               <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Paciente</th><th scope="col">Uso</th><th scope="col" class="num">Cuota (MB)</th><th scope="col"><span class="visually-hidden">Acciones</span></th></tr></thead><tbody>
                 @for (r of usage(); track r.id) {
-                  <tr><td>{{ r.name }}</td><td style="min-inline-size: 12rem"><div class="meter" role="img" [attr.aria-label]="r.pct + '% usado'"><span [style.inline-size.%]="r.pct" [style.background]="r.warn ? 'var(--warn)' : null"></span></div><span class="small muted">{{ bytes(r.used) }} ({{ r.pct }} %)@if (r.warn) { · <strong>cerca del límite</strong> }</span></td>
+                  <tr><td>{{ r.name }}</td><td class="minw-12"><div class="meter" role="img" [attr.aria-label]="r.pct + '% usado'"><span [style.inline-size.%]="r.pct" [style.background]="r.warn ? 'var(--warn)' : null"></span></div><span class="small muted">{{ bytes(r.used) }} ({{ r.pct }} %)@if (r.warn) { · <strong>cerca del límite</strong> }</span></td>
                     <td class="num"><label class="visually-hidden" [for]="'q-' + r.id">Cuota de {{ r.name }} en MB</label><input [id]="'q-' + r.id" class="input" style="max-inline-size: 7rem; text-align: end" inputmode="decimal" [value]="r.quotaMb" #qi /></td>
                     <td><button tuiButton type="button" size="s" appearance="secondary" (click)="setQuota(r.id, qi.value)">Ampliar</button></td></tr>
                 }
@@ -111,7 +131,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
         @case ('alertas') {
           <div class="stack">
             <form [formGroup]="alertForm" (ngSubmit)="saveThresholds()" class="panel" novalidate>
-              <h2 class="panel-head" style="font-size: 1.125rem">Umbrales de desviación</h2>
+              <h2 class="panel-head t-md">Umbrales de desviación</h2>
               <p class="small muted">Se comparan los totales del día contra los objetivos del plan. Estos valores deben validarlos tú; no se infieren diagnósticos.</p>
               <div class="form-grid">
                 <div class="field"><label for="a-e">Energía: tolerancia ±%</label><input id="a-e" class="input" inputmode="decimal" formControlName="energyTolerancePct" /><app-field-error [control]="alertForm.controls.energyTolerancePct" /></div>
@@ -122,7 +142,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
             </form>
             <section class="panel panel--flush" aria-labelledby="h-rules">
               <div class="panel-head"><h2 id="h-rules">Reglas clínicas configurables</h2><button tuiButton type="button" size="s" (click)="openRule()"><app-icon name="plus" [size]="16" /> Nueva regla</button></div>
-              <p class="small muted" style="padding: 0 var(--space-5)">Si el paciente tiene la indicación o condición, los platillos que mencionan alguna palabra disparan la alerta. Las alergias y alimentos que no consume siempre se evalúan.</p>
+              <p class="small muted px-5">Si el paciente tiene la indicación o condición, los platillos que mencionan alguna palabra disparan la alerta. Las alergias y alimentos que no consume siempre se evalúan.</p>
               <ul class="list-plain list-rows">
                 @for (r of rules(); track r.id) {
                   <li><div class="grow"><strong>{{ r.keyword }}</strong> <app-badge [tone]="r.level === 'critical' ? 'crit' : r.level === 'warning' ? 'warn' : 'info'">{{ r.level === 'critical' ? 'Crítica' : r.level === 'warning' ? 'Advertencia' : 'Informativa' }}</app-badge> @if (!r.enabled) { <app-badge icon="ban">Desactivada</app-badge> }<p class="small muted">{{ r.message }} · Palabras: {{ r.triggers.join(', ') }}</p></div>
@@ -137,7 +157,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
           <div class="grid grid--2">
             @for (t of consentTypes; track t.type) {
               <section class="panel" [attr.aria-label]="t.label">
-                <h2 class="panel-head" style="font-size: 1.125rem">{{ t.label }}</h2>
+                <h2 class="panel-head t-md">{{ t.label }}</h2>
                 <p class="small muted">Versión vigente {{ latest(t.type)?.version }} · {{ acceptCount(t.type) }} aceptación(es). Editar el texto publica una versión nueva; las anteriores no se sobrescriben.</p>
                 <div class="field"><label [for]="'doc-' + t.type">Texto vigente</label><textarea [id]="'doc-' + t.type" class="textarea doc" [value]="drafts()[t.type] ?? latest(t.type)?.content ?? ''" (input)="setDraft(t.type, $any($event.target).value)"></textarea></div>
                 <div class="form-actions"><button tuiButton type="button" size="m" [disabled]="!dirtyDoc(t.type)" (click)="publishDoc(t.type, t.label)">Publicar como versión {{ (latest(t.type)?.version ?? 0) + 1 }}</button></div>
@@ -145,7 +165,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
               </section>
             }
           </div>
-          <div class="callout callout--warn"><app-icon name="alert" /><div class="callout-body">Estos textos son marcadores. Antes de producción deben validarse con asesoría jurídica en protección de datos y atención sanitaria en México (§4.1, §25.1).</div></div>
+          <div class="callout callout--warn"><app-icon name="alert" /><div class="callout-body">Estos textos son marcadores. Antes de producción deben validarse con asesoría jurídica en protección de datos y atención sanitaria en México.</div></div>
         }
         @case ('sesiones') {
           <section class="panel panel--flush" aria-labelledby="h-ses">
@@ -161,7 +181,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
         @case ('auditoria') {
           <section class="panel panel--flush" aria-labelledby="h-aud">
             <div class="panel-head"><h2 id="h-aud">Auditoría interna</h2><div class="row"><div class="field"><label class="visually-hidden" for="au-q">Filtrar</label><input id="au-q" class="input" type="search" placeholder="Filtrar por acción o resumen…" (input)="auditQ.set($any($event.target).value); auditPage.set(1)" /></div><button tuiButton type="button" size="s" appearance="secondary" (click)="exportAudit()"><app-icon name="download" [size]="16" /> CSV</button></div></div>
-            <p class="small muted" style="padding: 0 var(--space-5)">No visible para pacientes. No contiene contraseñas ni tokens.</p>
+            <p class="small muted px-5">No visible para pacientes. No contiene contraseñas ni tokens.</p>
             <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Fecha</th><th scope="col">Actor</th><th scope="col">Acción</th><th scope="col">Recurso</th><th scope="col">Detalle</th><th scope="col">Solicitud</th></tr></thead><tbody>
               @for (a of auditPageItems(); track a.id) { <tr><td class="small">{{ fdt(a.at) }}</td><td>{{ a.actor }}</td><td><code class="small">{{ a.action }}</code></td><td class="small">{{ a.resourceType }}</td><td>{{ a.summary }}</td><td class="small muted"><code>{{ a.requestId }}</code></td></tr> } @empty { <tr><td colspan="6" class="muted">Sin eventos.</td></tr> }
             </tbody></table></div>
@@ -169,18 +189,20 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
           </section>
         }
         @case ('demo') {
-          <section class="panel" style="max-inline-size: 44rem" aria-labelledby="h-demo">
-            <h2 id="h-demo" class="panel-head" style="font-size: 1.125rem">Herramientas de demostración</h2>
+          <section class="panel maxw-44" aria-labelledby="h-demo">
+            <h2 id="h-demo" class="panel-head t-md">Herramientas de demostración</h2>
             <p class="small muted">Sirven para probar flujos que dependen del backend: conexión, concurrencia y datos de ejemplo. No existirán en producción.</p>
             <label class="check"><input type="checkbox" [checked]="data.forcedOffline()" (change)="data.forcedOffline.set($any($event.target).checked)" /><span><strong>Simular sin conexión</strong><br /><span class="small muted">El editor de planes encola cambios y la app de la paciente muestra el estado sin conexión.</span></span></label>
             <div class="field"><label for="cc">Simular edición concurrente</label>
-              <div class="row"><select id="cc" class="select" style="max-inline-size: 22rem" (change)="ccPlan.set($any($event.target).value)"><option value="">Elige un plan…</option>@for (p of plansList(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }</select><button tuiButton type="button" size="m" appearance="secondary" [disabled]="!ccPlan()" (click)="simulateConcurrent()">Simular cambio de otra sesión</button></div>
+              <div class="row"><select id="cc" class="select maxw-22" (change)="ccPlan.set($any($event.target).value)"><option value="">Elige un plan…</option>@for (p of plansList(); track p.id) { <option [value]="p.id">{{ p.name }}</option> }</select><button tuiButton type="button" size="m" appearance="secondary" [disabled]="!ccPlan()" (click)="simulateConcurrent()">Simular cambio de otra sesión</button></div>
               <span class="hint">Abre el plan en el editor, haz un cambio y luego usa este botón: al guardar verás el aviso de conflicto.</span></div>
-            <hr style="border: 0; border-block-start: 1px solid var(--line); inline-size: 100%" />
+            <hr class="hr-line" />
             <div><button tuiButton type="button" size="m" appearance="secondary-destructive" (click)="resetDemo()">Restablecer datos de ejemplo</button></div>
           </section>
         }
       }
+      </div>
+      </div>
     </div>
 
     <app-modal [(open)]="ruleOpen" [title]="ruleForm.controls.id.value ? 'Editar regla clínica' : 'Nueva regla clínica'">
@@ -212,6 +234,17 @@ export class SettingsPage {
     { id: 'consentimientos', label: 'Consentimientos' }, { id: 'sesiones', label: 'Sesiones' }, { id: 'auditoria', label: 'Auditoría' }, { id: 'demo', label: 'Demostración' },
   ].filter((t) => !(this.settings.apiMode && t.id === 'demo')) as { id: Tab; label: string }[];
   protected readonly zones = ZONES;
+  /** Las pestañas se agrupan por propósito (≤ 3 por grupo): menos que recordar y más fácil de encontrar. */
+  protected readonly groups = computed(() => {
+    const has = (id: Tab) => this.tabs.some((t) => t.id === id);
+    const pick = (...ids: Tab[]) => this.tabs.filter((t) => ids.includes(t.id) && has(t.id));
+    return [
+      { title: 'Mi consulta', tabs: pick('marca', 'region') },
+      { title: 'Clínica', tabs: pick('alertas', 'consentimientos') },
+      { title: 'Cuenta y seguridad', tabs: pick('sesiones', 'auditoria') },
+      { title: 'Sistema', tabs: pick('almacenamiento', 'demo') },
+    ].filter((g) => g.tabs.length);
+  });
 
   private applyStore(): void {
     const s = this.settings.get();
@@ -294,7 +327,7 @@ export class SettingsPage {
 
   protected onTabKey(e: KeyboardEvent): void {
     const i = this.tabs.findIndex((t) => t.id === this.tab());
-    const n = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : null;
+    const n = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? i - 1 : null;
     if (n === null) return;
     e.preventDefault();
     const t = this.tabs[(n + this.tabs.length) % this.tabs.length];
@@ -302,17 +335,13 @@ export class SettingsPage {
     setTimeout(() => document.getElementById('st-' + t.id)?.focus());
   }
 
-  protected async onImage(e: Event, which: 'logo' | 'photo'): Promise<void> {
-    const input = e.target as HTMLInputElement;
-    const f = input.files?.[0];
+  protected async pickImage(f: File, which: 'logo' | 'photo'): Promise<void> {
     this.imgError.set('');
-    if (!f) return;
     try {
       const r = await processImage(f, this.data.db().settings.storage.maxImageBytes);
       (which === 'logo' ? this.logo : this.photo).set(r.dataUrl);
     } catch (err) {
       this.imgError.set(err instanceof Error ? err.message : 'No se pudo procesar la imagen.');
-      input.value = '';
     }
   }
 

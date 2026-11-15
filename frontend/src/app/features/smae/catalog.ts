@@ -11,6 +11,7 @@ import { FoodView } from '../../core/nutrition/engine';
 import { CustomFood } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, SearchBox, Skeleton } from '../../shared/components/ui';
 import { FieldError, decimalValidator, positiveDecimalValidator } from '../../shared/components/forms';
+import { PageHeader } from '../../shared/components/page-header';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
 import { Macros } from '../../shared/components/nutrition-bits';
@@ -23,18 +24,23 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
 
 @Component({
   selector: 'app-catalog',
-  imports: [ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Modal, FieldError, Macros],
+  imports: [ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Modal, FieldError, Macros, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .gchips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+    .search-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding: var(--space-4) var(--space-5); }
+    .search-row app-search { flex: 1 1 18rem; min-inline-size: 0; }
+    .search-row .field { flex: 0 1 15rem; }
+    .gchips { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; padding: 0 var(--space-5) var(--space-4); }
+    .gchips .chip-toggle { flex: none; }
     .decide { display: inline-flex; gap: var(--space-2); }
     .decide label { display: inline-flex; align-items: center; gap: .25rem; min-block-size: 2.25rem; padding: 0 .5rem; cursor: pointer; }
   `,
   template: `
     <div class="page">
-      <header class="page-header"><div><h1>Catálogo SMAE</h1><p class="sub">Alimentos, equivalentes y composición. La edición activa es <strong>{{ edition().name }}</strong>.</p></div></header>
+      <app-page-header title="Catálogo SMAE" [sub]="'Alimentos, equivalentes y composición. La edición activa es ' + edition().name + '.'" />
 
-      <div class="callout callout--warn"><app-icon name="alert" /><div class="callout-body"><p><strong>Datos de ejemplo.</strong> Este catálogo es sintético y no reproduce material protegido. La carga real depende de una fuente con licencia confirmada (§25.1).</p></div></div>
+      <div class="callout callout--warn"><app-icon name="alert" /><div class="callout-body"><p><strong>Datos de ejemplo.</strong> Este catálogo es sintético y no reproduce material protegido. La edición oficial se cargará cuando se confirme la licencia de la fuente.</p></div></div>
 
       <div class="tabs" role="tablist" aria-label="Secciones del catálogo">
         @for (t of tabs; track t.id) { <button type="button" role="tab" [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button> }
@@ -43,11 +49,11 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
       @switch (tab()) {
         @case ('alimentos') {
           <section class="panel panel--flush" aria-label="Alimentos del catálogo">
-            <div class="panel-head" style="padding: var(--space-4) var(--space-5)">
+            <div class="search-row">
               <app-search label="Buscar alimentos" placeholder="Buscar alimento o etiqueta" [value]="search()" (valueChange)="search.set($event); limit.set(step)" />
               <div class="field"><label class="visually-hidden" for="src">Origen</label><select id="src" class="select" [value]="source()" (change)="source.set($any($event.target).value); limit.set(step)"><option value="all">Oficiales y personalizados</option><option value="smae">Solo catálogo SMAE</option><option value="custom">Solo personalizados</option></select></div>
             </div>
-            <div class="gchips" style="padding: 0 var(--space-5) var(--space-4)" role="group" aria-label="Grupo de alimentos">
+            <div class="gchips" role="group" aria-label="Grupo de alimentos">
               <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === ''" (click)="groupId.set(''); limit.set(step)">Todos</button>
               @for (g of groups(); track g.id) { <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === g.id" (click)="groupId.set(g.id); limit.set(step)">{{ g.name }}</button> }
             </div>
@@ -65,7 +71,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
                         <td>@if (f.official) { <app-badge tone="info">Catálogo</app-badge> } @else { <app-badge tone="warn" icon="alert">Personalizado</app-badge> }</td></tr>
                     }
                   </tbody></table></div>
-                  <p class="small muted" style="padding: var(--space-3) var(--space-5)" aria-live="polite">{{ v.items.length }} de {{ v.total }} alimentos</p>
+                  <p class="small muted p-3-5" aria-live="polite">{{ v.items.length }} de {{ v.total }} alimentos</p>
                   @if (v.items.length < v.total) { <div class="row" style="justify-content: center; padding-block-end: var(--space-4)"><button tuiButton type="button" appearance="secondary" size="m" (click)="limit.set(limit() + step)">Cargar más</button></div> }
                 } @else { <app-empty icon="search" title="Sin resultados" text="Prueba con otra búsqueda o grupo." /> }
               }
@@ -75,15 +81,15 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
         @case ('personalizados') {
           <section class="panel panel--flush" aria-labelledby="h-cust">
             <div class="panel-head"><h2 id="h-cust">Alimentos personalizados</h2><button tuiButton type="button" size="s" (click)="openFood()"><app-icon name="plus" [size]="16" /> Nuevo alimento</button></div>
-            <p class="small muted" style="padding: 0 var(--space-5)">Se identifican como no oficiales en platillos y cálculos. Solo tienen equivalencia SMAE si tú la asignas, y queda registrado quién, cuándo y con qué criterio.</p>
+            <p class="small muted px-5">Se identifican como no oficiales en platillos y cálculos. Solo tienen equivalencia SMAE si tú la asignas, y queda registrado quién, cuándo y con qué criterio.</p>
             <ul class="list-plain list-rows">
               @for (f of customs(); track f.id) {
                 <li style="align-items: flex-start; flex-wrap: wrap">
-                  <div class="grow" style="min-inline-size: 14rem"><strong>{{ f.name }}</strong> @if (f.brand) { <span class="muted">· {{ f.brand }}</span> } @if (f.status === 'inactive') { <app-badge icon="ban">Inactivo</app-badge> }
+                  <div class="grow minw-14"><strong>{{ f.name }}</strong> @if (f.brand) { <span class="muted">· {{ f.brand }}</span> } @if (f.status === 'inactive') { <app-badge icon="ban">Inactivo</app-badge> }
                     <p class="small muted">{{ f.description }}</p>
                     <p class="small">Fuente: {{ source_[f.sourceType] }} — {{ f.sourceReference }}</p>
                     <app-macros [n]="{ energy: f.profile.energy, protein: f.profile.protein, carbs: f.profile.carbs, lipids: f.profile.lipids, fiber: f.profile.fiber }" /> <span class="small muted">por {{ f.profile.basisQuantity }} {{ f.profile.basisUnit }}</span>
-                    <div class="row" style="margin-block-start: var(--space-2)">
+                    <div class="row mt-2">
                       @if (f.validatedAt) { <app-badge tone="ok" icon="check">Validado por {{ f.validatedBy }} · {{ fd(f.validatedAt) }}</app-badge> } @else { <app-badge tone="warn" icon="clock">Sin validar</app-badge> }
                       @if (f.equivalence; as e) { <app-badge tone="accent">Equivalencia {{ e.subgroupCode }} asignada por {{ e.assignedBy }}</app-badge> } @else { <app-badge>Sin equivalencia SMAE</app-badge> }
                     </div>
@@ -104,7 +110,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
           <div class="stack">
             @for (e of editions(); track e.id) {
               <section class="panel" [attr.aria-label]="e.name">
-                <div class="panel-head"><div><h2 style="font-size: 1.125rem">{{ e.name }}</h2><p class="small muted">{{ e.publisher }} · vigente desde {{ fd(e.effectiveDate) }} · importada {{ fdt(e.importedAt) }}</p></div>
+                <div class="panel-head"><div><h2 class="t-md">{{ e.name }}</h2><p class="small muted">{{ e.publisher }} · vigente desde {{ fd(e.effectiveDate) }} · importada {{ fdt(e.importedAt) }}</p></div>
                   <app-badge [tone]="e.status === 'active' ? 'ok' : e.status === 'draft' ? 'warn' : 'neutral'">{{ e.status === 'active' ? 'Activa' : e.status === 'draft' ? 'Borrador' : 'Archivada' }}</app-badge></div>
                 <p class="small">Fuente: {{ e.sourceReference }} · Licencia: {{ e.licenseReference }}</p>
                 <p class="small muted">{{ e.notes }}</p>
@@ -115,7 +121,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
                       <p><strong>{{ rows().length }} platillo(s) cambiarían.</strong> Ninguno se actualiza sin tu autorización; cada autorización crea una versión nueva e inmutable y los planes existentes conservan la suya.</p>
                       <div class="table-wrap"><table class="table"><caption class="visually-hidden">Comparación de valores anteriores y nuevos</caption><thead><tr><th scope="col">Platillo</th><th scope="col">Alimentos que cambian</th><th scope="col" class="num">kcal antes → después</th><th scope="col" class="num">Δ P / C / L (g)</th><th scope="col">Decisión</th></tr></thead><tbody>
                         @for (r of rows(); track r.dish.id) {
-                          <tr><td><strong>{{ r.dish.name }}</strong><div class="small muted">v{{ r.fromVersion.versionNumber }} → v{{ r.fromVersion.versionNumber + 1 }} (propuesta)</div></td><td class="small">{{ r.changedFoods.join(', ') }}@if (r.blocked) { <div class="small" style="color: var(--danger)">No se puede autorizar: {{ r.blocked }}</div> }</td>
+                          <tr><td><strong>{{ r.dish.name }}</strong><div class="small muted">v{{ r.fromVersion.versionNumber }} → v{{ r.fromVersion.versionNumber + 1 }} (propuesta)</div></td><td class="small">{{ r.changedFoods.join(', ') }}@if (r.blocked) { <div class="small text-danger">No se puede autorizar: {{ r.blocked }}</div> }</td>
                             <td class="num">{{ c(r.fromVersion.nutrition.perServing.energy) }} → <strong>{{ c(r.after.perServing.energy) }}</strong></td><td class="num">{{ sg(r.diff.protein) }} / {{ sg(r.diff.carbs) }} / {{ sg(r.diff.lipids) }}</td>
                             <td><div class="decide" role="radiogroup" [attr.aria-label]="'Decisión para ' + r.dish.name"><label><input type="radio" [name]="'d-' + r.dish.id" [checked]="decisions()[r.dish.id] === true" (change)="decide(r.dish.id, true)" /> Autorizar</label><label><input type="radio" [name]="'d-' + r.dish.id" [checked]="decisions()[r.dish.id] === false" (change)="decide(r.dish.id, false)" /> Rechazar</label></div></td></tr>
                         }
@@ -144,7 +150,7 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
           <div class="field"><label for="f-b">Marca <span class="muted">opcional</span></label><input id="f-b" class="input" formControlName="brand" /></div>
         </div>
         <div class="field"><label for="f-d">Descripción</label><input id="f-d" class="input" formControlName="description" /></div>
-        <fieldset style="border: 0; padding: 0; margin: 0"><legend class="eyebrow" style="margin-block-end: var(--space-2)">Composición para la cantidad base</legend>
+        <fieldset class="fieldset-reset"><legend class="eyebrow" style="margin-block-end: var(--space-2)">Composición para la cantidad base</legend>
           <div class="form-grid">
             <div class="field"><label for="f-q">Cantidad base (g)</label><input id="f-q" class="input" inputmode="decimal" formControlName="baseQuantity" /><app-field-error [control]="foodForm.controls.baseQuantity" /></div>
             <div class="field"><label for="f-e">Energía (kcal)</label><input id="f-e" class="input" inputmode="decimal" formControlName="energy" /><app-field-error [control]="foodForm.controls.energy" /></div>

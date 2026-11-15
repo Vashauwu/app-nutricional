@@ -10,12 +10,14 @@ import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { MealPlan, PLAN_STATUS_LABEL, PlanStatus } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, PLAN_TONE, Pagination, SearchBox, Skeleton } from '../../shared/components/ui';
 import { Icon } from '../../shared/components/icon';
+import { PageHeader } from '../../shared/components/page-header';
+import { Combobox } from '../../shared/components/combobox';
 import { Loadable, Page, loadable } from '../../shared/utils/loadable';
 import { formatDate } from '../../shared/utils/format';
 
 @Component({
   selector: 'app-plan-list',
-  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton],
+  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton, Combobox],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .filters { display: grid; gap: var(--space-3); grid-template-columns: minmax(12rem, 2fr) repeat(4, minmax(8.5rem, 1fr)); padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
@@ -24,10 +26,9 @@ import { formatDate } from '../../shared/utils/format';
   `,
   template: `
     <div class="page">
-      <header class="page-header">
-        <div><h1>Planes alimentarios</h1><p class="sub">Busca por paciente, estado y fechas. Un plan publicado se ve de inmediato en la app de la paciente.</p></div>
-        <div class="actions"><a tuiButton routerLink="/planes/nuevo" size="m"><app-icon name="plus" [size]="18" /> Crear plan</a></div>
-      </header>
+      <app-page-header title="Planes alimentarios" sub="Busca por paciente, estado y fechas. Un plan publicado se ve de inmediato en la app de la paciente.">
+        <a tuiButton routerLink="/planes/nuevo" size="m"><app-icon name="plus" [size]="18" /> Crear plan</a>
+      </app-page-header>
 
       <div class="tabs" role="tablist" aria-label="Planes y plantillas">
         <button type="button" role="tab" [attr.aria-selected]="tab() === 'planes'" (click)="tab.set('planes')">Planes</button>
@@ -39,7 +40,7 @@ import { formatDate } from '../../shared/utils/format';
           <div class="filters">
             <app-search label="Buscar planes" placeholder="Nombre del plan o paciente" [value]="search()" (valueChange)="search.set($event); page.set(1)" />
             <div class="field"><label class="visually-hidden" for="pl-st">Estado</label><select id="pl-st" class="select" [value]="statusValue()" (change)="onStatus($any($event.target).value)"><option value="">Todos los estados</option>@for (s of statuses; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }</select></div>
-            <div class="field"><label class="visually-hidden" for="pl-pt">Paciente</label><select id="pl-pt" class="select" (change)="patientId.set($any($event.target).value); page.set(1)"><option value="">Todos los pacientes</option>@for (p of patientList(); track p.id) { <option [value]="p.id">{{ patientName(p.id) }}</option> }</select></div>
+            <app-combobox label="Paciente" [hideLabel]="true" [allowAll]="true" allLabel="Todos los pacientes" placeholder="Todos los pacientes" [options]="patientOptions()" [value]="patientId()" (valueChange)="patientId.set($event); page.set(1)" />
             <div class="field"><label for="pl-f" class="small">Desde</label><input id="pl-f" class="input" type="date" (change)="from.set($any($event.target).value); page.set(1)" /></div>
             <div class="field"><label for="pl-t" class="small">Hasta</label><input id="pl-t" class="input" type="date" (change)="to.set($any($event.target).value); page.set(1)" /></div>
           </div>
@@ -47,10 +48,10 @@ import { formatDate } from '../../shared/utils/format';
             @if (r.state === 'loading') { <app-skeleton [count]="5" /> }
             @else if (r.state === 'error') { <app-load-error [message]="r.message" (retry)="retry.set(retry() + 1)" /> }
             @else if (r.data.items.length) {
-              <div class="table-wrap"><table class="table"><caption class="visually-hidden">Planes</caption><thead><tr><th scope="col">Plan</th><th scope="col">Paciente</th><th scope="col">Periodo</th><th scope="col">Estado</th><th scope="col" class="num">Platillos</th><th scope="col">Actualizado</th></tr></thead><tbody>
+              <div class="table-wrap"><table class="table table--cards"><caption class="visually-hidden">Planes</caption><thead><tr><th scope="col">Plan</th><th scope="col">Paciente</th><th scope="col">Periodo</th><th scope="col">Estado</th><th scope="col" class="num">Platillos</th><th scope="col">Actualizado</th></tr></thead><tbody>
                 @for (p of r.data.items; track p.id) {
-                  <tr><td><a class="row-link" [routerLink]="['/planes', p.id]">{{ p.name }}</a></td><td><a [routerLink]="['/pacientes', p.patientId]">{{ patientName(p.patientId) }}</a></td><td class="mono">{{ fd(p.startDate) }} – {{ fd(p.endDate) }}</td>
-                    <td><app-badge [tone]="tone[p.status]">{{ label[p.status] }}</app-badge></td><td class="num">{{ count(p) }}</td><td class="small">{{ fd(p.updatedAt) }}<div class="muted">{{ p.updatedBy }}</div></td></tr>
+                  <tr class="clickable"><td class="cell-main"><a class="row-link" [routerLink]="['/planes', p.id]">{{ p.name }}</a></td><td data-label="Paciente"><a [routerLink]="['/pacientes', p.patientId]">{{ patientName(p.patientId) }}</a></td><td class="mono" data-label="Periodo">{{ fd(p.startDate) }} – {{ fd(p.endDate) }}</td>
+                    <td data-label="Estado"><app-badge [tone]="tone[p.status]">{{ label[p.status] }}</app-badge></td><td class="num" data-label="Platillos">{{ count(p) }}</td><td class="small" data-label="Actualizado">{{ fd(p.updatedAt) }}<div class="muted">{{ p.updatedBy }}</div></td></tr>
                 }
               </tbody></table></div>
               <app-pagination [page]="r.data.page" [pageSize]="r.data.pageSize" [total]="r.data.total" (pageChange)="page.set($event)" />
@@ -98,6 +99,7 @@ export class PlanList {
   protected readonly tone = PLAN_TONE;
   protected readonly fd = formatDate;
   protected readonly patientList = computed(() => this.patients.all());
+  protected readonly patientOptions = computed(() => this.patientList().map((p) => ({ id: p.id, label: this.data.patientName(p.id) })));
   protected readonly templates = computed(() => (this.data.version(), this.plans.allTemplates()));
   protected patientName = (id: string): string => this.data.patientName(id);
   protected count = (p: MealPlan): number => this.plans.itemCount(p);

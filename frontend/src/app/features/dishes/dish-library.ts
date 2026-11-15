@@ -9,6 +9,7 @@ import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { Badge, EmptyState, LoadError, SearchBox, Skeleton } from '../../shared/components/ui';
 import { DishThumb, EqChips, Macros } from '../../shared/components/nutrition-bits';
 import { Icon } from '../../shared/components/icon';
+import { PageHeader } from '../../shared/components/page-header';
 import { Loadable, loadable } from '../../shared/utils/loadable';
 
 type Result = { items: DishRow[]; total: number };
@@ -16,7 +17,7 @@ const STEP = 12;
 
 @Component({
   selector: 'app-dish-library',
-  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, DishThumb, Macros, EqChips],
+  imports: [RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, DishThumb, Macros, EqChips, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .filters { display: grid; gap: var(--space-3); grid-template-columns: minmax(12rem, 2fr) repeat(3, minmax(9rem, 1fr)); }
@@ -28,13 +29,13 @@ const STEP = 12;
     article h2 { font-size: 1.0625rem; font-family: var(--nutri-font-ui); font-weight: 600; }
     .acts { position: relative; z-index: 2; display: flex; gap: .25rem; margin-inline-start: auto; }
     .inactive { opacity: .72; }
+    .card-skel { block-size: 13rem; border-radius: var(--radius-m); }
   `,
   template: `
     <div class="page">
-      <header class="page-header">
-        <div><h1>Platillos</h1><p class="sub">Biblioteca reutilizable. Cada cambio crea una versión nueva; los planes publicados conservan la que tenían.</p></div>
-        <div class="actions"><a tuiButton routerLink="/platillos/nuevo" size="m"><app-icon name="plus" [size]="18" /> Crear platillo</a></div>
-      </header>
+      <app-page-header title="Platillos" sub="Biblioteca reutilizable. Cada cambio crea una versión nueva; los planes publicados conservan la que tenían.">
+        <a tuiButton routerLink="/platillos/nuevo" size="m"><app-icon name="plus" [size]="18" /> Crear platillo</a>
+      </app-page-header>
 
       <section class="panel" aria-label="Filtros">
         <div class="filters">
@@ -46,7 +47,7 @@ const STEP = 12;
       </section>
 
       @if (result(); as r) {
-        @if (r.state === 'loading' && !view()) { <div class="cards">@for (i of skeletons; track i) { <span class="skeleton" style="block-size: 17rem; border-radius: var(--radius-m)"></span> }</div> }
+        @if (r.state === 'loading' && !view()) { <div class="cards">@for (i of skeletons; track i) { <span class="skeleton card-skel"></span> }</div> }
         @else if (r.state === 'error') { <div class="panel"><app-load-error [message]="r.message" (retry)="retry.set(retry() + 1)" /></div> }
         @else {
           @if (view(); as v) {
@@ -70,7 +71,7 @@ const STEP = 12;
                 }
               </div>
               @if (v.items.length < v.total) {
-                <div class="row" style="justify-content: center"><button tuiButton type="button" appearance="secondary" size="m" [disabled]="r.state === 'loading'" (click)="limit.set(limit() + step)">{{ r.state === 'loading' ? 'Cargando…' : 'Cargar más platillos' }}</button></div>
+                <div class="row center-x"><button tuiButton type="button" appearance="secondary" size="m" [disabled]="r.state === 'loading'" (click)="limit.set(limit() + step)">{{ r.state === 'loading' ? 'Cargando…' : 'Cargar más platillos' }}</button></div>
               }
             } @else {
               <div class="panel"><app-empty icon="dish" title="No hay platillos con estos filtros" text="Ajusta la búsqueda o crea uno nuevo."><a tuiButton routerLink="/platillos/nuevo" size="m">Crear platillo</a></app-empty></div>

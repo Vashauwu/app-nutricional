@@ -13,7 +13,7 @@ import { Icon } from '../../shared/components/icon';
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.scss',
   template: `
-    <main class="panel-wrap" id="contenido" style="min-block-size: 100dvh">
+    <main class="panel-wrap min-h-page" id="contenido">
       <div class="card">
         <a routerLink="/ingresar" class="small"><app-icon name="arrow-left" [size]="14" /> Volver a ingresar</a>
         <div>
@@ -72,7 +72,7 @@ export class ForgotPassword {
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.scss',
   template: `
-    <main class="panel-wrap" id="contenido" style="min-block-size: 100dvh">
+    <main class="panel-wrap min-h-page" id="contenido">
       <div class="card">
         @if (!valid()) {
           <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body"><p><strong>Enlace no válido o vencido.</strong></p><p class="small">Los enlaces duran 30 minutos y solo funcionan una vez.</p></div></div>

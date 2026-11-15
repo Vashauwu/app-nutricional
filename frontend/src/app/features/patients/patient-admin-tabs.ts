@@ -12,7 +12,7 @@ import { Modal } from '../../shared/components/modal';
 import { Badge, EmptyState } from '../../shared/components/ui';
 import { downloadBlob, formatBytes, formatDate, formatDateTime, todayIso } from '../../shared/utils/format';
 
-// ---------- Notas privadas (§3.2) ----------
+// ---------- Notas privadas ----------
 @Component({
   selector: 'app-notes-tab',
   imports: [ReactiveFormsModule, TuiButton, Icon, EmptyState],
@@ -57,7 +57,7 @@ export class NotesTab {
   }
 }
 
-// ---------- Documentos clínicos PDF (§3.3, §18.4) ----------
+// ---------- Documentos clínicos PDF ----------
 function placeholderPdf(title: string): string {
   const text = `(${title.replace(/[()\\]/g, '')} - documento de ejemplo) Tj`;
   const stream = `BT /F1 16 Tf 72 760 Td ${text} ET`;
@@ -214,7 +214,7 @@ export class DocumentsTab {
   }
 }
 
-// ---------- Consentimientos (§4.1) ----------
+// ---------- Consentimientos ----------
 @Component({
   selector: 'app-consents-tab',
   imports: [TuiButton, Icon, Modal, Badge],
@@ -251,7 +251,7 @@ export class DocumentsTab {
           } @empty { <tr><td colspan="6" class="muted">Sin aceptaciones registradas.</td></tr> }
         </tbody></table></div>
       </section>
-      <p class="small muted">Los textos son marcadores; deben validarse con asesoría jurídica antes de producción (§4.1, §25.1).</p>
+      <p class="small muted">Los textos son marcadores; deben validarse con asesoría jurídica antes de producción.</p>
     </div>
 
     <app-modal [(open)]="open" title="Registrar aceptación presencial" size="narrow">
