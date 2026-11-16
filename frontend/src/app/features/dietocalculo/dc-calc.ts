@@ -102,7 +102,7 @@ const BMI_TEXT: Record<string, string> = {
       }
       @if (i.amputations?.length) {
         <fieldset class="fieldset-reset" aria-label="Segmentos amputados"><legend class="small muted">Segmentos amputados (el peso se corrige para calcular el IMC)</legend>
-          <div class="row">@for (a of ampKeys; track a) { <label class="check"><input type="checkbox" [checked]="i.amputations!.includes(a)" (change)="toggleAmp(a, $event)" /> {{ ampLabel[a] }}</label> }</div>
+          <div class="row">@for (a of ampKeys; track a) { <app-switch [checked]="i.amputations!.includes(a)" (checkedChange)="toggleAmp(a, $event)">{{ ampLabel[a] }}</app-switch> }</div>
         </fieldset>
       }
     </section>
@@ -369,9 +369,9 @@ export class DcCalc {
 
   protected togglePregnancy(on: boolean): void { this.s.patch({ pregnancy: on ? { weeks: 20 } : undefined, lactation: on ? '' : this.s.inp().lactation }); if (on) this.sub.set('embarazo'); }
   protected toggleLactation(on: boolean): void { this.s.patch({ lactation: on ? '0-6' : '', pregnancy: on ? undefined : this.s.inp().pregnancy }); if (on) this.sub.set('embarazo'); }
-  protected toggleAmp(key: string, e: Event): void {
+  protected toggleAmp(key: string, on: boolean): void {
     const cur = new Set(this.s.inp().amputations ?? []);
-    if ((e.target as HTMLInputElement).checked) cur.add(key); else cur.delete(key);
+    if (on) cur.add(key); else cur.delete(key);
     this.s.patch({ amputations: [...cur] });
   }
 
