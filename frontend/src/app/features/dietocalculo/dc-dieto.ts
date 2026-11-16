@@ -45,7 +45,18 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
       .row-g .n { display: none; }
     }
     @media (min-width: 48rem) { .row-g .vals { display: contents; } }
+    .layout > *, .side > * { min-inline-size: 0; }
     table.mini { inline-size: 100%; border-collapse: collapse; } table.mini td, table.mini th { padding: .25rem .25rem; white-space: nowrap; }
+    @media (max-width: 30rem) {
+      .side .panel { padding: var(--space-4); }
+      table.mini td, table.mini th { padding: .25rem .125rem; font-size: .8125rem; }
+      table.mini .dc-num-in { max-inline-size: 4.25rem; }
+    }
+    .mx { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-4); align-items: center; }
+    @media (max-width: 40rem) {
+      .mx { grid-template-columns: minmax(0, 1fr); }
+      .mx .dc-seg { justify-self: stretch; display: grid; grid-template-columns: repeat(4, 1fr); }
+    }
   `,
   template: `
     @let res = s.r();
@@ -116,7 +127,7 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
         </div>
         <h3 class="m-0 t-sm">Límite máximo por grupo</h3>
         @for (g of groups; track g.code) {
-          <div class="row row--between">
+          <div class="mx">
             <span id="mx-{{ g.code }}">{{ g.name }}</span>
             <div class="dc-seg" role="radiogroup" [attr.aria-labelledby]="'mx-' + g.code">
               @for (m of maxOptions; track m) { <button type="button" role="radio" [attr.aria-checked]="cfgMax(g.code) === m" (click)="setMax(g.code, m)">{{ m }}</button> }
