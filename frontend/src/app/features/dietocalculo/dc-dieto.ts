@@ -83,7 +83,7 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
             <table class="mini">
               <caption class="visually-hidden">Macronutrimentos de la meta</caption>
               <colgroup><col class="c-name" /><col class="c-in" /><col /><col /></colgroup>
-              <thead><tr><th scope="col" class="small muted">Macro</th><th scope="col" class="small muted">%</th><th scope="col" class="small muted">kcal</th><th scope="col" class="small muted">Gramos</th></tr></thead>
+              <thead><tr><th scope="col" class="small muted">Macro</th><th scope="col" class="small muted">%</th><th scope="col" class="small muted">kcal</th><th scope="col" class="small muted"><abbr title="Gramos">g</abbr></th></tr></thead>
               <tbody>
                 <tr><th scope="row"><span class="mlab"><i class="mdot m-c"></i>HCO</span></th><td><input class="input dc-num-in" type="number" step="1" aria-label="Hidratos de carbono (%)" [value]="res.macros.carbs_pct" (change)="setPct('carbs_pct', $event)" /></td><td>{{ rnd(res.macros.carbs_g * 4) }}</td><td>{{ res.macros.carbs_g }} g</td></tr>
                 <tr><th scope="row"><span class="mlab"><i class="mdot m-l"></i>LIP</span></th><td><input class="input dc-num-in" type="number" step="1" aria-label="Lípidos (%)" [value]="res.macros.lipids_pct" (change)="setPct('lipids_pct', $event)" /></td><td>{{ rnd(res.macros.lipids_g * 9) }}</td><td>{{ res.macros.lipids_g }} g</td></tr>
@@ -99,7 +99,7 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
             <table class="mini adq-t">
               <caption class="visually-hidden">Meta contra suma de equivalentes</caption>
               <colgroup><col class="c-name" /><col /><col /><col class="c-in" /></colgroup>
-              <thead><tr><th scope="col" class="small muted"><span class="visually-hidden">Nutrimento</span></th><th scope="col" class="small muted">Meta</th><th scope="col" class="small muted">Suma</th><th scope="col" class="small muted">Adecuación</th></tr></thead>
+              <thead><tr><th scope="col" class="small muted"><span class="visually-hidden">Nutrimento</span></th><th scope="col" class="small muted">Meta</th><th scope="col" class="small muted">Suma</th><th scope="col" class="small muted">% meta</th></tr></thead>
               <tbody>
                 @for (r of adq(); track r.k) {
                   <tr><th scope="row">@if (r.dot) { <span class="mlab"><i class="mdot" [class]="r.dot"></i>{{ r.label }}</span> } @else { {{ r.label }} }</th><td>{{ r.target }}{{ r.unit }}</td><td>{{ r.total }}{{ r.unit }}</td>

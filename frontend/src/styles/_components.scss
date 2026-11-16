@@ -1034,7 +1034,17 @@ table.mini.adq-t td, table.mini.adq-t th { padding-block: 0.5rem; }
 .dc-box table.mini.auto { table-layout: auto; }
 .dc-box table.mini.auto td, .dc-box table.mini.auto th { text-align: start; }
 .dc-box table.mini .c-name { inline-size: 26%; } .dc-box table.mini .c-in { inline-size: 30%; }
-@media (max-width: 30rem) { table.mini th, table.mini td { padding-inline: 0.125rem; font-size: 0.8125rem; } }
+.dc-box table.mini { font-size: 0.8125rem; }
+.dc-box table.mini .dc-num-in { font-size: 1rem; }
+.dc-box table.mini .badge { font-size: inherit; padding: 0.0625rem 0.5rem; max-inline-size: 100%; }
+.dc-box table.mini td:last-child { overflow: hidden; }
+@media (max-width: 30rem) {
+  table.mini th, table.mini td { padding-inline: 0.125rem; }
+  .dc-box table.mini { font-size: 0.75rem; }
+  .dc-box table.mini .c-name { inline-size: 22%; } .dc-box table.mini .c-in { inline-size: 33%; }
+  .dc-box table.mini .badge { padding-inline: 0.3125rem; gap: 0.1875rem; }
+  .dc-box table.mini .mdot { inline-size: 0.625rem; block-size: 0.625rem; }
+}
 // Macronutrimentos: HCO = tinta de la marca, LIP = tono medio, PRO = tono claro. El color nunca va solo (siempre hay etiqueta y cifra).
 .dc-bar .b-c { background: var(--brand-ink); }
 .dc-bar .b-l { background: color-mix(in srgb, var(--brand-ink) 60%, var(--surface)); }
