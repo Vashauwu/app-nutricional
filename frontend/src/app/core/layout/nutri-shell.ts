@@ -55,10 +55,15 @@ const RAIL_KEY = 'nutri-rail';
       </header>
 
       <nav class="app-sidebar" id="menu-principal" aria-label="Principal">
-        <a class="side-brand" routerLink="/" aria-label="Ir al inicio">
-          @if (brand().logoDataUrl) { <img [src]="brand().logoDataUrl" alt="" class="logo" /> } @else { <img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> }
-          <span class="label">{{ brand().businessName }}</span>
-        </a>
+        <div class="side-head">
+          <button type="button" class="burger" (click)="toggleRail()" [attr.aria-expanded]="!rail()" aria-controls="menu-principal" [attr.aria-label]="rail() ? 'Expandir menú lateral' : 'Contraer menú lateral'" [attr.title]="rail() ? 'Expandir menú' : 'Contraer menú'">
+            <span class="bars" aria-hidden="true"></span>
+          </button>
+          <a class="side-brand" routerLink="/" aria-label="Ir al inicio">
+            @if (brand().logoDataUrl) { <img [src]="brand().logoDataUrl" alt="" class="logo" /> } @else { <img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> }
+            <span class="label">{{ brand().businessName }}</span>
+          </a>
+        </div>
         @for (g of groups; track g.title) {
           <div class="group" role="group" [attr.aria-label]="g.title || 'General'">
             @if (g.title) { <p class="group-title label">{{ g.title }}</p> }
@@ -79,11 +84,6 @@ const RAIL_KEY = 'nutri-rail';
           <ul class="list-plain">
             <li>
               <a routerLink="/configuracion" routerLinkActive="active" (click)="navOpen.set(false)" [attr.title]="rail() ? 'Configuración' : null"><app-icon name="settings" /><span class="label">Configuración</span></a>
-            </li>
-            <li>
-              <button type="button" class="rail-btn" (click)="toggleRail()" [attr.aria-pressed]="rail()" [attr.aria-label]="rail() ? 'Expandir menú lateral' : 'Contraer menú lateral'">
-                <app-icon [name]="rail() ? 'chevron-right' : 'chevron-left'" /><span class="label">Contraer menú</span>
-              </button>
             </li>
           </ul>
           <p class="foot small muted label">Herramienta de apoyo profesional: no sustituye el criterio clínico.</p>

@@ -146,7 +146,7 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
         @if (foodGroup()) { <p class="small m-0">Grupo: <b>{{ groupName(foodGroup()) }}</b> <button type="button" class="link-btn" (click)="foodGroup.set('')">Ver todos</button></p> }
         <ul class="list-pick">
           @for (f of foodList(); track f.id) {
-            <li><button type="button" (click)="addFood(f.view)"><span><b>{{ f.view.name }}</b><br /><span class="dc-sub">{{ f.group }} · 1 {{ f.unit }}</span></span><span class="dc-sub">{{ f.kcal }} kcal</span></button></li>
+            <li><button type="button" (click)="addFood(f.view)"><span><b>{{ f.view.name }}</b><br /><span class="dc-sub">{{ f.view.official ? 'SMAE' : 'Propio' }} · {{ f.group }} · 1 {{ f.unit }}</span></span><span class="dc-sub">{{ f.kcal }} kcal</span></button></li>
           } @empty { <li class="dc-sub">No hay alimentos que coincidan.</li> }
         </ul>
       </div>
