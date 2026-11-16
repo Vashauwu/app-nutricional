@@ -10,12 +10,13 @@ import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { PageHeader } from '../../shared/components/page-header';
+import { Switch } from '../../shared/components/switch';
 import { Badge, EmptyState, LoadError, SearchBox, Skeleton } from '../../shared/components/ui';
 import { formatDate } from '../../shared/utils/format';
 
 @Component({
   selector: 'app-dietocalculo-list',
-  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Combobox],
+  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Combobox, Switch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .filters { display: grid; gap: var(--space-3) var(--space-4); align-items: center; grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 1fr) auto; padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
@@ -31,7 +32,7 @@ import { formatDate } from '../../shared/utils/format';
         <div class="filters">
           <app-search label="Buscar dietas" placeholder="Nombre de la dieta" [value]="search()" (valueChange)="search.set($event)" />
           <app-combobox label="Paciente" [hideLabel]="true" [allowAll]="true" allLabel="Todos los pacientes" placeholder="Todos los pacientes" [options]="patientOptions()" [value]="patient()" (valueChange)="patient.set($event)" />
-          <label class="check"><input type="checkbox" [checked]="unlinked()" (change)="unlinked.set($any($event.target).checked)" /> Solo sin paciente</label>
+          <app-switch [checked]="unlinked()" (checkedChange)="unlinked.set($event)">Solo sin paciente</app-switch>
         </div>
         @if (state() === 'loading') { <app-skeleton [count]="4" /> }
         @else if (state() === 'error') { <app-load-error message="No se pudieron cargar las dietas." (retry)="reload.set(reload() + 1)" /> }
