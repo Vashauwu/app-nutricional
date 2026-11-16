@@ -27,15 +27,148 @@
     },
     "ideal_weight_kg": 64.2,
     "bsa_mosteller": 1.63,
-    "bsa_dubois": 1.65
+    "bsa_dubois": 1.65,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 63.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 62.8
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.1
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 61.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.2
+     }
+    ],
+    "ideal_avg_kg": 63.3
    },
    "composition": {
     "fat_pct": 22.9,
     "fat_source": "deurenberg",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.9
+     }
+    ],
+    "ffmi": 14.2,
+    "tbw_l": 30,
     "fat_mass_kg": 12.6,
     "lean_mass_kg": 42.4
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": true,
+      "bmr": 1285,
+      "get": 1767
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1335,
+      "get": 1836
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1375,
+      "get": 1890
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1375,
+      "get": 1891
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1302,
+      "get": 1790
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1190,
+      "get": 1636
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1286,
+      "get": 1769
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1433,
+      "get": 1971
+     }
+    ],
     "formula": "mifflin",
     "formula_used": "mifflin",
     "bmr": 1335,
@@ -78,12 +211,21 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 10,
       "kcal": 700,
       "carbs_g": 150,
       "protein_g": 20,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
       "lipids_g": 0
      },
      {
@@ -96,6 +238,24 @@
       "lipids_g": 1.5
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 6,
@@ -103,6 +263,15 @@
       "carbs_g": 0,
       "protein_g": 42,
       "lipids_g": 30
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -114,8 +283,35 @@
       "lipids_g": 2
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 3.5,
       "kcal": 157.5,
       "carbs_g": 0,
@@ -123,8 +319,26 @@
       "lipids_g": 17.5
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -152,9 +366,10 @@
     {
      "name": "Desayuno",
      "pct": 25,
+     "time": "08:00",
      "equivalents": {
       "AOA-M": 2,
-      "CER": 2.5,
+      "CER-SG": 2.5,
       "FRU": 1,
       "GRA": 1,
       "LEC-D": 0.5,
@@ -172,8 +387,9 @@
     {
      "name": "Colación matutina",
      "pct": 10,
+     "time": "11:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 1
      },
      "totals": {
@@ -188,9 +404,10 @@
     {
      "name": "Comida",
      "pct": 30,
+     "time": "14:30",
      "equivalents": {
       "AOA-M": 2.5,
-      "CER": 4,
+      "CER-SG": 4,
       "FRU": 0.5,
       "GRA": 1.5,
       "LEG": 1,
@@ -208,8 +425,9 @@
     {
      "name": "Colación vespertina",
      "pct": 10,
+     "time": "18:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 0.5
      },
      "totals": {
@@ -224,9 +442,10 @@
     {
      "name": "Cena",
      "pct": 25,
+     "time": "21:00",
      "equivalents": {
       "AOA-M": 1.5,
-      "CER": 2.5,
+      "CER-SG": 2.5,
       "GRA": 1,
       "LEC-D": 0.5,
       "LEG": 0.5,
@@ -242,8 +461,17 @@
      "diff_kcal": 17.5
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
   }
  },
  {
@@ -296,16 +524,149 @@
      "tone": "warn",
      "note": "Riesgo cardiometabólico por cintura (≥ 90 cm en hombres)"
     },
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 75.5
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 71.1
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 70.4
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 71
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 73.2
+     }
+    ],
+    "ideal_avg_kg": 72.2,
+    "adjusted_weight_kg": 75.4,
     "frame_ratio": 10.17,
     "frame": "Complexión mediana"
    },
    "composition": {
     "fat_pct": 21.5,
     "fat_source": "navy",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": true,
+      "fat_pct": 21.5
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.9
+     }
+    ],
+    "ffmi": 20.3,
+    "tbw_l": 45.8,
     "fat_mass_kg": 17.7,
     "lean_mass_kg": 64.3
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": false,
+      "note": "Solo disponible para mujeres de 18 a 29 años; falta validar los demás tramos."
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1763,
+      "get": 2732
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1847,
+      "get": 2863
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1842,
+      "get": 2856
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1814,
+      "get": 2811
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1715,
+      "get": 2659
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1760,
+      "get": 2727
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1915,
+      "get": 2969
+     }
+    ],
     "formula": "harris",
     "formula_used": "harris",
     "bmr": 1842,
@@ -348,12 +709,21 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 14,
       "kcal": 980,
       "carbs_g": 210,
       "protein_g": 28,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
       "lipids_g": 0
      },
      {
@@ -366,6 +736,24 @@
       "lipids_g": 2
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 10,
@@ -373,6 +761,15 @@
       "carbs_g": 0,
       "protein_g": 70,
       "lipids_g": 50
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -384,8 +781,35 @@
       "lipids_g": 4
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 8,
       "kcal": 360,
       "carbs_g": 0,
@@ -393,8 +817,26 @@
       "lipids_g": 40
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -422,9 +864,10 @@
     {
      "name": "Desayuno",
      "pct": 25,
+     "time": "08:00",
      "equivalents": {
       "AOA-M": 3,
-      "CER": 3.5,
+      "CER-SG": 3.5,
       "FRU": 1.5,
       "GRA": 2,
       "LEC-D": 1,
@@ -442,8 +885,9 @@
     {
      "name": "Colación matutina",
      "pct": 10,
+     "time": "11:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 1
      },
      "totals": {
@@ -458,9 +902,10 @@
     {
      "name": "Comida",
      "pct": 30,
+     "time": "14:30",
      "equivalents": {
       "AOA-M": 4.5,
-      "CER": 6,
+      "CER-SG": 6,
       "FRU": 1,
       "GRA": 4,
       "LEG": 1.5,
@@ -478,8 +923,9 @@
     {
      "name": "Colación vespertina",
      "pct": 10,
+     "time": "18:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 0.5
      },
      "totals": {
@@ -494,9 +940,10 @@
     {
      "name": "Cena",
      "pct": 25,
+     "time": "21:00",
      "equivalents": {
       "AOA-M": 2.5,
-      "CER": 3.5,
+      "CER-SG": 3.5,
       "GRA": 2,
       "LEC-D": 1,
       "LEG": 0.5,
@@ -512,8 +959,17 @@
      "diff_kcal": 0
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
   }
  },
  {
@@ -548,15 +1004,148 @@
     },
     "ideal_weight_kg": 64.2,
     "bsa_mosteller": 1.73,
-    "bsa_dubois": 1.74
+    "bsa_dubois": 1.74,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 63.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 62.8
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.1
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 61.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.2
+     }
+    ],
+    "ideal_avg_kg": 63.3
    },
    "composition": {
     "fat_pct": 25.7,
     "fat_source": "deurenberg",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 25.7
+     }
+    ],
+    "ffmi": 15.4,
+    "tbw_l": 31.7,
     "fat_mass_kg": 15.9,
     "lean_mass_kg": 46.1
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": true,
+      "bmr": 1362,
+      "get": 1873
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1405,
+      "get": 1932
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1442,
+      "get": 1982
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1440,
+      "get": 1980
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1405,
+      "get": 1932
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1240,
+      "get": 1705
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1365,
+      "get": 1877
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1514,
+      "get": 2082
+     }
+    ],
     "formula": "mifflin",
     "formula_used": "mifflin",
     "bmr": 1405,
@@ -613,12 +1202,21 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 13,
       "kcal": 910,
       "carbs_g": 195,
       "protein_g": 26,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
       "lipids_g": 0
      },
      {
@@ -631,6 +1229,24 @@
       "lipids_g": 1.5
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 7,
@@ -638,6 +1254,15 @@
       "carbs_g": 0,
       "protein_g": 49,
       "lipids_g": 35
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -649,8 +1274,35 @@
       "lipids_g": 4
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 4.5,
       "kcal": 202.5,
       "carbs_g": 0,
@@ -658,8 +1310,26 @@
       "lipids_g": 22.5
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -687,9 +1357,10 @@
     {
      "name": "Desayuno",
      "pct": 25,
+     "time": "08:00",
      "equivalents": {
       "AOA-M": 2,
-      "CER": 3.5,
+      "CER-SG": 3.5,
       "FRU": 1,
       "GRA": 1.5,
       "LEC-D": 1,
@@ -707,8 +1378,9 @@
     {
      "name": "Colación matutina",
      "pct": 10,
+     "time": "11:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 1
      },
      "totals": {
@@ -723,9 +1395,10 @@
     {
      "name": "Comida",
      "pct": 30,
+     "time": "14:30",
      "equivalents": {
       "AOA-M": 3,
-      "CER": 5.5,
+      "CER-SG": 5.5,
       "FRU": 0.5,
       "GRA": 2,
       "LEG": 1,
@@ -743,8 +1416,9 @@
     {
      "name": "Colación vespertina",
      "pct": 10,
+     "time": "18:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 0.5
      },
      "totals": {
@@ -759,9 +1433,10 @@
     {
      "name": "Cena",
      "pct": 25,
+     "time": "21:00",
      "equivalents": {
       "AOA-M": 2,
-      "CER": 3,
+      "CER-SG": 3,
       "GRA": 1,
       "LEC-D": 1,
       "LEG": 0.5,
@@ -777,8 +1452,17 @@
      "diff_kcal": 29.5
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
   }
  },
  {
@@ -811,15 +1495,148 @@
     },
     "ideal_weight_kg": 64.2,
     "bsa_mosteller": 1.63,
-    "bsa_dubois": 1.65
+    "bsa_dubois": 1.65,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 63.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 62.8
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.1
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 61.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.2
+     }
+    ],
+    "ideal_avg_kg": 63.3
    },
    "composition": {
     "fat_pct": 24,
     "fat_source": "captured",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": true,
+      "fat_pct": 24
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.9
+     }
+    ],
+    "ffmi": 14,
+    "tbw_l": 30,
     "fat_mass_kg": 13.2,
     "lean_mass_kg": 41.8
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": true,
+      "bmr": 1285,
+      "get": 1767
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1335,
+      "get": 1836
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1375,
+      "get": 1890
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1375,
+      "get": 1891
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1302,
+      "get": 1790
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1190,
+      "get": 1636
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1273,
+      "get": 1750
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1420,
+      "get": 1952
+     }
+    ],
     "formula": "katch",
     "formula_used": "katch",
     "bmr": 1273,
@@ -862,12 +1679,21 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 12,
       "kcal": 840,
       "carbs_g": 180,
       "protein_g": 24,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
       "lipids_g": 0
      },
      {
@@ -880,6 +1706,24 @@
       "lipids_g": 1.5
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 6.5,
@@ -887,6 +1731,15 @@
       "carbs_g": 0,
       "protein_g": 45.5,
       "lipids_g": 32.5
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -898,8 +1751,35 @@
       "lipids_g": 4
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 4.5,
       "kcal": 202.5,
       "carbs_g": 0,
@@ -907,8 +1787,26 @@
       "lipids_g": 22.5
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -936,9 +1834,10 @@
     {
      "name": "Desayuno",
      "pct": 25,
+     "time": "08:00",
      "equivalents": {
       "AOA-M": 2,
-      "CER": 3,
+      "CER-SG": 3,
       "FRU": 1,
       "GRA": 1.5,
       "LEC-D": 1,
@@ -956,8 +1855,9 @@
     {
      "name": "Colación matutina",
      "pct": 10,
+     "time": "11:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 1
      },
      "totals": {
@@ -972,9 +1872,10 @@
     {
      "name": "Comida",
      "pct": 30,
+     "time": "14:30",
      "equivalents": {
       "AOA-M": 3,
-      "CER": 5,
+      "CER-SG": 5,
       "FRU": 0.5,
       "GRA": 2,
       "LEG": 1,
@@ -992,8 +1893,9 @@
     {
      "name": "Colación vespertina",
      "pct": 10,
+     "time": "18:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 0.5
      },
      "totals": {
@@ -1008,9 +1910,10 @@
     {
      "name": "Cena",
      "pct": 25,
+     "time": "21:00",
      "equivalents": {
       "AOA-M": 1.5,
-      "CER": 3,
+      "CER-SG": 3,
       "GRA": 1,
       "LEC-D": 1,
       "LEG": 0.5,
@@ -1026,8 +1929,17 @@
      "diff_kcal": 22
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
   }
  },
  {
@@ -1062,15 +1974,148 @@
     },
     "ideal_weight_kg": 64.1,
     "bsa_mosteller": 1.86,
-    "bsa_dubois": 1.84
+    "bsa_dubois": 1.84,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 64.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 63.7
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.9
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 63.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.1
+     }
+    ],
+    "ideal_avg_kg": 64.2,
+    "adjusted_weight_kg": 66.7
    },
    "composition": {
     "fat_pct": 31.1,
     "fat_source": "deurenberg",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 31.1
+     }
+    ],
+    "ffmi": 18.2,
+    "tbw_l": 39,
     "fat_mass_kg": 23.1,
     "lean_mass_kg": 51.3
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": false,
+      "note": "Solo disponible para mujeres de 18 a 29 años; falta validar los demás tramos."
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1459,
+      "get": 2276
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1470,
+      "get": 2293
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1505,
+      "get": 2348
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1459,
+      "get": 2276
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1638,
+      "get": 2555
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1478,
+      "get": 2305
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1628,
+      "get": 2540
+     }
+    ],
     "formula": "fao",
     "formula_used": "fao",
     "bmr": 1459,
@@ -1114,12 +2159,21 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 14,
       "kcal": 980,
       "carbs_g": 210,
       "protein_g": 28,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
       "lipids_g": 0
      },
      {
@@ -1132,6 +2186,24 @@
       "lipids_g": 1.5
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 8,
@@ -1139,6 +2211,15 @@
       "carbs_g": 0,
       "protein_g": 56,
       "lipids_g": 40
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -1150,8 +2231,35 @@
       "lipids_g": 2
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 4,
       "kcal": 180,
       "carbs_g": 0,
@@ -1159,8 +2267,26 @@
       "lipids_g": 20
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -1188,9 +2314,10 @@
     {
      "name": "Desayuno",
      "pct": 25,
+     "time": "08:00",
      "equivalents": {
       "AOA-M": 2.5,
-      "CER": 3.5,
+      "CER-SG": 3.5,
       "FRU": 1,
       "GRA": 1,
       "LEC-D": 0.5,
@@ -1208,8 +2335,9 @@
     {
      "name": "Colación matutina",
      "pct": 10,
+     "time": "11:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 1
      },
      "totals": {
@@ -1224,9 +2352,10 @@
     {
      "name": "Comida",
      "pct": 30,
+     "time": "14:30",
      "equivalents": {
       "AOA-M": 3.5,
-      "CER": 6,
+      "CER-SG": 6,
       "FRU": 0.5,
       "GRA": 2,
       "LEG": 1,
@@ -1244,8 +2373,9 @@
     {
      "name": "Colación vespertina",
      "pct": 10,
+     "time": "18:00",
      "equivalents": {
-      "CER": 0.5,
+      "CER-SG": 0.5,
       "FRU": 0.5
      },
      "totals": {
@@ -1260,9 +2390,10 @@
     {
      "name": "Cena",
      "pct": 25,
+     "time": "21:00",
      "equivalents": {
       "AOA-M": 2,
-      "CER": 3.5,
+      "CER-SG": 3.5,
       "GRA": 1,
       "LEC-D": 0.5,
       "LEG": 0.5,
@@ -1278,8 +2409,17 @@
      "diff_kcal": 15
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
   }
  },
  {
@@ -1301,7 +2441,7 @@
     "protein_pct": 20
    },
    "equivalents": {
-    "CER": 6,
+    "CER-SG": 6,
     "GRA": 3
    },
    "slots": [
@@ -1337,15 +2477,148 @@
     },
     "ideal_weight_kg": 64.2,
     "bsa_mosteller": 1.63,
-    "bsa_dubois": 1.65
+    "bsa_dubois": 1.65,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 63.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 62.8
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.1
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 61.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.2
+     }
+    ],
+    "ideal_avg_kg": 63.3
    },
    "composition": {
     "fat_pct": 22.9,
     "fat_source": "deurenberg",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.9
+     }
+    ],
+    "ffmi": 14.2,
+    "tbw_l": 30,
     "fat_mass_kg": 12.6,
     "lean_mass_kg": 42.4
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": true,
+      "bmr": 1285,
+      "get": 1767
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1335,
+      "get": 1836
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1375,
+      "get": 1890
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1375,
+      "get": 1891
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1302,
+      "get": 1790
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1190,
+      "get": 1636
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1286,
+      "get": 1769
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1433,
+      "get": 1971
+     }
+    ],
     "formula": "mifflin",
     "formula_used": "mifflin",
     "bmr": 1335,
@@ -1388,14 +2661,23 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 6,
       "kcal": 420,
       "carbs_g": 90,
       "protein_g": 12,
       "lipids_g": 0,
       "fixed": true
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEG",
@@ -1407,6 +2689,24 @@
       "lipids_g": 1
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 6,
@@ -1414,6 +2714,15 @@
       "carbs_g": 0,
       "protein_g": 42,
       "lipids_g": 30
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -1425,8 +2734,35 @@
       "lipids_g": 2
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 3,
       "kcal": 135,
       "carbs_g": 0,
@@ -1435,8 +2771,26 @@
       "fixed": true
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -1466,7 +2820,7 @@
      "pct": 30,
      "equivalents": {
       "AOA-M": 1.5,
-      "CER": 1.5,
+      "CER-SG": 1.5,
       "FRU": 2,
       "GRA": 1,
       "LEC-D": 0.5,
@@ -1499,7 +2853,7 @@
      "pct": 40,
      "equivalents": {
       "AOA-M": 3,
-      "CER": 3,
+      "CER-SG": 3,
       "FRU": 1,
       "GRA": 1.5,
       "LEG": 0.5,
@@ -1532,7 +2886,7 @@
      "pct": 30,
      "equivalents": {
       "AOA-M": 1.5,
-      "CER": 1.5,
+      "CER-SG": 1.5,
       "GRA": 0.5,
       "LEC-D": 0.5,
       "LEG": 0.5,
@@ -1548,6 +2902,15 @@
      "diff_kcal": -107.5
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [
     {
      "code": "cuadro_diff",
@@ -1555,7 +2918,7 @@
      "level": "warn"
     }
    ],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
   }
  },
  {
@@ -1587,21 +2950,155 @@
     },
     "ideal_weight_kg": 79.5,
     "bsa_mosteller": 2.21,
-    "bsa_dubois": 2.19
+    "bsa_dubois": 2.19,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 83
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 76.4
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 74.3
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 76.3
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 79.5
+     }
+    ],
+    "ideal_avg_kg": 77.9,
+    "adjusted_weight_kg": 83.4
    },
    "composition": {
     "fat_pct": 22.6,
     "fat_source": "deurenberg",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.6
+     }
+    ],
+    "ffmi": 21.5,
+    "tbw_l": 52,
     "fat_mass_kg": 21.5,
     "lean_mass_kg": 73.5
    },
    "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": false,
+      "note": "Solo disponible para mujeres de 18 a 29 años; falta validar los demás tramos."
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1991,
+      "get": 3778
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 2135,
+      "get": 4052
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 2113,
+      "get": 4009
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 2123,
+      "get": 4028
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1848,
+      "get": 3507
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1958,
+      "get": 3715
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 2117,
+      "get": 4017
+     }
+    ],
     "formula": "mifflin",
     "formula_used": "mifflin",
     "bmr": 1991,
     "activity_factor": 1.725,
     "tee": 3778,
     "thermic_kcal": 343,
+    "thermic_pct": 10,
     "pregnancy_kcal": 0,
     "lactation_kcal": 0,
     "adjust_kcal": 300,
@@ -1638,12 +3135,21 @@
       "lipids_g": 0
      },
      {
-      "code": "CER",
-      "name": "Cereales y tubérculos (sin grasa)",
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
       "equivalents": 28,
       "kcal": 1960,
       "carbs_g": 420,
       "protein_g": 56,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
       "lipids_g": 0
      },
      {
@@ -1656,6 +3162,24 @@
       "lipids_g": 2
      },
      {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AOA-M",
       "name": "AOA moderado aporte de grasa",
       "equivalents": 15,
@@ -1663,6 +3187,15 @@
       "carbs_g": 0,
       "protein_g": 105,
       "lipids_g": 75
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
      },
      {
       "code": "LEC-D",
@@ -1674,8 +3207,35 @@
       "lipids_g": 4
      },
      {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "GRA",
-      "name": "Aceites y grasas (sin proteína)",
+      "name": "Aceites y grasas sin proteína",
       "equivalents": 6.5,
       "kcal": 292.5,
       "carbs_g": 0,
@@ -1683,8 +3243,26 @@
       "lipids_g": 32.5
      },
      {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
       "code": "AZU",
-      "name": "Azúcares (sin grasa)",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
       "equivalents": 0,
       "kcal": 0,
       "carbs_g": 0,
@@ -1712,9 +3290,10 @@
     {
      "name": "Desayuno",
      "pct": 25,
+     "time": "08:00",
      "equivalents": {
       "AOA-M": 4.5,
-      "CER": 7.5,
+      "CER-SG": 7.5,
       "FRU": 1.5,
       "GRA": 2,
       "LEC-D": 1,
@@ -1732,8 +3311,9 @@
     {
      "name": "Colación matutina",
      "pct": 10,
+     "time": "11:00",
      "equivalents": {
-      "CER": 1,
+      "CER-SG": 1,
       "FRU": 1
      },
      "totals": {
@@ -1748,9 +3328,10 @@
     {
      "name": "Comida",
      "pct": 30,
+     "time": "14:30",
      "equivalents": {
       "AOA-M": 6.5,
-      "CER": 11.5,
+      "CER-SG": 11.5,
       "FRU": 1,
       "GRA": 3,
       "LEG": 1.5,
@@ -1768,8 +3349,9 @@
     {
      "name": "Colación vespertina",
      "pct": 10,
+     "time": "18:00",
      "equivalents": {
-      "CER": 1,
+      "CER-SG": 1,
       "FRU": 0.5
      },
      "totals": {
@@ -1784,9 +3366,10 @@
     {
      "name": "Cena",
      "pct": 25,
+     "time": "21:00",
      "equivalents": {
       "AOA-M": 4,
-      "CER": 7,
+      "CER-SG": 7,
       "GRA": 1.5,
       "LEC-D": 1,
       "LEG": 0.5,
@@ -1802,8 +3385,1521 @@
      "diff_kcal": 30
     }
    ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
    "warnings": [],
-   "engine_version": "1.0.0"
+   "engine_version": "1.1.0"
+  }
+ },
+ {
+  "in": {
+   "sex": "F",
+   "age": 27,
+   "weight_kg": 55,
+   "height_cm": 173,
+   "body_fat_pct": 15,
+   "activity": "light",
+   "formula": "valencia",
+   "thermic": true,
+   "athlete": false,
+   "hospitalized": false,
+   "goal": "maintain",
+   "macros": {
+    "carbs_pct": 55,
+    "lipids_pct": 25,
+    "protein_pct": 20
+   }
+  },
+  "out": {
+   "anthro": {
+    "weight_used_kg": 55,
+    "bmi": 18.4,
+    "bmi_class": {
+     "label": "Bajo peso",
+     "tone": "warn"
+    },
+    "ideal_weight_kg": 64.2,
+    "bsa_mosteller": 1.63,
+    "bsa_dubois": 1.65,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 63.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 62.8
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.1
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 61.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.2
+     }
+    ],
+    "ideal_avg_kg": 63.3
+   },
+   "composition": {
+    "fat_pct": 15,
+    "fat_source": "captured",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": true,
+      "fat_pct": 15
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.9
+     }
+    ],
+    "ffmi": 15.6,
+    "tbw_l": 30,
+    "fat_mass_kg": 8.3,
+    "lean_mass_kg": 46.8
+   },
+   "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": true,
+      "bmr": 1285,
+      "get": 1944
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1335,
+      "get": 2020
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1375,
+      "get": 2079
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1375,
+      "get": 2080
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1302,
+      "get": 1969
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1190,
+      "get": 1800
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1380,
+      "get": 2087
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1529,
+      "get": 2312
+     }
+    ],
+    "formula": "valencia",
+    "formula_used": "valencia",
+    "bmr": 1285,
+    "activity_factor": 1.375,
+    "tee": 1944,
+    "thermic_kcal": 177,
+    "thermic_pct": 10,
+    "pregnancy_kcal": 0,
+    "lactation_kcal": 0,
+    "adjust_kcal": 0,
+    "prescription_kcal": 1940
+   },
+   "macros": {
+    "kcal": 1940,
+    "carbs_g": 266.8,
+    "protein_g": 97,
+    "lipids_g": 53.9,
+    "carbs_pct": 55,
+    "protein_pct": 20,
+    "lipids_pct": 25,
+    "protein_g_per_kg": 1.76
+   },
+   "dietosintetico": {
+    "rows": [
+     {
+      "code": "VER",
+      "name": "Verduras",
+      "equivalents": 4,
+      "kcal": 100,
+      "carbs_g": 16,
+      "protein_g": 8,
+      "lipids_g": 0
+     },
+     {
+      "code": "FRU",
+      "name": "Frutas",
+      "equivalents": 3,
+      "kcal": 180,
+      "carbs_g": 45,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
+      "equivalents": 11,
+      "kcal": 770,
+      "carbs_g": 165,
+      "protein_g": 22,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEG",
+      "name": "Leguminosas",
+      "equivalents": 1.5,
+      "kcal": 180,
+      "carbs_g": 30,
+      "protein_g": 12,
+      "lipids_g": 1.5
+     },
+     {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-M",
+      "name": "AOA moderado aporte de grasa",
+      "equivalents": 6.5,
+      "kcal": 487.5,
+      "carbs_g": 0,
+      "protein_g": 45.5,
+      "lipids_g": 32.5
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-D",
+      "name": "Leche descremada",
+      "equivalents": 1,
+      "kcal": 95,
+      "carbs_g": 12,
+      "protein_g": 9,
+      "lipids_g": 2
+     },
+     {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "GRA",
+      "name": "Aceites y grasas sin proteína",
+      "equivalents": 3.5,
+      "kcal": 157.5,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 17.5
+     },
+     {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     }
+    ],
+    "totals": {
+     "kcal": 1970,
+     "carbs_g": 268,
+     "protein_g": 96.5,
+     "lipids_g": 53.5
+    },
+    "target": {
+     "kcal": 1940,
+     "carbs_g": 266.8,
+     "protein_g": 97,
+     "lipids_g": 53.9
+    },
+    "diff_kcal": 30,
+    "diff_pct": 1.5,
+    "aoa_kind": "AOA-M"
+   },
+   "distribution": [
+    {
+     "name": "Desayuno",
+     "pct": 25,
+     "time": "08:00",
+     "equivalents": {
+      "AOA-M": 2,
+      "CER-SG": 3,
+      "FRU": 1,
+      "GRA": 1,
+      "LEC-D": 0.5,
+      "VER": 0.5
+     },
+     "totals": {
+      "kcal": 525,
+      "carbs_g": 68,
+      "protein_g": 25.5,
+      "lipids_g": 16
+     },
+     "target_kcal": 485,
+     "diff_kcal": 40
+    },
+    {
+     "name": "Colación matutina",
+     "pct": 10,
+     "time": "11:00",
+     "equivalents": {
+      "CER-SG": 0.5,
+      "FRU": 1
+     },
+     "totals": {
+      "kcal": 95,
+      "carbs_g": 22.5,
+      "protein_g": 1,
+      "lipids_g": 0
+     },
+     "target_kcal": 194,
+     "diff_kcal": -99
+    },
+    {
+     "name": "Comida",
+     "pct": 30,
+     "time": "14:30",
+     "equivalents": {
+      "AOA-M": 3,
+      "CER-SG": 4.5,
+      "FRU": 0.5,
+      "GRA": 1.5,
+      "LEG": 1,
+      "VER": 2
+     },
+     "totals": {
+      "kcal": 807.5,
+      "carbs_g": 103,
+      "protein_g": 42,
+      "lipids_g": 23.5
+     },
+     "target_kcal": 582,
+     "diff_kcal": 225.5
+    },
+    {
+     "name": "Colación vespertina",
+     "pct": 10,
+     "time": "18:00",
+     "equivalents": {
+      "CER-SG": 0.5,
+      "FRU": 0.5
+     },
+     "totals": {
+      "kcal": 65,
+      "carbs_g": 15,
+      "protein_g": 1,
+      "lipids_g": 0
+     },
+     "target_kcal": 194,
+     "diff_kcal": -129
+    },
+    {
+     "name": "Cena",
+     "pct": 25,
+     "time": "21:00",
+     "equivalents": {
+      "AOA-M": 1.5,
+      "CER-SG": 2.5,
+      "GRA": 1,
+      "LEC-D": 0.5,
+      "LEG": 0.5,
+      "VER": 1.5
+     },
+     "totals": {
+      "kcal": 477.5,
+      "carbs_g": 59.5,
+      "protein_g": 27,
+      "lipids_g": 14
+     },
+     "target_kcal": 485,
+     "diff_kcal": -7.5
+    }
+   ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
+   "warnings": [],
+   "engine_version": "1.1.0"
+  }
+ },
+ {
+  "in": {
+   "sex": "F",
+   "age": 27,
+   "weight_kg": 55,
+   "height_cm": 173,
+   "arm_circ_cm": 26,
+   "skinfolds": {
+    "triceps": 14,
+    "biceps": 8,
+    "subscapular": 12,
+    "suprailiac": 10,
+    "abdominal": 16
+   },
+   "fat_method": "durnin",
+   "activity": "light",
+   "formula": "owen",
+   "thermic": false,
+   "athlete": false,
+   "hospitalized": false,
+   "goal": "maintain",
+   "macros": {
+    "carbs_pct": 55,
+    "lipids_pct": 25,
+    "protein_pct": 20
+   }
+  },
+  "out": {
+   "anthro": {
+    "weight_used_kg": 55,
+    "bmi": 18.4,
+    "bmi_class": {
+     "label": "Bajo peso",
+     "tone": "warn"
+    },
+    "ideal_weight_kg": 64.2,
+    "bsa_mosteller": 1.63,
+    "bsa_dubois": 1.65,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 63.8
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 62.8
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 64.1
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 61.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 64.2
+     }
+    ],
+    "ideal_avg_kg": 63.3
+   },
+   "composition": {
+    "fat_pct": 24.4,
+    "fat_source": "durnin",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": true,
+      "fat_pct": 24.4
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": true,
+      "fat_pct": 13.7
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 22.9
+     }
+    ],
+    "ffmi": 13.9,
+    "cama_cm2": 30.6,
+    "agb_cm2": 16.7,
+    "tbw_l": 30,
+    "fat_mass_kg": 13.4,
+    "lean_mass_kg": 41.6
+   },
+   "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": true,
+      "bmr": 1285,
+      "get": 1767
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1335,
+      "get": 1836
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 1375,
+      "get": 1890
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 1375,
+      "get": 1891
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1302,
+      "get": 1790
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1190,
+      "get": 1636
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1268,
+      "get": 1744
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 1415,
+      "get": 1946
+     }
+    ],
+    "formula": "owen",
+    "formula_used": "owen",
+    "bmr": 1190,
+    "activity_factor": 1.375,
+    "tee": 1636,
+    "thermic_kcal": 0,
+    "pregnancy_kcal": 0,
+    "lactation_kcal": 0,
+    "adjust_kcal": 0,
+    "prescription_kcal": 1640
+   },
+   "macros": {
+    "kcal": 1640,
+    "carbs_g": 225.5,
+    "protein_g": 82,
+    "lipids_g": 45.6,
+    "carbs_pct": 55,
+    "protein_pct": 20,
+    "lipids_pct": 25,
+    "protein_g_per_kg": 1.49
+   },
+   "dietosintetico": {
+    "rows": [
+     {
+      "code": "VER",
+      "name": "Verduras",
+      "equivalents": 4,
+      "kcal": 100,
+      "carbs_g": 16,
+      "protein_g": 8,
+      "lipids_g": 0
+     },
+     {
+      "code": "FRU",
+      "name": "Frutas",
+      "equivalents": 3,
+      "kcal": 180,
+      "carbs_g": 45,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
+      "equivalents": 9,
+      "kcal": 630,
+      "carbs_g": 135,
+      "protein_g": 18,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEG",
+      "name": "Leguminosas",
+      "equivalents": 1,
+      "kcal": 120,
+      "carbs_g": 20,
+      "protein_g": 8,
+      "lipids_g": 1
+     },
+     {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-M",
+      "name": "AOA moderado aporte de grasa",
+      "equivalents": 5.5,
+      "kcal": 412.5,
+      "carbs_g": 0,
+      "protein_g": 38.5,
+      "lipids_g": 27.5
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-D",
+      "name": "Leche descremada",
+      "equivalents": 1,
+      "kcal": 95,
+      "carbs_g": 12,
+      "protein_g": 9,
+      "lipids_g": 2
+     },
+     {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "GRA",
+      "name": "Aceites y grasas sin proteína",
+      "equivalents": 3,
+      "kcal": 135,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 15
+     },
+     {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     }
+    ],
+    "totals": {
+     "kcal": 1672.5,
+     "carbs_g": 228,
+     "protein_g": 81.5,
+     "lipids_g": 45.5
+    },
+    "target": {
+     "kcal": 1640,
+     "carbs_g": 225.5,
+     "protein_g": 82,
+     "lipids_g": 45.6
+    },
+    "diff_kcal": 32.5,
+    "diff_pct": 2,
+    "aoa_kind": "AOA-M"
+   },
+   "distribution": [
+    {
+     "name": "Desayuno",
+     "pct": 25,
+     "time": "08:00",
+     "equivalents": {
+      "AOA-M": 1.5,
+      "CER-SG": 2.5,
+      "FRU": 1,
+      "GRA": 1,
+      "LEC-D": 0.5,
+      "VER": 0.5
+     },
+     "totals": {
+      "kcal": 452.5,
+      "carbs_g": 60.5,
+      "protein_g": 21,
+      "lipids_g": 13.5
+     },
+     "target_kcal": 410,
+     "diff_kcal": 42.5
+    },
+    {
+     "name": "Colación matutina",
+     "pct": 10,
+     "time": "11:00",
+     "equivalents": {
+      "CER-SG": 0.5,
+      "FRU": 1
+     },
+     "totals": {
+      "kcal": 95,
+      "carbs_g": 22.5,
+      "protein_g": 1,
+      "lipids_g": 0
+     },
+     "target_kcal": 164,
+     "diff_kcal": -69
+    },
+    {
+     "name": "Comida",
+     "pct": 30,
+     "time": "14:30",
+     "equivalents": {
+      "AOA-M": 2.5,
+      "CER-SG": 3.5,
+      "FRU": 0.5,
+      "GRA": 1.5,
+      "LEG": 0.5,
+      "VER": 2
+     },
+     "totals": {
+      "kcal": 640,
+      "carbs_g": 78,
+      "protein_g": 32.5,
+      "lipids_g": 20.5
+     },
+     "target_kcal": 492,
+     "diff_kcal": 148
+    },
+    {
+     "name": "Colación vespertina",
+     "pct": 10,
+     "time": "18:00",
+     "equivalents": {
+      "FRU": 0.5
+     },
+     "totals": {
+      "kcal": 30,
+      "carbs_g": 7.5,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     "target_kcal": 164,
+     "diff_kcal": -134
+    },
+    {
+     "name": "Cena",
+     "pct": 25,
+     "time": "21:00",
+     "equivalents": {
+      "AOA-M": 1.5,
+      "CER-SG": 2.5,
+      "GRA": 0.5,
+      "LEC-D": 0.5,
+      "LEG": 0.5,
+      "VER": 1.5
+     },
+     "totals": {
+      "kcal": 455,
+      "carbs_g": 59.5,
+      "protein_g": 27,
+      "lipids_g": 11.5
+     },
+     "target_kcal": 410,
+     "diff_kcal": 45
+    }
+   ],
+   "distribution_remaining": {
+    "AOA-M": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEG": 0,
+    "VER": 0
+   },
+   "warnings": [],
+   "engine_version": "1.1.0"
+  }
+ },
+ {
+  "in": {
+   "sex": "M",
+   "age": 45,
+   "weight_kg": 98,
+   "height_cm": 180,
+   "activity": "light",
+   "formula": "harris_orig",
+   "thermic": false,
+   "athlete": false,
+   "hospitalized": false,
+   "goal": "maintain",
+   "kcal_target": 2400,
+   "macros": {
+    "carbs_pct": 0,
+    "lipids_pct": 30,
+    "protein_pct": 0,
+    "protein_g_per_kg": 1.6
+   },
+   "equivalents": {
+    "AOA-A": 3,
+    "CER-CG": 2,
+    "LEC-E": 1
+   },
+   "slots": [
+    {
+     "name": "Desayuno",
+     "pct": 25,
+     "time": "08:00"
+    },
+    {
+     "name": "Colación matutina",
+     "pct": 10,
+     "time": "11:00"
+    },
+    {
+     "name": "Comida",
+     "pct": 30,
+     "time": "14:30"
+    },
+    {
+     "name": "Colación vespertina",
+     "pct": 10,
+     "time": "18:00"
+    },
+    {
+     "name": "Cena",
+     "pct": 25,
+     "time": "21:00"
+    }
+   ],
+   "dist_override": {
+    "VER": [
+     1,
+     0,
+     2,
+     0,
+     1
+    ]
+   }
+  },
+  "out": {
+   "anthro": {
+    "weight_used_kg": 98,
+    "bmi": 30.2,
+    "bmi_class": {
+     "label": "Obesidad grado I",
+     "tone": "critical"
+    },
+    "ideal_weight_kg": 75,
+    "bsa_mosteller": 2.21,
+    "bsa_dubois": 2.18,
+    "ideal_weights": [
+     {
+      "id": "hamwi",
+      "name": "Hamwi",
+      "kg": 77.7
+     },
+     {
+      "id": "robinson",
+      "name": "Robinson",
+      "kg": 72.6
+     },
+     {
+      "id": "miller",
+      "name": "Miller",
+      "kg": 71.5
+     },
+     {
+      "id": "lorentz",
+      "name": "Lorentz",
+      "kg": 72.5
+     },
+     {
+      "id": "devine",
+      "name": "Devine",
+      "kg": 75
+     }
+    ],
+    "ideal_avg_kg": 73.9,
+    "adjusted_weight_kg": 80.7
+   },
+   "composition": {
+    "fat_pct": 30.4,
+    "fat_source": "deurenberg",
+    "methods": [
+     {
+      "id": "captured",
+      "name": "Capturado",
+      "tag": "Medido",
+      "available": false,
+      "requires": "Captura el % de grasa"
+     },
+     {
+      "id": "durnin",
+      "name": "Durnin-Womersley (4 pliegues)",
+      "tag": "Siri",
+      "available": false,
+      "requires": "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco"
+     },
+     {
+      "id": "faulkner",
+      "name": "Faulkner (deportistas)",
+      "tag": "4 pliegues",
+      "available": false,
+      "requires": "Requiere tríceps, subescapular, suprailíaco y abdominal"
+     },
+     {
+      "id": "navy",
+      "name": "US Navy",
+      "tag": "Circunferencias",
+      "available": false,
+      "requires": "Requiere cintura, cuello (y cadera en mujeres)"
+     },
+     {
+      "id": "deurenberg",
+      "name": "Deurenberg",
+      "tag": "Poblacional",
+      "available": true,
+      "fat_pct": 30.4
+     }
+    ],
+    "ffmi": 21,
+    "tbw_l": 50.4,
+    "fat_mass_kg": 29.8,
+    "lean_mass_kg": 68.2
+   },
+   "energy": {
+    "equations": [
+     {
+      "id": "valencia",
+      "name": "Valencia (2008) · México",
+      "tag": "Población mexicana",
+      "available": false,
+      "note": "Solo disponible para mujeres de 18 a 29 años; falta validar los demás tramos."
+     },
+     {
+      "id": "mifflin",
+      "name": "Mifflin-St Jeor (1990)",
+      "tag": "Clínica general",
+      "available": true,
+      "bmr": 1885,
+      "get": 2592
+     },
+     {
+      "id": "harris_orig",
+      "name": "Harris-Benedict (1919)",
+      "tag": "Clásica",
+      "available": true,
+      "bmr": 2010,
+      "get": 2763
+     },
+     {
+      "id": "harris",
+      "name": "Roza y Shizgal (1984)",
+      "tag": "Harris-Benedict revisada",
+      "available": true,
+      "bmr": 2010,
+      "get": 2763
+     },
+     {
+      "id": "fao",
+      "name": "FAO/OMS/UNU (1985)",
+      "tag": "Peso (Schofield)",
+      "available": true,
+      "bmr": 1997,
+      "get": 2746
+     },
+     {
+      "id": "owen",
+      "name": "Owen (1986/1987)",
+      "tag": "Adulto",
+      "available": true,
+      "bmr": 1879,
+      "get": 2583
+     },
+     {
+      "id": "katch",
+      "name": "Katch-McArdle (1996)",
+      "tag": "Masa magra",
+      "available": true,
+      "bmr": 1842,
+      "get": 2533
+     },
+     {
+      "id": "cunningham",
+      "name": "Cunningham (1980)",
+      "tag": "Deporte / masa magra",
+      "available": true,
+      "bmr": 2000,
+      "get": 2749
+     }
+    ],
+    "formula": "harris_orig",
+    "formula_used": "harris_orig",
+    "bmr": 2010,
+    "activity_factor": 1.375,
+    "tee": 2763,
+    "thermic_kcal": 0,
+    "pregnancy_kcal": 0,
+    "lactation_kcal": 0,
+    "adjust_kcal": 0,
+    "prescription_kcal": 2400
+   },
+   "macros": {
+    "kcal": 2400,
+    "carbs_g": 263.2,
+    "protein_g": 156.8,
+    "lipids_g": 80,
+    "carbs_pct": 43.9,
+    "protein_pct": 26.1,
+    "lipids_pct": 30,
+    "protein_g_per_kg": 1.6
+   },
+   "dietosintetico": {
+    "rows": [
+     {
+      "code": "VER",
+      "name": "Verduras",
+      "equivalents": 5,
+      "kcal": 125,
+      "carbs_g": 20,
+      "protein_g": 10,
+      "lipids_g": 0
+     },
+     {
+      "code": "FRU",
+      "name": "Frutas",
+      "equivalents": 4,
+      "kcal": 240,
+      "carbs_g": 60,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-SG",
+      "name": "Cereales sin grasa",
+      "equivalents": 5,
+      "kcal": 350,
+      "carbs_g": 75,
+      "protein_g": 10,
+      "lipids_g": 0
+     },
+     {
+      "code": "CER-CG",
+      "name": "Cereales con grasa",
+      "equivalents": 2,
+      "kcal": 230,
+      "carbs_g": 30,
+      "protein_g": 4,
+      "lipids_g": 10,
+      "fixed": true
+     },
+     {
+      "code": "LEG",
+      "name": "Leguminosas",
+      "equivalents": 2,
+      "kcal": 240,
+      "carbs_g": 40,
+      "protein_g": 16,
+      "lipids_g": 2
+     },
+     {
+      "code": "AOA-MB",
+      "name": "AOA muy bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-B",
+      "name": "AOA bajo aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-M",
+      "name": "AOA moderado aporte de grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AOA-A",
+      "name": "AOA alto aporte de grasa",
+      "equivalents": 3,
+      "kcal": 300,
+      "carbs_g": 0,
+      "protein_g": 21,
+      "lipids_g": 24,
+      "fixed": true
+     },
+     {
+      "code": "LEC-D",
+      "name": "Leche descremada",
+      "equivalents": 2,
+      "kcal": 190,
+      "carbs_g": 24,
+      "protein_g": 18,
+      "lipids_g": 4
+     },
+     {
+      "code": "LEC-S",
+      "name": "Leche semidescremada",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "LEC-E",
+      "name": "Leche entera",
+      "equivalents": 1,
+      "kcal": 150,
+      "carbs_g": 12,
+      "protein_g": 9,
+      "lipids_g": 8,
+      "fixed": true
+     },
+     {
+      "code": "LEC-A",
+      "name": "Leche con azúcar",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "GRA",
+      "name": "Aceites y grasas sin proteína",
+      "equivalents": 6.5,
+      "kcal": 292.5,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 32.5
+     },
+     {
+      "code": "GRP",
+      "name": "Aceites y grasas con proteína",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU",
+      "name": "Azúcares sin grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     {
+      "code": "AZU-CG",
+      "name": "Azúcares con grasa",
+      "equivalents": 0,
+      "kcal": 0,
+      "carbs_g": 0,
+      "protein_g": 0,
+      "lipids_g": 0
+     }
+    ],
+    "totals": {
+     "kcal": 2117.5,
+     "carbs_g": 261,
+     "protein_g": 88,
+     "lipids_g": 80.5
+    },
+    "target": {
+     "kcal": 2400,
+     "carbs_g": 263.2,
+     "protein_g": 156.8,
+     "lipids_g": 80
+    },
+    "diff_kcal": -282.5,
+    "diff_pct": -11.8,
+    "aoa_kind": "AOA-A"
+   },
+   "distribution": [
+    {
+     "name": "Desayuno",
+     "pct": 25,
+     "time": "08:00",
+     "equivalents": {
+      "AOA-A": 1,
+      "CER-CG": 0.5,
+      "CER-SG": 1.5,
+      "FRU": 1.5,
+      "GRA": 2,
+      "LEC-D": 1,
+      "LEC-E": 0.5,
+      "VER": 1
+     },
+     "totals": {
+      "kcal": 637.5,
+      "carbs_g": 74.5,
+      "protein_g": 26.5,
+      "lipids_g": 26.5
+     },
+     "target_kcal": 600,
+     "diff_kcal": 37.5
+    },
+    {
+     "name": "Colación matutina",
+     "pct": 10,
+     "time": "11:00",
+     "equivalents": {
+      "FRU": 1
+     },
+     "totals": {
+      "kcal": 60,
+      "carbs_g": 15,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     "target_kcal": 240,
+     "diff_kcal": -180
+    },
+    {
+     "name": "Comida",
+     "pct": 30,
+     "time": "14:30",
+     "equivalents": {
+      "AOA-A": 1,
+      "CER-CG": 1,
+      "CER-SG": 2,
+      "FRU": 1,
+      "GRA": 3,
+      "LEG": 1.5,
+      "VER": 2
+     },
+     "totals": {
+      "kcal": 780,
+      "carbs_g": 98,
+      "protein_g": 29,
+      "lipids_g": 29.5
+     },
+     "target_kcal": 720,
+     "diff_kcal": 60
+    },
+    {
+     "name": "Colación vespertina",
+     "pct": 10,
+     "time": "18:00",
+     "equivalents": {
+      "FRU": 0.5
+     },
+     "totals": {
+      "kcal": 30,
+      "carbs_g": 7.5,
+      "protein_g": 0,
+      "lipids_g": 0
+     },
+     "target_kcal": 240,
+     "diff_kcal": -210
+    },
+    {
+     "name": "Cena",
+     "pct": 25,
+     "time": "21:00",
+     "equivalents": {
+      "AOA-A": 1,
+      "CER-CG": 0.5,
+      "CER-SG": 1.5,
+      "GRA": 1.5,
+      "LEC-D": 1,
+      "LEC-E": 0.5,
+      "LEG": 0.5,
+      "VER": 1
+     },
+     "totals": {
+      "kcal": 585,
+      "carbs_g": 62,
+      "protein_g": 30.5,
+      "lipids_g": 24.5
+     },
+     "target_kcal": 600,
+     "diff_kcal": -15
+    }
+   ],
+   "distribution_remaining": {
+    "AOA-A": 0,
+    "CER-CG": 0,
+    "CER-SG": 0,
+    "FRU": 0,
+    "GRA": 0,
+    "LEC-D": 0,
+    "LEC-E": 0,
+    "LEG": 0,
+    "VER": 1
+   },
+   "warnings": [
+    {
+     "code": "carbs_low",
+     "message": "Los hidratos de carbono están por debajo de 45 % de la energía.",
+     "level": "info"
+    },
+    {
+     "code": "cuadro_diff",
+     "message": "El cuadro dietosintético se desvía más de 5 % de la prescripción; ajusta equivalentes.",
+     "level": "warn"
+    },
+    {
+     "code": "dist_remaining",
+     "message": "Hay equivalentes sin repartir (o repartidos de más) entre los tiempos de comida.",
+     "level": "warn"
+    }
+   ],
+   "engine_version": "1.1.0"
   }
  }
 ]

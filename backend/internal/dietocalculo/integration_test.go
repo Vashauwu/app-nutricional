@@ -87,6 +87,25 @@ func TestDietocalculoAPI(t *testing.T) {
 		require.NotNil(t, b["result"])
 	})
 
+	t.Run("guarda platillos y reparto manual", func(t *testing.T) {
+		in := map[string]any{}
+		for k, v := range inputs {
+			in[k] = v
+		}
+		in["menu"] = map[string]any{"Desayuno": []any{map[string]any{"id": "m1", "kind": "dish", "name": "Avena", "qty": "porción", "qty_n": 1.5, "kcal": 300, "protein_g": 10, "carbs_g": 50, "lipids_g": 6, "fiber_g": 5, "eq": map[string]any{"CER-SG": 2}}}}
+		in["dist_override"] = map[string]any{"VER": []any{1, 0, 2, 0, 1}}
+		code, b := nutri.Do("PUT", "/api/v1/diet-calculations/"+id, map[string]any{"name": "Dieta de Ana", "patient_id": pid, "inputs": in})
+		require.Equal(t, 200, code, fmt.Sprint(b))
+		_, b = nutri.Do("GET", "/api/v1/diet-calculations/"+id, nil)
+		menu := b["inputs"].(map[string]any)["menu"].(map[string]any)["Desayuno"].([]any)
+		require.Len(t, menu, 1)
+		require.EqualValues(t, 1.5, menu[0].(map[string]any)["qty_n"])
+		require.NotNil(t, b["result"].(map[string]any)["distribution_remaining"])
+		in["menu"] = map[string]any{"Desayuno": []any{map[string]any{"id": "m1", "kind": "dish", "name": "x", "qty_n": 0}}}
+		code, _ = nutri.Do("PUT", "/api/v1/diet-calculations/"+id, map[string]any{"name": "x", "inputs": in})
+		require.Equal(t, 422, code)
+	})
+
 	t.Run("validaciones", func(t *testing.T) {
 		bad := map[string]any{"sex": "F", "age": 5, "weight_kg": 55, "height_cm": 173, "macros": map[string]any{"carbs_pct": 50, "lipids_pct": 30, "protein_pct": 30}}
 		code, b := nutri.Do("POST", "/api/v1/diet-calculations", map[string]any{"name": "", "inputs": bad})

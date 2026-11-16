@@ -18,6 +18,8 @@ type Macros struct {
 	CarbsPct   float64 `json:"carbs_pct"`
 	LipidsPct  float64 `json:"lipids_pct"`
 	ProteinPct float64 `json:"protein_pct"`
+	// Si es > 0, la proteína se fija en g/kg, los lípidos en su % y los hidratos son el resto.
+	ProteinGKg float64 `json:"protein_g_per_kg,omitempty"`
 }
 
 type Pregnancy struct {
@@ -29,27 +31,59 @@ type Pregnancy struct {
 type Slot struct {
 	Name string  `json:"name"`
 	Pct  float64 `json:"pct"`
+	Time string  `json:"time,omitempty"` // HH:MM
+}
+
+// Skinfolds son pliegues cutáneos en mm.
+type Skinfolds struct {
+	Triceps     float64 `json:"triceps,omitempty"`
+	Biceps      float64 `json:"biceps,omitempty"`
+	Subscapular float64 `json:"subscapular,omitempty"`
+	Suprailiac  float64 `json:"suprailiac,omitempty"`
+	Abdominal   float64 `json:"abdominal,omitempty"`
+	Calf        float64 `json:"calf,omitempty"`
+}
+
+// MenuItem es un platillo o alimento agregado a un tiempo de comida. Guarda una copia de sus aportes
+// para que la dieta no cambie si después se edita el platillo o el catálogo.
+type MenuItem struct {
+	ID       string             `json:"id"`
+	Kind     string             `json:"kind"` // dish | food
+	RefID    string             `json:"ref_id,omitempty"`
+	Name     string             `json:"name"`
+	Qty      string             `json:"qty,omitempty"` // unidad: «porción», «taza», «pieza»…
+	QtyN     float64            `json:"qty_n"`         // cuántas unidades; los aportes de abajo son por UNA unidad
+	Kcal     float64            `json:"kcal"`
+	ProteinG float64            `json:"protein_g"`
+	CarbsG   float64            `json:"carbs_g"`
+	LipidsG  float64            `json:"lipids_g"`
+	FiberG   float64            `json:"fiber_g"`
+	Eq       map[string]float64 `json:"eq,omitempty"`
 }
 
 type Inputs struct {
-	Sex         string  `json:"sex"` // "F" | "M"
-	Age         float64 `json:"age"`
-	WeightKg    float64 `json:"weight_kg"`
-	HeightCm    float64 `json:"height_cm"`
-	BodyFatPct  float64 `json:"body_fat_pct,omitempty"`
-	WaistCm     float64 `json:"waist_cm,omitempty"`
-	HipCm       float64 `json:"hip_cm,omitempty"`
-	NeckCm      float64 `json:"neck_cm,omitempty"`
-	WristCm     float64 `json:"wrist_cm,omitempty"`
-	KneeHeightC float64 `json:"knee_height_cm,omitempty"`
-	TargetFat   float64 `json:"target_fat_pct,omitempty"`
+	Sex         string     `json:"sex"` // "F" | "M"
+	Age         float64    `json:"age"`
+	WeightKg    float64    `json:"weight_kg"`
+	HeightCm    float64    `json:"height_cm"`
+	BodyFatPct  float64    `json:"body_fat_pct,omitempty"`
+	WaistCm     float64    `json:"waist_cm,omitempty"`
+	HipCm       float64    `json:"hip_cm,omitempty"`
+	NeckCm      float64    `json:"neck_cm,omitempty"`
+	WristCm     float64    `json:"wrist_cm,omitempty"`
+	KneeHeightC float64    `json:"knee_height_cm,omitempty"`
+	TargetFat   float64    `json:"target_fat_pct,omitempty"`
+	ArmCircCm   float64    `json:"arm_circ_cm,omitempty"`
+	Skinfolds   *Skinfolds `json:"skinfolds,omitempty"`
+	FatMethod   string     `json:"fat_method,omitempty"` // "" (automático) | captured | durnin | faulkner | navy | deurenberg
 
-	Activity string  `json:"activity"` // sedentary|light|moderate|intense|very_intense
-	Formula  string  `json:"formula"`  // mifflin|harris|fao|katch|cunningham
-	Thermic  bool    `json:"thermic"`  // suma efecto térmico de los alimentos (10 %)
-	Athlete  bool    `json:"athlete"`
-	Hospital bool    `json:"hospitalized"`
-	Stress   float64 `json:"stress_factor,omitempty"` // factor de estrés (hospitalizado), 1.0–2.0
+	Activity   string  `json:"activity"`              // sedentary|light|moderate|intense|very_intense
+	Formula    string  `json:"formula"`               // mifflin|harris|fao|katch|cunningham
+	Thermic    bool    `json:"thermic"`               // suma efecto térmico de los alimentos
+	ThermicPct float64 `json:"thermic_pct,omitempty"` // % de ETA (10 por omisión)
+	Athlete    bool    `json:"athlete"`
+	Hospital   bool    `json:"hospitalized"`
+	Stress     float64 `json:"stress_factor,omitempty"` // factor de estrés (hospitalizado), 1.0–2.0
 	// Amputaciones: segmentos perdidos (ver AmputationPct).
 	Amputations []string `json:"amputations,omitempty"`
 
@@ -64,6 +98,10 @@ type Inputs struct {
 	// Equivalentes fijados a mano por la nutrióloga (código de grupo → equivalentes). El resto se calcula.
 	Equivalents map[string]float64 `json:"equivalents,omitempty"`
 	Slots       []Slot             `json:"slots,omitempty"`
+	// Reparto manual por grupo: equivalentes por tiempo de comida (mismo orden que Slots). Lo no indicado se reparte solo.
+	DistOverride map[string][]float64 `json:"dist_override,omitempty"`
+	// Platillos y alimentos de la dieta, por nombre de tiempo de comida.
+	Menu map[string][]MenuItem `json:"menu,omitempty"`
 }
 
 // ---------- Resultados ----------
@@ -86,32 +124,70 @@ type Anthro struct {
 	WaistHeight    float64         `json:"waist_height,omitempty"`
 	WaistHeightCls *Classification `json:"waist_height_class,omitempty"`
 	WaistClass     *Classification `json:"waist_class,omitempty"`
+	IdealWeights   []IdealWeight   `json:"ideal_weights"`
+	IdealAvg       float64         `json:"ideal_avg_kg"`
+	AdjustedWeight float64         `json:"adjusted_weight_kg,omitempty"`
 	StatureChumlea float64         `json:"stature_chumlea_cm,omitempty"`
 	FrameRatio     float64         `json:"frame_ratio,omitempty"`
 	Frame          string          `json:"frame,omitempty"`
 }
 
+type IdealWeight struct {
+	ID   string  `json:"id"`
+	Name string  `json:"name"`
+	Kg   float64 `json:"kg"`
+}
+
+// FatMethod es un método para estimar el % de grasa; solo trae valor si hay datos suficientes.
+type FatMethod struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Tag       string  `json:"tag"`
+	Available bool    `json:"available"`
+	FatPct    float64 `json:"fat_pct,omitempty"`
+	Requires  string  `json:"requires,omitempty"`
+}
+
 type Composition struct {
-	FatPct       float64 `json:"fat_pct"`
-	FatSource    string  `json:"fat_source"` // captured | navy | deurenberg
-	FatMassKg    float64 `json:"fat_mass_kg"`
-	LeanMassKg   float64 `json:"lean_mass_kg"`
-	TargetFatPct float64 `json:"target_fat_pct,omitempty"`
-	TargetWeight float64 `json:"target_weight_kg,omitempty"`
+	FatPct       float64     `json:"fat_pct"`
+	FatSource    string      `json:"fat_source"` // captured | durnin | faulkner | navy | deurenberg
+	Methods      []FatMethod `json:"methods"`
+	FFMI         float64     `json:"ffmi"`
+	CAMA         float64     `json:"cama_cm2,omitempty"`
+	AGB          float64     `json:"agb_cm2,omitempty"`
+	TBW          float64     `json:"tbw_l"`
+	lean         float64     // masa magra sin redondear, para las ecuaciones de gasto
+	FatMassKg    float64     `json:"fat_mass_kg"`
+	LeanMassKg   float64     `json:"lean_mass_kg"`
+	TargetFatPct float64     `json:"target_fat_pct,omitempty"`
+	TargetWeight float64     `json:"target_weight_kg,omitempty"`
+}
+
+// Equation es una ecuación de gasto basal calculada con los datos actuales, para compararlas lado a lado.
+type Equation struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Tag       string  `json:"tag"`
+	Available bool    `json:"available"`
+	BMR       float64 `json:"bmr,omitempty"`
+	GET       float64 `json:"get,omitempty"` // gasto de mantenimiento con actividad, estrés y ETA
+	Note      string  `json:"note,omitempty"`
 }
 
 type Energy struct {
-	Formula      string  `json:"formula"`
-	FormulaUsed  string  `json:"formula_used"` // puede diferir si faltan datos (p. ej. Katch sin % de grasa)
-	BMR          float64 `json:"bmr"`
-	ActivityF    float64 `json:"activity_factor"`
-	TEE          float64 `json:"tee"` // gasto energético total
-	Thermic      float64 `json:"thermic_kcal"`
-	Stress       float64 `json:"stress_factor,omitempty"`
-	Pregnancy    float64 `json:"pregnancy_kcal"`
-	Lactation    float64 `json:"lactation_kcal"`
-	Adjust       float64 `json:"adjust_kcal"`
-	Prescription float64 `json:"prescription_kcal"`
+	Equations    []Equation `json:"equations"`
+	Formula      string     `json:"formula"`
+	FormulaUsed  string     `json:"formula_used"` // puede diferir si faltan datos (p. ej. Katch sin % de grasa)
+	BMR          float64    `json:"bmr"`
+	ActivityF    float64    `json:"activity_factor"`
+	TEE          float64    `json:"tee"` // gasto energético total
+	Thermic      float64    `json:"thermic_kcal"`
+	ThermicPct   float64    `json:"thermic_pct,omitempty"`
+	Stress       float64    `json:"stress_factor,omitempty"`
+	Pregnancy    float64    `json:"pregnancy_kcal"`
+	Lactation    float64    `json:"lactation_kcal"`
+	Adjust       float64    `json:"adjust_kcal"`
+	Prescription float64    `json:"prescription_kcal"`
 }
 
 type PregnancyInfo struct {
@@ -171,6 +247,7 @@ type Dietosintetico struct {
 type SlotRow struct {
 	Name   string             `json:"name"`
 	Pct    float64            `json:"pct"`
+	Time   string             `json:"time,omitempty"`
 	Eq     map[string]float64 `json:"equivalents"` // código → equivalentes (solo > 0)
 	Totals Totals             `json:"totals"`
 	// Diferencia contra el objetivo energético del tiempo de comida.
@@ -192,11 +269,13 @@ type Result struct {
 	Macros       MacroTargets   `json:"macros"`
 	Dietosint    Dietosintetico `json:"dietosintetico"`
 	Distribution []SlotRow      `json:"distribution"`
-	Warnings     []Warning      `json:"warnings"`
-	EngineVer    string         `json:"engine_version"`
+	// Equivalentes por repartir (total del grupo − lo asignado a los tiempos); 0 cuando todo está repartido.
+	Remaining map[string]float64 `json:"distribution_remaining"`
+	Warnings  []Warning          `json:"warnings"`
+	EngineVer string             `json:"engine_version"`
 }
 
-const EngineVersion = "1.0.0"
+const EngineVersion = "1.1.0"
 
 // ---------- Utilidades ----------
 
@@ -294,6 +373,10 @@ func computeAnthro(in Inputs) Anthro {
 		BSAMosteller:  r2(math.Sqrt(in.HeightCm * w / 3600)),
 		BSADuBois:     r2(0.007184 * math.Pow(w, 0.425) * math.Pow(in.HeightCm, 0.725)),
 	}
+	a.IdealWeights, a.IdealAvg = idealWeights(in.HeightCm, in.Sex)
+	if ideal := idealWeight(in.HeightCm, in.Sex); w > ideal {
+		a.AdjustedWeight = r1(ideal + 0.25*(w-ideal)) // peso ajustado (25 %) para obesidad
+	}
 	if in.WaistCm > 0 {
 		wl, wt := 80.0, "Riesgo cardiometabólico por cintura (≥ 80 cm en mujeres)"
 		if in.Sex == "M" {
@@ -351,30 +434,148 @@ func computeAnthro(in Inputs) Anthro {
 	return a
 }
 
-func computeComposition(in Inputs, w float64) Composition {
-	pct, src := 0.0, ""
-	switch {
-	case in.BodyFatPct > 0:
-		pct, src = in.BodyFatPct, "captured"
-	default:
-		if n, ok := bodyFatNavy(in); ok && n > 2 && n < 60 {
-			pct, src = n, "navy"
-		} else {
-			bmi := w / math.Pow(in.HeightCm/100, 2)
-			male := 0.0
-			if in.Sex == "M" {
-				male = 1
-			}
-			// Deurenberg (1991): estimación a partir del IMC, la edad y el sexo.
-			pct, src = 1.2*bmi+0.23*in.Age-10.8*male-5.4, "deurenberg"
+// kgPerLb convierte libras a kilogramos (fórmulas de Hamwi).
+const kgPerLb = 0.45359237
+
+// idealWeights calcula los pesos teóricos con varias fórmulas publicadas (Hamwi 1964, Robinson 1983, Miller 1983,
+// Lorentz y Devine 1974) y su promedio.
+func idealWeights(h float64, sex string) ([]IdealWeight, float64) {
+	i := math.Max(0, h/2.54-60)
+	m := sex == "M"
+	pick := func(f, mm float64) float64 {
+		if m {
+			return mm
+		}
+		return f
+	}
+	lorentzDiv := pick(2, 4)
+	list := []IdealWeight{
+		{"hamwi", "Hamwi", r1(pick(100+5*i, 106+6*i) * kgPerLb)},
+		{"robinson", "Robinson", r1(pick(49+1.7*i, 52+1.9*i))},
+		{"miller", "Miller", r1(pick(53.1+1.36*i, 56.2+1.41*i))},
+		{"lorentz", "Lorentz", r1(h - 100 - (h-150)/lorentzDiv)},
+		{"devine", "Devine", r1(pick(45.5+2.3*i, 50+2.3*i))},
+	}
+	sum := 0.0
+	for _, x := range list {
+		sum += x.Kg
+	}
+	return list, r1(sum / float64(len(list)))
+}
+
+// durninDensity: densidad corporal de Durnin-Womersley (1974) con la suma de 4 pliegues (tríceps, bíceps,
+// subescapular, suprailíaco).
+func durninFat(sex string, age, sum4 float64) (float64, bool) {
+	if age < 17 || sum4 <= 0 {
+		return 0, false
+	}
+	var c, m float64
+	if sex == "M" {
+		switch {
+		case age < 20:
+			c, m = 1.1620, 0.0630
+		case age < 30:
+			c, m = 1.1631, 0.0632
+		case age < 40:
+			c, m = 1.1422, 0.0544
+		case age < 50:
+			c, m = 1.1620, 0.0700
+		default:
+			c, m = 1.1715, 0.0779
+		}
+	} else {
+		switch {
+		case age < 30:
+			c, m = 1.1549, 0.0678
+		case age < 40:
+			c, m = 1.1599, 0.0717
+		case age < 50:
+			c, m = 1.1423, 0.0632
+		default:
+			c, m = 1.1333, 0.0612
 		}
 	}
-	pct = math.Max(3, math.Min(60, pct))
+	d := c - m*math.Log10(sum4)
+	return 495/d - 450, true // Siri (1961)
+}
+
+func computeComposition(in Inputs, w float64) Composition {
+	sf := Skinfolds{}
+	if in.Skinfolds != nil {
+		sf = *in.Skinfolds
+	}
+	bmi := w / math.Pow(in.HeightCm/100, 2)
+	male := 0.0
+	if in.Sex == "M" {
+		male = 1
+	}
+	type cand struct {
+		id, name, tag, req string
+		pct                float64
+		ok                 bool
+	}
+	cands := []cand{{id: "captured", name: "Capturado", tag: "Medido", req: "Captura el % de grasa"}}
+	if in.BodyFatPct > 0 {
+		cands[0].pct, cands[0].ok = in.BodyFatPct, true
+	}
+	dp, dok := 0.0, false
+	if sf.Triceps > 0 && sf.Biceps > 0 && sf.Subscapular > 0 && sf.Suprailiac > 0 {
+		dp, dok = durninFat(in.Sex, in.Age, sf.Triceps+sf.Biceps+sf.Subscapular+sf.Suprailiac)
+	}
+	cands = append(cands, cand{"durnin", "Durnin-Womersley (4 pliegues)", "Siri", "Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco", dp, dok})
+	fp, fok := 0.0, false
+	if sf.Triceps > 0 && sf.Subscapular > 0 && sf.Suprailiac > 0 && sf.Abdominal > 0 {
+		fp, fok = (sf.Triceps+sf.Subscapular+sf.Suprailiac+sf.Abdominal)*0.153+5.783, true
+	}
+	cands = append(cands, cand{"faulkner", "Faulkner (deportistas)", "4 pliegues", "Requiere tríceps, subescapular, suprailíaco y abdominal", fp, fok})
+	np, nok := bodyFatNavy(in)
+	cands = append(cands, cand{"navy", "US Navy", "Circunferencias", "Requiere cintura, cuello (y cadera en mujeres)", np, nok && np > 2 && np < 60})
+	cands = append(cands, cand{"deurenberg", "Deurenberg", "Poblacional", "", 1.2*bmi + 0.23*in.Age - 10.8*male - 5.4, true})
+
+	methods := make([]FatMethod, 0, len(cands))
+	chosen := -1
+	for i, c := range cands {
+		fm := FatMethod{ID: c.id, Name: c.name, Tag: c.tag, Available: c.ok}
+		if c.ok {
+			fm.FatPct = r1(math.Max(3, math.Min(60, c.pct)))
+		} else {
+			fm.Requires = c.req
+		}
+		methods = append(methods, fm)
+		if c.ok && c.id == in.FatMethod {
+			chosen = i
+		}
+	}
+	if chosen < 0 { // automático: el más directo disponible
+		for i, c := range cands {
+			if c.ok {
+				chosen = i
+				break
+			}
+		}
+	}
+	pct := math.Max(3, math.Min(60, cands[chosen].pct))
 	fat := w * pct / 100
-	c := Composition{FatPct: r1(pct), FatSource: src, FatMassKg: r1(fat), LeanMassKg: r1(w - fat)}
+	lean := w - fat
+	tbw := -2.097 + 0.1069*in.HeightCm + 0.2466*w
+	if in.Sex == "M" {
+		tbw = 2.447 - 0.09516*in.Age + 0.1074*in.HeightCm + 0.3362*w
+	}
+	c := Composition{FatPct: r1(pct), FatSource: cands[chosen].id, Methods: methods, FatMassKg: r1(fat), LeanMassKg: r1(lean),
+		FFMI: r1(lean / math.Pow(in.HeightCm/100, 2)), TBW: r1(tbw), lean: lean}
+	if in.ArmCircCm > 0 && sf.Triceps > 0 {
+		tsf := sf.Triceps / 10 // cm
+		corr := 6.5
+		if in.Sex == "M" {
+			corr = 10
+		}
+		// Heymsfield (1982): área muscular del brazo corregida; Frisancho: área grasa del brazo.
+		c.CAMA = r1(math.Pow(in.ArmCircCm-math.Pi*tsf, 2)/(4*math.Pi) - corr)
+		c.AGB = r1(in.ArmCircCm*tsf/2 - math.Pi*tsf*tsf/4)
+	}
 	if in.TargetFat > 0 && in.TargetFat < 60 {
 		c.TargetFatPct = in.TargetFat
-		c.TargetWeight = r1((w - fat) / (1 - in.TargetFat/100))
+		c.TargetWeight = r1(lean / (1 - in.TargetFat/100))
 	}
 	return c
 }
@@ -383,44 +584,72 @@ func computeComposition(in Inputs, w float64) Composition {
 
 var activityFactor = map[string]float64{"sedentary": 1.2, "light": 1.375, "moderate": 1.55, "intense": 1.725, "very_intense": 1.9}
 
-func bmrFor(formula string, in Inputs, w, lean float64) (float64, string) {
+type eqDef struct{ id, name, tag string }
+
+// Ecuaciones comparables, en el orden en que se muestran.
+var equationDefs = []eqDef{
+	{"valencia", "Valencia (2008) · México", "Población mexicana"},
+	{"mifflin", "Mifflin-St Jeor (1990)", "Clínica general"},
+	{"harris_orig", "Harris-Benedict (1919)", "Clásica"},
+	{"harris", "Roza y Shizgal (1984)", "Harris-Benedict revisada"},
+	{"fao", "FAO/OMS/UNU (1985)", "Peso (Schofield)"},
+	{"owen", "Owen (1986/1987)", "Adulto"},
+	{"katch", "Katch-McArdle (1996)", "Masa magra"},
+	{"cunningham", "Cunningham (1980)", "Deporte / masa magra"},
+}
+
+// bmrOf devuelve el gasto basal de una ecuación y si se pudo calcular con los datos actuales.
+func bmrOf(id string, in Inputs, w, lean float64) (bmr float64, ok bool, note string) {
 	male := in.Sex == "M"
-	switch formula {
+	switch id {
+	case "valencia":
+		// Solo está cargado el tramo de mujeres de 18 a 30 años, verificado contra la referencia. Los demás tramos
+		// quedan sin calcular hasta validar los coeficientes con la publicación.
+		if !male && in.Age >= 18 && in.Age < 30 {
+			return 11.02*w + 679, true, ""
+		}
+		return 0, false, "Solo disponible para mujeres de 18 a 29 años; falta validar los demás tramos."
+	case "harris_orig":
+		if male {
+			return 66.47 + 13.75*w + 5.0*in.HeightCm - 6.76*in.Age, true, ""
+		}
+		return 655.1 + 9.563*w + 1.85*in.HeightCm - 4.676*in.Age, true, ""
 	case "harris":
 		if male {
-			return 88.362 + 13.397*w + 4.799*in.HeightCm - 5.677*in.Age, "harris"
+			return 88.362 + 13.397*w + 4.799*in.HeightCm - 5.677*in.Age, true, ""
 		}
-		return 447.593 + 9.247*w + 3.098*in.HeightCm - 4.330*in.Age, "harris"
+		return 447.593 + 9.247*w + 3.098*in.HeightCm - 4.33*in.Age, true, ""
 	case "fao":
 		switch {
 		case in.Age >= 60 && male:
-			return 11.711*w + 587.7, "fao"
+			return 11.711*w + 587.7, true, ""
 		case in.Age >= 60:
-			return 9.082*w + 658.5, "fao"
+			return 9.082*w + 658.5, true, ""
 		case in.Age >= 30 && male:
-			return 11.472*w + 873.1, "fao"
+			return 11.472*w + 873.1, true, ""
 		case in.Age >= 30:
-			return 8.126*w + 845.6, "fao"
+			return 8.126*w + 845.6, true, ""
 		case male:
-			return 15.057*w + 692.2, "fao"
+			return 15.057*w + 692.2, true, ""
 		default:
-			return 14.818*w + 486.6, "fao"
+			return 14.818*w + 486.6, true, ""
 		}
+	case "owen":
+		if male {
+			return 879 + 10.2*w, true, ""
+		}
+		return 795 + 7.18*w, true, ""
 	case "katch":
-		if lean > 0 {
-			return 370 + 21.6*lean, "katch"
-		}
+		return 370 + 21.6*lean, lean > 0, ""
 	case "cunningham":
-		if lean > 0 {
-			return 500 + 22*lean, "cunningham"
-		}
+		return 500 + 22*lean, lean > 0, ""
 	}
 	// Mifflin-St Jeor (valor por omisión).
 	s := -161.0
 	if male {
 		s = 5
 	}
-	return 10*w + 6.25*in.HeightCm - 5*in.Age + s, "mifflin"
+	return 10*w + 6.25*in.HeightCm - 5*in.Age + s, true, ""
 }
 
 func computeEnergy(in Inputs, w, lean float64, preg *PregnancyInfo) Energy {
@@ -428,7 +657,6 @@ func computeEnergy(in Inputs, w, lean float64, preg *PregnancyInfo) Energy {
 	if f == "" {
 		f = "mifflin"
 	}
-	bmr, used := bmrFor(f, in, w, lean)
 	af := activityFactor[in.Activity]
 	if af == 0 {
 		af = activityFactor["sedentary"]
@@ -439,22 +667,46 @@ func computeEnergy(in Inputs, w, lean float64, preg *PregnancyInfo) Energy {
 	if in.Athlete && af < 1.725 {
 		af = 1.725
 	}
-	tee := bmr * af
-	e := Energy{Formula: f, FormulaUsed: used, BMR: r0(bmr), ActivityF: af}
+	stress := 1.0
 	if in.Hospital {
-		s := in.Stress
-		if s < 1 {
-			s = 1
-		}
-		if s > 2 {
-			s = 2
-		}
-		e.Stress = s
-		tee *= s
+		stress = math.Min(2, math.Max(1, in.Stress))
 	}
+	pct := 0.0
 	if in.Thermic {
-		e.Thermic = r0(tee * 0.10)
-		tee += tee * 0.10
+		pct = in.ThermicPct
+		if pct <= 0 {
+			pct = 10
+		}
+	}
+	e := Energy{Formula: f, ActivityF: af, ThermicPct: pct}
+	if in.Hospital {
+		e.Stress = stress
+	}
+	var chosen *Equation
+	for _, d := range equationDefs {
+		b, ok, note := bmrOf(d.id, in, w, lean)
+		eq := Equation{ID: d.id, Name: d.name, Tag: d.tag, Available: ok, Note: note}
+		if ok {
+			eq.BMR = r0(b)
+			eq.GET = r0(b * af * stress * (1 + pct/100))
+		}
+		e.Equations = append(e.Equations, eq)
+		if d.id == f && ok {
+			c := eq
+			chosen = &c
+		}
+	}
+	used := f
+	if chosen == nil { // la elegida no está disponible: Mifflin-St Jeor
+		used = "mifflin"
+	}
+	e.FormulaUsed = used
+	b, _, _ := bmrOf(used, in, w, lean)
+	e.BMR = r0(b)
+	tee := b * af * stress
+	if in.Thermic {
+		e.Thermic = r0(tee * pct / 100)
+		tee += tee * pct / 100
 	}
 	e.TEE = r0(tee)
 	if preg != nil {
@@ -547,6 +799,22 @@ func computePregnancy(in Inputs, w float64) *PregnancyInfo {
 
 func computeMacros(in Inputs, kcal, w float64) MacroTargets {
 	m := in.Macros
+	if m.ProteinGKg > 0 {
+		// Proteína por kg, lípidos por %, hidratos = lo que resta.
+		lp := m.LipidsPct
+		if lp <= 0 {
+			lp = 25
+		}
+		pKcal := m.ProteinGKg * w * 4
+		lKcal := kcal * lp / 100
+		cKcal := math.Max(0, kcal-pKcal-lKcal)
+		t := MacroTargets{Kcal: kcal, CarbsG: r1(cKcal / 4), ProteinG: r1(pKcal / 4), LipidsG: r1(lKcal / 9)}
+		if kcal > 0 {
+			t.CarbsPct, t.ProteinPct, t.LipidsPct = r1(cKcal/kcal*100), r1(pKcal/kcal*100), r1(lKcal/kcal*100)
+		}
+		t.ProteinGKg = r2(t.ProteinG / w)
+		return t
+	}
 	if m.CarbsPct <= 0 && m.LipidsPct <= 0 && m.ProteinPct <= 0 {
 		m = Macros{CarbsPct: 55, LipidsPct: 25, ProteinPct: 20}
 	}
@@ -566,7 +834,8 @@ func computeMacros(in Inputs, kcal, w float64) MacroTargets {
 
 // ---------- Cuadro dietosintético (SMAE) ----------
 
-// Group es un grupo de equivalentes con el aporte de UN equivalente (SMAE 4.ª ed.).
+// Group es un grupo de equivalentes con el aporte de UN equivalente (SMAE 4.ª ed.). Los códigos son los de los
+// subgrupos del catálogo.
 type Group struct {
 	Code, Name    string
 	Kcal, C, P, L float64
@@ -576,14 +845,21 @@ type Group struct {
 var Groups = []Group{
 	{"VER", "Verduras", 25, 4, 2, 0},
 	{"FRU", "Frutas", 60, 15, 0, 0},
-	{"CER", "Cereales y tubérculos (sin grasa)", 70, 15, 2, 0},
+	{"CER-SG", "Cereales sin grasa", 70, 15, 2, 0},
+	{"CER-CG", "Cereales con grasa", 115, 15, 2, 5},
 	{"LEG", "Leguminosas", 120, 20, 8, 1},
 	{"AOA-MB", "AOA muy bajo aporte de grasa", 40, 0, 7, 1},
 	{"AOA-B", "AOA bajo aporte de grasa", 55, 0, 7, 3},
 	{"AOA-M", "AOA moderado aporte de grasa", 75, 0, 7, 5},
+	{"AOA-A", "AOA alto aporte de grasa", 100, 0, 7, 8},
 	{"LEC-D", "Leche descremada", 95, 12, 9, 2},
-	{"GRA", "Aceites y grasas (sin proteína)", 45, 0, 0, 5},
-	{"AZU", "Azúcares (sin grasa)", 40, 10, 0, 0},
+	{"LEC-S", "Leche semidescremada", 110, 12, 9, 4},
+	{"LEC-E", "Leche entera", 150, 12, 9, 8},
+	{"LEC-A", "Leche con azúcar", 200, 30, 8, 5},
+	{"GRA", "Aceites y grasas sin proteína", 45, 0, 0, 5},
+	{"GRP", "Aceites y grasas con proteína", 70, 3, 3, 5},
+	{"AZU", "Azúcares sin grasa", 40, 10, 0, 0},
+	{"AZU-CG", "Azúcares con grasa", 85, 10, 0, 5},
 }
 
 func group(code string) Group {
@@ -594,6 +870,8 @@ func group(code string) Group {
 	}
 	return Group{}
 }
+
+func isAOA(c string) bool { return c == "AOA-MB" || c == "AOA-B" || c == "AOA-M" || c == "AOA-A" }
 
 func baseFixed(kcal float64, pregnant, lactating bool) map[string]float64 {
 	ver, fru, leg, lec := 4.0, 3.0, 1.0, 1.0
@@ -615,6 +893,7 @@ func baseFixed(kcal float64, pregnant, lactating bool) map[string]float64 {
 // 1) fija verduras, frutas, leguminosas y leche; 2) los cereales cubren los hidratos restantes;
 // 3) los AOA cubren la proteína restante; 4) las grasas completan los lípidos. El subgrupo de AOA baja de
 // aporte de grasa (moderado → bajo → muy bajo) si de otro modo los lípidos se pasarían del objetivo.
+// Lo que la nutrióloga fija a mano (`equivalents`) no se toca. Devuelve una fila por grupo (con 0 si no se usa).
 func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 	eq := map[string]float64{}
 	fixed := map[string]bool{}
@@ -627,7 +906,16 @@ func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 			fixed[k] = true
 		}
 	}
-	get := func(c string) float64 { return eq[c] }
+	// Los grupos que no entran en el cálculo automático arrancan en 0 si no están fijos.
+	for _, g := range Groups {
+		switch g.Code {
+		case "VER", "FRU", "LEG", "LEC-D", "CER-SG", "GRA":
+		default:
+			if !fixed[g.Code] && !isAOA(g.Code) {
+				eq[g.Code] = 0
+			}
+		}
+	}
 	cho := func() float64 {
 		s := 0.0
 		for _, g := range Groups {
@@ -635,19 +923,14 @@ func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 		}
 		return s
 	}
-
-	if !fixed["AZU"] {
-		eq["AZU"] = 0
+	if !fixed["CER-SG"] {
+		other := cho() - eq["CER-SG"]*group("CER-SG").C
+		eq["CER-SG"] = math.Max(0, halves((t.CarbsG-other)/group("CER-SG").C))
 	}
-	if !fixed["CER"] {
-		other := cho() - eq["CER"]*group("CER").C
-		eq["CER"] = math.Max(0, halves((t.CarbsG-other)/group("CER").C))
-	}
-	// AOA: proteína restante después de todo lo demás.
 	protOther := func() float64 {
 		s := 0.0
 		for _, g := range Groups {
-			if g.Code == "AOA-MB" || g.Code == "AOA-B" || g.Code == "AOA-M" {
+			if isAOA(g.Code) {
 				continue
 			}
 			s += eq[g.Code] * g.P
@@ -655,16 +938,17 @@ func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 		return s
 	}
 	aoaKind := "AOA-M"
-	for _, k := range []string{"AOA-MB", "AOA-B", "AOA-M"} {
+	anyAOAFixed := false
+	for _, k := range []string{"AOA-MB", "AOA-B", "AOA-M", "AOA-A"} {
 		if fixed[k] {
-			aoaKind = k
+			aoaKind, anyAOAFixed = k, true
 		}
 	}
-	if !fixed["AOA-MB"] && !fixed["AOA-B"] && !fixed["AOA-M"] {
+	if !anyAOAFixed {
 		need := math.Max(0, halves((t.ProteinG-protOther())/7))
 		lipOther := 0.0
 		for _, g := range Groups {
-			if g.Code == "AOA-MB" || g.Code == "AOA-B" || g.Code == "AOA-M" || g.Code == "GRA" {
+			if isAOA(g.Code) || g.Code == "GRA" {
 				continue
 			}
 			lipOther += eq[g.Code] * g.L
@@ -677,6 +961,11 @@ func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 		}
 		eq[aoaKind] = need
 	}
+	for _, k := range []string{"AOA-MB", "AOA-B", "AOA-M", "AOA-A"} {
+		if !fixed[k] && k != aoaKind {
+			eq[k] = 0
+		}
+	}
 	if !fixed["GRA"] {
 		lip := 0.0
 		for _, g := range Groups {
@@ -686,15 +975,11 @@ func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 		}
 		eq["GRA"] = math.Max(0, halves((t.LipidsG-lip)/5))
 	}
-	_ = get
 
 	d := Dietosintetico{Target: Totals{Kcal: t.Kcal, Carbs: t.CarbsG, Prot: t.ProteinG, Lip: t.LipidsG}, AOAKind: aoaKind}
 	var tot Totals
 	for _, g := range Groups {
 		e := eq[g.Code]
-		if (g.Code == "AOA-MB" || g.Code == "AOA-B" || g.Code == "AOA-M") && g.Code != aoaKind && !fixed[g.Code] {
-			continue
-		}
 		row := GroupRow{Code: g.Code, Name: g.Name, Eq: e, Kcal: r1(e * g.Kcal), Carbs: r1(e * g.C), Prot: r1(e * g.P), Lip: r1(e * g.L), Fixed: fixed[g.Code]}
 		d.Rows = append(d.Rows, row)
 		tot.Kcal += e * g.Kcal
@@ -714,24 +999,34 @@ func computeDietosintetico(in Inputs, t MacroTargets) Dietosintetico {
 
 // DefaultSlots: reparto energético habitual en cinco tiempos.
 var DefaultSlots = []Slot{
-	{"Desayuno", 25}, {"Colación matutina", 10}, {"Comida", 30}, {"Colación vespertina", 10}, {"Cena", 25},
+	{"Desayuno", 25, "08:00"}, {"Colación matutina", 10, "11:00"}, {"Comida", 30, "14:30"}, {"Colación vespertina", 10, "18:00"}, {"Cena", 25, "21:00"},
 }
 
 // Peso relativo de cada grupo en cada tiempo (por nombre canónico). Un tiempo con 0 % de energía no recibe nada.
 var slotWeights = map[string]map[string]float64{
-	"VER":   {"Desayuno": 1, "Colación matutina": 0, "Comida": 3, "Colación vespertina": 0, "Cena": 2},
-	"FRU":   {"Desayuno": 2, "Colación matutina": 3, "Comida": 1, "Colación vespertina": 3, "Cena": 0},
-	"CER":   {"Desayuno": 3, "Colación matutina": 1, "Comida": 4, "Colación vespertina": 1, "Cena": 3},
-	"LEG":   {"Desayuno": 0, "Colación matutina": 0, "Comida": 4, "Colación vespertina": 0, "Cena": 2},
-	"AOA":   {"Desayuno": 3, "Colación matutina": 0, "Comida": 4, "Colación vespertina": 0, "Cena": 3},
-	"LEC-D": {"Desayuno": 3, "Colación matutina": 2, "Comida": 0, "Colación vespertina": 2, "Cena": 3},
-	"GRA":   {"Desayuno": 2, "Colación matutina": 0, "Comida": 3, "Colación vespertina": 0, "Cena": 2},
-	"AZU":   {"Desayuno": 1, "Colación matutina": 2, "Comida": 1, "Colación vespertina": 2, "Cena": 0},
+	"VER": {"Desayuno": 1, "Colación matutina": 0, "Comida": 3, "Colación vespertina": 0, "Cena": 2},
+	"FRU": {"Desayuno": 2, "Colación matutina": 3, "Comida": 1, "Colación vespertina": 3, "Cena": 0},
+	"CER": {"Desayuno": 3, "Colación matutina": 1, "Comida": 4, "Colación vespertina": 1, "Cena": 3},
+	"LEG": {"Desayuno": 0, "Colación matutina": 0, "Comida": 4, "Colación vespertina": 0, "Cena": 2},
+	"AOA": {"Desayuno": 3, "Colación matutina": 0, "Comida": 4, "Colación vespertina": 0, "Cena": 3},
+	"LEC": {"Desayuno": 3, "Colación matutina": 2, "Comida": 0, "Colación vespertina": 2, "Cena": 3},
+	"GRA": {"Desayuno": 2, "Colación matutina": 0, "Comida": 3, "Colación vespertina": 0, "Cena": 2},
+	"AZU": {"Desayuno": 1, "Colación matutina": 2, "Comida": 1, "Colación vespertina": 2, "Cena": 0},
 }
 
+// weightKey agrupa los subgrupos en la familia que comparte patrón de reparto.
 func weightKey(code string) string {
-	if len(code) >= 3 && code[:3] == "AOA" {
+	switch {
+	case isAOA(code):
 		return "AOA"
+	case len(code) >= 3 && code[:3] == "CER":
+		return "CER"
+	case len(code) >= 3 && code[:3] == "LEC":
+		return "LEC"
+	case code == "GRA" || code == "GRP":
+		return "GRA"
+	case len(code) >= 3 && code[:3] == "AZU":
+		return "AZU"
 	}
 	return code
 }
@@ -770,43 +1065,54 @@ func distribute(eq float64, w []float64) []float64 {
 	return out
 }
 
-func computeDistribution(in Inputs, d Dietosintetico) []SlotRow {
+func computeDistribution(in Inputs, d Dietosintetico) ([]SlotRow, map[string]float64) {
 	slots := in.Slots
 	if len(slots) == 0 {
 		slots = DefaultSlots
 	}
 	rows := make([]SlotRow, len(slots))
 	for i, s := range slots {
-		rows[i] = SlotRow{Name: s.Name, Pct: s.Pct, Eq: map[string]float64{}, TargetKcal: r0(d.Target.Kcal * s.Pct / 100)}
+		rows[i] = SlotRow{Name: s.Name, Pct: s.Pct, Time: s.Time, Eq: map[string]float64{}, TargetKcal: r0(d.Target.Kcal * s.Pct / 100)}
 	}
+	remaining := map[string]float64{}
 	for _, r := range d.Rows {
 		if r.Eq <= 0 {
 			continue
 		}
-		wk := weightKey(r.Code)
-		w := make([]float64, len(slots))
-		allZero := true
-		for i, s := range slots {
-			if s.Pct <= 0 {
-				continue
+		var parts []float64
+		if ov, ok := in.DistOverride[r.Code]; ok && len(ov) == len(slots) {
+			parts = make([]float64, len(ov))
+			for i, v := range ov {
+				parts[i] = halves(math.Max(0, v))
 			}
-			base, ok := slotWeights[wk][s.Name]
-			if !ok {
-				base = 1 // tiempo personalizado: peso neutro
-			}
-			w[i] = base * s.Pct
-			if w[i] > 0 {
-				allZero = false
-			}
-		}
-		if allZero {
+		} else {
+			wk := weightKey(r.Code)
+			w := make([]float64, len(slots))
+			allZero := true
 			for i, s := range slots {
-				w[i] = s.Pct
+				if s.Pct <= 0 {
+					continue
+				}
+				base, ok := slotWeights[wk][s.Name]
+				if !ok {
+					base = 1 // tiempo personalizado: peso neutro
+				}
+				w[i] = base * s.Pct
+				if w[i] > 0 {
+					allZero = false
+				}
 			}
+			if allZero {
+				for i, s := range slots {
+					w[i] = s.Pct
+				}
+			}
+			parts = distribute(r.Eq, w)
 		}
-		parts := distribute(r.Eq, w)
 		g := group(r.Code)
+		assigned := 0.0
 		for i, p := range parts {
+			assigned += p
 			if p <= 0 {
 				continue
 			}
@@ -816,13 +1122,14 @@ func computeDistribution(in Inputs, d Dietosintetico) []SlotRow {
 			rows[i].Totals.Prot += p * g.P
 			rows[i].Totals.Lip += p * g.L
 		}
+		remaining[r.Code] = r1(r.Eq - assigned)
 	}
 	for i := range rows {
 		t := rows[i].Totals
 		rows[i].Totals = Totals{Kcal: r1(t.Kcal), Carbs: r1(t.Carbs), Prot: r1(t.Prot), Lip: r1(t.Lip)}
 		rows[i].DiffKcal = r1(t.Kcal - rows[i].TargetKcal)
 	}
-	return rows
+	return rows, remaining
 }
 
 // ---------- Validación y punto de entrada ----------
@@ -865,7 +1172,7 @@ func (in *Inputs) Normalize() FieldErrors {
 		e["activity"] = "actividad no válida"
 	}
 	switch in.Formula {
-	case "", "mifflin", "harris", "fao", "katch", "cunningham":
+	case "", "valencia", "mifflin", "harris_orig", "harris", "fao", "owen", "katch", "cunningham":
 	default:
 		e["formula"] = "fórmula no válida"
 	}
@@ -873,19 +1180,74 @@ func (in *Inputs) Normalize() FieldErrors {
 		in.Goal = "maintain"
 	}
 	m := in.Macros
-	if m.CarbsPct < 0 || m.LipidsPct < 0 || m.ProteinPct < 0 {
+	switch {
+	case m.ProteinGKg < 0 || m.ProteinGKg > 4:
+		e["macros"] = "la proteína debe estar entre 0 y 4 g/kg"
+	case m.ProteinGKg > 0:
+		if m.LipidsPct < 0 || m.LipidsPct > 60 {
+			e["macros"] = "los lípidos deben estar entre 0 y 60 %"
+		}
+	case m.CarbsPct < 0 || m.LipidsPct < 0 || m.ProteinPct < 0:
 		e["macros"] = "los porcentajes no pueden ser negativos"
-	} else if s := m.CarbsPct + m.LipidsPct + m.ProteinPct; s > 0 && math.Abs(s-100) > 0.5 {
-		e["macros"] = "los porcentajes deben sumar 100"
+	default:
+		if s := m.CarbsPct + m.LipidsPct + m.ProteinPct; s > 0 && math.Abs(s-100) > 0.5 {
+			e["macros"] = "los porcentajes deben sumar 100"
+		}
+	}
+	if in.ThermicPct < 0 || in.ThermicPct > 30 {
+		e["thermic_pct"] = "el efecto térmico va de 0 a 30 %"
+	}
+	switch in.FatMethod {
+	case "", "captured", "durnin", "faulkner", "navy", "deurenberg":
+	default:
+		e["fat_method"] = "método no válido"
+	}
+	if sf := in.Skinfolds; sf != nil {
+		for _, v := range []float64{sf.Triceps, sf.Biceps, sf.Subscapular, sf.Suprailiac, sf.Abdominal, sf.Calf} {
+			if v < 0 || v > 100 {
+				e["skinfolds"] = "los pliegues deben estar entre 0 y 100 mm"
+			}
+		}
+	}
+	if in.ArmCircCm < 0 || in.ArmCircCm > 100 {
+		e["arm_circ_cm"] = "la circunferencia del brazo debe estar entre 0 y 100 cm"
 	}
 	if in.KcalTarget < 0 || in.KcalTarget > 8000 {
 		e["kcal_target"] = "la prescripción debe estar entre 0 y 8000 kcal"
 	}
-	for i, s := range in.Slots {
+	if len(in.Slots) > 8 {
+		e["slots"] = "usa como máximo 8 tiempos de comida"
+	}
+	for _, s := range in.Slots {
 		if s.Pct < 0 || s.Pct > 100 {
 			e["slots"] = "cada tiempo debe tener entre 0 y 100 %"
 		}
-		_ = i
+		if len([]rune(s.Name)) == 0 || len([]rune(s.Name)) > 40 {
+			e["slots"] = "cada tiempo necesita un nombre de hasta 40 caracteres"
+		}
+	}
+	for code, arr := range in.DistOverride {
+		if group(code).Code == "" {
+			e["dist_override"] = "grupo no válido"
+		}
+		for _, v := range arr {
+			if v < 0 || v > 100 || math.IsNaN(v) {
+				e["dist_override"] = "los equivalentes por tiempo deben estar entre 0 y 100"
+			}
+		}
+	}
+	for slot, items := range in.Menu {
+		if len(items) > 40 || len([]rune(slot)) > 40 {
+			e["menu"] = "demasiados elementos en un tiempo de comida"
+		}
+		for _, it := range items {
+			if it.Kind != "dish" && it.Kind != "food" {
+				e["menu"] = "tipo de elemento no válido"
+			}
+			if len([]rune(it.Name)) == 0 || len([]rune(it.Name)) > 160 || it.QtyN <= 0 || it.QtyN > 100 || it.Kcal < 0 || it.ProteinG < 0 || it.CarbsG < 0 || it.LipidsG < 0 || it.FiberG < 0 {
+				e["menu"] = "elemento de dieta no válido"
+			}
+		}
 	}
 	if len(in.Slots) > 0 {
 		sum := 0.0
@@ -940,6 +1302,15 @@ func warnings(in Inputs, r *Result) []Warning {
 	if in.Age < 18 {
 		add("age_minor", "En menores de 18 años estas fórmulas no son las indicadas (usa curvas y requerimientos pediátricos).", "critical")
 	}
+	if in.Formula == "valencia" && r.Energy.FormulaUsed != "valencia" {
+		add("formula_fallback", "La ecuación de Valencia no está disponible para este paciente; se usó Mifflin-St Jeor.", "info")
+	}
+	for _, v := range r.Remaining {
+		if v != 0 {
+			add("dist_remaining", "Hay equivalentes sin repartir (o repartidos de más) entre los tiempos de comida.", "warn")
+			break
+		}
+	}
 	if r.Pregnancy != nil && r.Pregnancy.PreBMIAssumed {
 		add("preg_pre_weight", "No se indicó el peso pregestacional: se usó el peso actual para clasificar la ganancia.", "info")
 	}
@@ -955,11 +1326,12 @@ func Compute(in Inputs) Result {
 	}
 	comp := computeComposition(in, w)
 	preg := computePregnancy(in, w)
-	en := computeEnergy(in, w, comp.LeanMassKg, preg)
+	en := computeEnergy(in, w, comp.lean, preg)
 	mac := computeMacros(in, en.Prescription, w)
 	cuadro := computeDietosintetico(in, mac)
+	dist, rem := computeDistribution(in, cuadro)
 	r := Result{Anthro: an, Composition: comp, Energy: en, Pregnancy: preg, Macros: mac, Dietosint: cuadro,
-		Distribution: computeDistribution(in, cuadro), EngineVer: EngineVersion}
+		Distribution: dist, Remaining: rem, EngineVer: EngineVersion}
 	r.Warnings = warnings(in, &r)
 	if r.Warnings == nil {
 		r.Warnings = []Warning{}
