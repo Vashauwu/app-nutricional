@@ -7,7 +7,8 @@ import { DbService } from '../../core/data/db.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { PlansService } from '../../core/services/plans.service';
 import { SettingsService } from '../../core/services/settings.service';
-import { BRAND_PALETTES, BrandPalette } from '../../core/data/brand-palettes';
+import { ThemeService } from '../../core/services/theme.service';
+import { BRAND_PALETTES, BrandPalette, paletteOf } from '../../core/data/brand-palettes';
 import { ConfirmService, ToastService, contrastRatio, isHex } from '../../core/services/ui.services';
 import { ClinicalRule, ConsentType } from '../../shared/models/domain';
 import { FieldError, decimalValidator } from '../../shared/components/forms';
@@ -88,7 +89,7 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
                     @for (p of palettes(); track p.id) {
                       <label class="sw">
                         <input type="radio" name="brand-palette" [value]="p.id" [checked]="selectedId() === p.id" (change)="pick(p)" />
-                        <span class="dot" [style.--sw]="p.primary" [style.--sw2]="p.secondary"><app-icon name="check" [size]="18" /></span>
+                        <span class="dot" [style.--sw]="swInk(p)" [style.--sw2]="swSoft(p)"><app-icon name="check" [size]="18" /></span>
                         <span class="nm">{{ p.name }}</span>
                       </label>
                     }
@@ -110,12 +111,14 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
             </form>
             <aside class="preview" aria-label="Vista previa de la marca">
               <p class="small muted"><strong>Vista previa</strong> (PDF y encabezado)</p>
-              <div class="row">@if (logo()) { <img class="pv-logo" [src]="logo()" alt="" /> } @else { <span class="pv-logo" [style.background]="brandForm.controls.secondary.value">{{ initial() }}</span> }
-                <div><strong class="u-brand-name">{{ brandForm.controls.businessName.value }}</strong><p class="small muted">{{ brandForm.controls.tagline.value }}</p></div></div>
-              <hr class="u-brand-rule" [style.border-color]="brandForm.controls.primary.value" />
+              @let v = bv();
+              <div class="row">@if (logo()) { <img class="pv-logo" [src]="logo()" alt="" /> } @else { <span class="pv-logo" [style.background]="previewSoft()" [style.color]="previewInk()" aria-hidden="true">{{ initial() }}</span> }
+                <div><strong class="u-brand-name">{{ v.businessName || 'Tu consultorio' }}</strong>@if (v.tagline) { <p class="small muted">{{ v.tagline }}</p> }</div></div>
+              <hr class="u-brand-rule" [style.border-color]="previewInk()" />
               @if (photo()) { <img class="u-avatar-photo" [src]="photo()" alt="Fotografía profesional" /> }
-              <p class="small">{{ brandForm.controls.credentials.value }}<br />{{ brandForm.controls.licenseNumber.value }}</p>
-              <p class="small muted">{{ brandForm.controls.phone.value }} · {{ brandForm.controls.email.value }}<br />{{ brandForm.controls.address.value }}</p>
+              @if (credLine()) { <p class="small">{{ credLine() }}</p> }
+              @if (contactLine() || v.address) { <p class="small muted">{{ contactLine() }}@if (contactLine() && v.address) { <br /> }{{ v.address }}</p> }
+              @if (!credLine() && !contactLine() && !v.address && !v.tagline) { <p class="small muted">Completa tu lema, tus credenciales y tus datos de contacto: así se verá tu encabezado en los PDF y las impresiones.</p> }
             </aside>
           </div>
         }
@@ -287,6 +290,7 @@ export class SettingsPage {
   protected readonly consentTypes: { type: ConsentType; label: string }[] = [{ type: 'privacy', label: 'Aviso de privacidad' }, { type: 'informed', label: 'Consentimiento informado' }];
 
   // ---------- Marca ----------
+  private readonly theme = inject(ThemeService);
   private readonly s0 = this.settings.get();
   protected readonly brandForm = this.fb.nonNullable.group({
     businessName: [this.s0.brand.businessName, Validators.required], tagline: [this.s0.brand.tagline],
@@ -302,16 +306,25 @@ export class SettingsPage {
   protected readonly palettes = computed<BrandPalette[]>(() => {
     const sv = this.saved();
     const known = BRAND_PALETTES.some((p) => p.primary.toLowerCase() === sv.primary.toLowerCase());
-    const legacy: BrandPalette[] = !known && isHex(sv.primary) && isHex(sv.secondary) ? [{ id: 'actual', name: 'Actual', primary: sv.primary, secondary: sv.secondary }] : [];
+    const legacy: BrandPalette[] = !known && isHex(sv.primary) && isHex(sv.secondary) ? [{ id: 'actual', name: 'Actual', primary: sv.primary, secondary: sv.secondary, darkPrimary: '#EFE6EE', darkSecondary: '#443B62' }] : [];
     return [...BRAND_PALETTES, ...legacy];
   });
   protected readonly selectedId = computed(() => this.palettes().find((p) => p.primary.toLowerCase() === this.primary().toLowerCase())?.id ?? '');
   protected readonly selectedName = computed(() => this.palettes().find((p) => p.id === this.selectedId())?.name ?? '');
+  protected swInk = (p: BrandPalette): string => (this.theme.dark() ? p.darkPrimary : p.primary);
+  protected swSoft = (p: BrandPalette): string => (this.theme.dark() ? p.darkSecondary : p.secondary);
   protected pick(p: BrandPalette): void { this.brandForm.patchValue({ primary: p.primary, secondary: p.secondary }); this.brandForm.markAsDirty(); }
   protected readonly logo = signal<string | undefined>(this.s0.brand.logoDataUrl);
   protected readonly photo = signal<string | undefined>(this.s0.brand.photoDataUrl);
   protected readonly imgError = signal('');
   protected readonly primaryContrast = computed(() => (isHex(this.primary()) ? contrastRatio(this.primary(), '#FAF7F2') : 21));
+  /** Valores del formulario como señal (la vista previa se actualiza al escribir). */
+  protected readonly bv = signal(this.brandForm.getRawValue());
+  protected readonly credLine = computed(() => [this.bv().credentials, this.bv().licenseNumber].map((x) => x.trim()).filter(Boolean).join(' · '));
+  protected readonly contactLine = computed(() => [this.bv().phone, this.bv().email].map((x) => x.trim()).filter(Boolean).join(' · '));
+  /** Colores de la vista previa en el tema actual (la marca tiene variante clara y oscura). */
+  protected readonly previewInk = computed(() => (this.theme.dark() ? (paletteOf(this.primary())?.darkPrimary ?? '#EFE6EE') : this.primary()));
+  protected readonly previewSoft = computed(() => (this.theme.dark() ? (paletteOf(this.primary())?.darkSecondary ?? '#443B62') : this.secondary()));
   protected readonly initial = computed(() => this.brandForm.controls.businessName.value.trim()[0]?.toUpperCase() ?? 'N');
 
   // ---------- Región ----------
@@ -358,6 +371,7 @@ export class SettingsPage {
   protected readonly plansList = computed(() => this.data.db().plans.filter((p) => !p.deletedAt && p.status !== 'archived'));
 
   constructor() {
+    this.brandForm.valueChanges.subscribe(() => this.bv.set(this.brandForm.getRawValue()));
     this.brandForm.controls.primary.valueChanges.subscribe((v) => this.primary.set(v));
     this.brandForm.controls.secondary.valueChanges.subscribe((v) => this.secondary.set(v));
     // Modo API: la configuración vive en el servidor; los formularios se rellenan al llegar.
