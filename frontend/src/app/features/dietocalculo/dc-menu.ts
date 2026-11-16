@@ -9,18 +9,21 @@ import { Dish } from '../../shared/models/domain';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
 import { normalizeText } from '../../shared/utils/format';
-import { MenuItem, group } from './engine';
+import { MenuItem, GROUPS, group } from './engine';
+import { SHORT } from './audit';
+import { Badge, Tone } from '../../shared/components/ui';
 import { DietoStore, numVal } from './dieto-store';
 import { fmtTime, slotIcon } from './dc-dist';
 
 const n = (v: string | number | undefined): number => { const x = Number(v ?? 0); return Number.isFinite(x) ? x : 0; };
 const r1 = (x: number): number => Math.round(x * 10) / 10;
+const GROUP_CODES = GROUPS.map((g) => g.code);
 const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colación'], comida: ['Comida', 'Guarnición'], cena: ['Cena', 'Guarnición'] };
 
 /** Pestaña «Dieta»: arma cada tiempo de comida con platillos y alimentos reales y compara lo servido contra los equivalentes. */
 @Component({
   selector: 'app-dc-menu',
-  imports: [TuiButton, Icon, Modal],
+  imports: [TuiButton, Icon, Modal, Badge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: var(--space-5); align-content: start; min-inline-size: 0; }
@@ -42,9 +45,10 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
     .list-pick { display: grid; gap: var(--space-2); max-block-size: 22rem; overflow: auto; margin: 0; padding: 0; list-style: none; }
     .list-pick button { inline-size: 100%; display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-block-size: var(--tap); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); color: inherit; font: inherit; text-align: start; cursor: pointer; }
     .list-pick button:hover { border-color: var(--brand-ink); }
-    .prog { display: grid; gap: .25rem; }
-    .prog .t-row { display: flex; justify-content: space-between; gap: var(--space-3); font-size: .9375rem; }
-    .prog .dc-bar .ok { background: var(--brand-ink); }
+    .ph { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+    .ph-t { display: inline-flex; align-items: center; gap: var(--space-2); }
+    .leg { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+    .dc-cap { display: flex; align-items: center; gap: .375rem; }
   `,
   template: `
     @let res = s.r();
@@ -91,38 +95,76 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
       </section>
 
       <aside class="stack" aria-label="Resumen nutrimental">
-        <div class="dc-seg no-print" role="radiogroup" aria-label="Vista del resumen">
+        <div class="dc-seg fill no-print" role="radiogroup" aria-label="Vista del resumen">
           <button type="button" role="radio" [attr.aria-checked]="view() === 'nutr'" (click)="view.set('nutr')"><app-icon name="activity" [size]="16" /> Nutrimentos</button>
           <button type="button" role="radio" [attr.aria-checked]="view() === 'eq'" (click)="view.set('eq')"><app-icon name="pie" [size]="16" /> Equivalentes</button>
         </div>
-        <div class="dc-seg no-print" role="radiogroup" aria-label="Alcance">
-          <button type="button" role="radio" [attr.aria-checked]="scope() === 'slot'" (click)="scope.set('slot')">{{ cur().name }}</button>
-          <button type="button" role="radio" [attr.aria-checked]="scope() === 'total'" (click)="scope.set('total')">Total</button>
-        </div>
         @if (view() === 'nutr') {
-          <section class="panel stack" aria-label="Nutrimentos">
-            <div class="row row--between"><span class="dc-sub">Energía</span><b class="dc-num">{{ nut().kcal }} <small class="dc-sub">kcal</small></b></div>
-            <div class="dc-bar" role="img" [attr.aria-label]="'Proteína ' + share(nut().p * 4) + ' %, lípidos ' + share(nut().l * 9) + ' %, hidratos ' + share(nut().c * 4) + ' %'"><i class="b-p" [style.inline-size.%]="share(nut().p * 4)"></i><i class="b-l" [style.inline-size.%]="share(nut().l * 9)"></i><i class="b-c" [style.inline-size.%]="share(nut().c * 4)"></i></div>
-            <dl class="dc-kv">
-              <dt>Hidratos de carbono</dt><dd>{{ nut().c }} g</dd>
-              <dt>Fibra</dt><dd>{{ nut().f }} g</dd>
-              <dt>Lípidos</dt><dd>{{ nut().l }} g</dd>
-              <dt>Proteínas</dt><dd>{{ nut().p }} g</dd>
-            </dl>
-            <dl class="dc-kv">
-              <dt>Meta de energía</dt><dd>{{ goal().kcal }} kcal</dd>
-              <dt>Diferencia</dt><dd>{{ r1(nut().kcal - goal().kcal) }} kcal</dd>
-            </dl>
-            <p class="dc-sub m-0">El catálogo SMAE de ejemplo no incluye vitaminas, minerales ni índice glucémico: aquí solo se muestran energía, macros y fibra.</p>
+          <section class="panel stack" aria-labelledby="h-nut">
+            <div class="ph"><h2 id="h-nut" class="m-0 u-h2-ui ph-t"><app-icon name="activity" [size]="20" /> Nutrimentos</h2>
+              <div class="dc-seg sm no-print" role="radiogroup" aria-label="Alcance">
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'slot'" (click)="scope.set('slot')">{{ cur().name }}</button>
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'total'" (click)="scope.set('total')">Total</button>
+              </div>
+            </div>
+            <div class="dc-card">
+              <div class="row row--between"><span class="dc-cap">Energía</span><b class="dc-num">{{ nut().kcal }} <small class="dc-sub">kcal</small></b></div>
+              <div class="dc-bar" role="img" [attr.aria-label]="'Proteína ' + share(nut().p * 4) + ' %, lípidos ' + share(nut().l * 9) + ' %, hidratos ' + share(nut().c * 4) + ' %'"><i class="b-p" [style.inline-size.%]="share(nut().p * 4)"></i><i class="b-l" [style.inline-size.%]="share(nut().l * 9)"></i><i class="b-c" [style.inline-size.%]="share(nut().c * 4)"></i></div>
+              <div class="leg">
+                <span class="mlab dc-sub"><i class="mdot m-c"></i>HCO {{ share(nut().c * 4) }} %</span>
+                <span class="mlab dc-sub"><i class="mdot m-l"></i>LIP {{ share(nut().l * 9) }} %</span>
+                <span class="mlab dc-sub"><i class="mdot m-p"></i>PRO {{ share(nut().p * 4) }} %</span>
+              </div>
+            </div>
+            <h3 class="dc-cap"><app-icon name="flame" [size]="14" /> Macronutrimentos</h3>
+            <ul class="dc-rows">
+              <li><span class="mlab"><i class="mdot m-c"></i>Hidratos de carbono <span class="dc-sub">({{ share(nut().c * 4) }} %)</span></span><span class="val">{{ nut().c }} <small>g</small></span></li>
+              <li class="sub"><span>Fibra</span><span class="val">{{ nut().f }} <small>g</small></span></li>
+              <li class="sub"><span>Netos (sin fibra)</span><span class="val">{{ r1(nut().c - nut().f) }} <small>g</small></span></li>
+              <li><span class="mlab"><i class="mdot m-l"></i>Lípidos <span class="dc-sub">({{ share(nut().l * 9) }} %)</span></span><span class="val">{{ nut().l }} <small>g</small></span></li>
+              <li><span class="mlab"><i class="mdot m-p"></i>Proteínas <span class="dc-sub">({{ share(nut().p * 4) }} %)</span></span><span class="val">{{ nut().p }} <small>g</small></span></li>
+            </ul>
+            <h3 class="dc-cap"><app-icon name="target" [size]="14" /> Contra lo planeado</h3>
+            <div class="dc-box">
+              <table class="mini">
+                <caption class="visually-hidden">Lo servido contra lo planeado en los equivalentes</caption>
+                <colgroup><col class="c-name" /><col /><col /><col class="c-in" /></colgroup>
+                <thead><tr><th scope="col" class="small muted"><span class="visually-hidden">Nutrimento</span></th><th scope="col" class="small muted">Servido</th><th scope="col" class="small muted">Meta</th><th scope="col" class="small muted">%</th></tr></thead>
+                <tbody>
+                  @for (r of vs(); track r.k) {
+                    <tr><th scope="row">{{ r.label }}</th><td>{{ r.have }}{{ r.unit }}</td><td>{{ r.want }}{{ r.unit }}</td>
+                      <td><app-badge [tone]="r.pct === null ? 'neutral' : r.ok ? 'ok' : 'warn'" [icon]="r.pct === null ? null : r.ok ? 'check' : 'alert'">{{ r.pct === null ? '—' : r.pct + ' %' }}</app-badge></td></tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="dc-sub m-0">Vitaminas, minerales e índice glucémico no están en el catálogo SMAE de ejemplo; aquí se muestran energía, macros y fibra.</p>
           </section>
         } @else {
-          <section class="panel stack" aria-label="Equivalentes servidos contra la meta">
-            @for (p of eqProgress(); track p.code) {
-              <div class="prog">
-                <div class="t-row"><span>{{ p.name }}</span><b>{{ p.have }} / {{ p.want }}</b></div>
-                <div class="dc-bar" role="img" [attr.aria-label]="p.name + ': ' + p.have + ' de ' + p.want"><i [class.ok]="true" [style.inline-size.%]="p.pct"></i></div>
+          <section class="panel stack" aria-labelledby="h-eqv">
+            <div class="ph"><h2 id="h-eqv" class="m-0 u-h2-ui ph-t"><app-icon name="pie" [size]="20" /> Equivalentes</h2>
+              <div class="dc-seg sm no-print" role="radiogroup" aria-label="Alcance">
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'slot'" (click)="scope.set('slot')">{{ cur().name }}</button>
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'total'" (click)="scope.set('total')">Total</button>
               </div>
-            } @empty { <p class="dc-sub m-0">Sin equivalentes asignados.</p> }
+            </div>
+            @let t = eqTotal();
+            <div class="dc-card">
+              <div class="row row--between"><span class="dc-cap">Avance</span><b class="dc-num">{{ t.have }}<small class="dc-sub"> / {{ t.want }} eq</small></b></div>
+              <div class="dc-bar" role="img" [attr.aria-label]="'Avance: ' + t.have + ' de ' + t.want + ' equivalentes'"><i class="b-c" [style.inline-size.%]="t.pct"></i></div>
+              <div class="row row--between dc-sub"><span>Servidos: {{ t.have }} eq</span><span>Meta: {{ t.want }} eq ({{ t.pct }} %)</span></div>
+            </div>
+            <h3 class="dc-cap"><app-icon name="layers" [size]="14" /> Grupos de alimentos</h3>
+            <ul class="dc-rows">
+              @for (p of eqProgress(); track p.code) {
+                <li><span class="mlab" [class.dc-sub]="p.state === 'none'"><i class="sdot" [class]="'sdot s-' + p.state"></i>{{ p.name }}</span>
+                  <span class="val">
+                    @if (p.state === 'over') { <span class="dc-sub">+{{ p.extra }}</span> }
+                    <app-badge [tone]="p.tone" [icon]="p.state === 'done' ? 'check' : p.state === 'over' || p.state === 'extra' ? 'alert' : null">{{ p.state === 'extra' ? '+' + p.have + ' eq' : p.have + ' / ' + p.want }}</app-badge>
+                  </span>
+                </li>
+              } @empty { <li class="dc-sub">Sin equivalentes asignados.</li> }
+            </ul>
           </section>
         }
         <p class="dc-sub m-0"><app-icon name="book" [size]="14" /> Sistema: SMAE (edición activa del catálogo)</p>
@@ -198,7 +240,22 @@ export class DcMenu {
     return this.sumItems(this.scope() === 'slot' ? this.items() : Object.values(menu).flat());
   });
   protected readonly goal = computed(() => ({ kcal: this.scope() === 'slot' ? this.cur().target_kcal : this.s.r().dietosintetico.target.kcal }));
+  /** Lo servido contra lo que planean los equivalentes (del tiempo o del día). */
+  protected readonly vs = computed(() => {
+    const plan = this.scope() === 'slot' ? this.cur().totals : this.s.r().dietosintetico.totals;
+    const n = this.nut();
+    const pct = (a: number, b: number): number | null => (b > 0 ? Math.round((a / b) * 100) : null);
+    return ([['kcal', 'kcal', '', n.kcal, plan.kcal], ['p', 'PRO', ' g', n.p, plan.protein_g], ['l', 'LIP', ' g', n.l, plan.lipids_g], ['c', 'HCO', ' g', n.c, plan.carbs_g]] as [string, string, string, number, number][])
+      .map(([k, label, unit, have, want]) => { const p = pct(have, want); return { k, label, unit, have: r1(have), want: r1(want), pct: p, ok: p !== null && p >= 90 && p <= 110 }; });
+  });
   protected share(kcal: number): number { const t = this.nut().kcal; return t > 0 ? Math.round((kcal / t) * 1000) / 10 : 0; }
+
+  protected readonly eqTotal = computed(() => {
+    const list = this.eqProgress();
+    const want = r1(list.reduce((a, x) => a + x.want, 0));
+    const have = r1(list.reduce((a, x) => a + Math.min(x.have, x.want), 0));
+    return { want, have, pct: want > 0 ? Math.round((have / want) * 100) : 0 };
+  });
 
   protected readonly eqProgress = computed(() => {
     const dist = this.s.r().distribution;
@@ -210,7 +267,13 @@ export class DcMenu {
       for (const [c, v] of Object.entries(sl.equivalents)) want[c] = (want[c] ?? 0) + v;
       for (const it of menu[sl.name] ?? []) for (const [c, v] of Object.entries(it.eq ?? {})) have[c] = (have[c] ?? 0) + v * it.qty_n;
     }
-    return Object.keys(want).map((code) => ({ code, name: group(code)?.name ?? code, want: want[code], have: r1(have[code] ?? 0), pct: Math.min(100, want[code] > 0 ? ((have[code] ?? 0) / want[code]) * 100 : 0) }));
+    const codes = GROUP_CODES.filter((c) => (want[c] ?? 0) > 0 || (have[c] ?? 0) > 0);
+    return codes.map((code) => {
+      const w = want[code] ?? 0, h = r1(have[code] ?? 0);
+      const state: 'done' | 'part' | 'none' | 'over' | 'extra' = w === 0 ? 'extra' : h === w ? 'done' : h > w ? 'over' : h > 0 ? 'part' : 'none';
+      const tone: Tone = state === 'done' ? 'ok' : state === 'over' ? 'crit' : state === 'extra' ? 'warn' : state === 'part' ? 'accent' : 'neutral';
+      return { code, name: SHORT[code] ?? group(code)?.name ?? code, want: w, have: h, extra: r1(h - w), state, tone };
+    });
   });
 
   // ---------- Platillos ----------

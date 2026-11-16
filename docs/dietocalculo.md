@@ -30,3 +30,13 @@ Encabezado: **Vista previa**, **Exportar** (imprimir/PDF y CSV) y **Guardar**. U
 
 ## Origen de las fórmulas
 Todas son fórmulas y tablas publicadas (citadas en el código). Se escribieron desde esas fuentes; no se copió código de otra aplicación. Los valores de una persona de referencia (27 años, 55 kg, 173 cm) coinciden con los de las capturas de la aplicación de referencia (Harris-Benedict, Katch-McArdle, Cunningham, Owen, FAO) y están como pruebas. Es una herramienta de apoyo y no sustituye el criterio clínico.
+
+## Inteligencia de equivalentes (auditoría empírica)
+
+Botón «Auditoría empírica» en la pestaña Dietocálculo ([audit.ts](../frontend/src/app/features/dietocalculo/audit.ts), [dc-audit.ts](../frontend/src/app/features/dietocalculo/dc-audit.ts)).
+
+- **Objetivos:** salud general, pérdida de peso, control glucémico, masa muscular, dislipidemias e hipertensión. Cada uno define un reparto HCO-LIP-PRO, equivalentes fijos y criterios de revisión basados en recomendaciones generales de alimentación (orientativas, editables en `OBJECTIVES`).
+- **Empírico:** corre el mismo motor del cuadro con el reparto del objetivo y muestra Actual → Sugerido por grupo. «Aplicar propuesta» escribe macros y equivalentes; «Aplicar solo desvíos» toca únicamente los grupos que se alejan 1.5 eq o más.
+- **Auditar:** revisa el reparto actual contra los criterios del objetivo sin proponer cambios.
+- **Índice de practicidad culinaria:** criterio propio (0–100) que descuenta porciones fuera de lo habitual, demasiados o muy pocos grupos, varios tipos de AOA y desvíos contra la propuesta; el modal explica cada descuento. No es un índice validado clínicamente.
+- Solo vive en el frontend: lo que se aplica son entradas del motor, que el servidor recalcula al guardar, así que no hay paridad Go/TS que mantener.

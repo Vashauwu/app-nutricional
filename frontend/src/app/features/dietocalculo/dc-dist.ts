@@ -42,6 +42,7 @@ export function fmtTime(t: string | undefined): string {
     .bal .dc-tile h3 { margin: 0; font-size: 1.0625rem; font-family: var(--nutri-font-ui); }
     .gr { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); text-align: center; }
     .gr b { display: block; font-variant-numeric: tabular-nums; }
+    .gr .mc { display: grid; gap: .125rem; justify-items: center; padding: var(--space-2); border: 1px solid var(--line); border-radius: var(--radius-s); }
   `,
   template: `
     @let res = s.r();
@@ -104,7 +105,7 @@ export function fmtTime(t: string | undefined): string {
             <div class="t-row"><h3>{{ sl.name }} <span class="dc-sub">{{ time(sl.time) }}</span></h3><app-badge tone="accent">{{ sl.totals.kcal }} kcal</app-badge></div>
             <p class="dc-sub m-0">Meta {{ sl.pct }} % · Real {{ real(sl.totals.kcal) }} %</p>
             <div class="dc-bar" role="img" [attr.aria-label]="'Proteína, lípidos e hidratos de ' + sl.name"><i class="b-p" [style.inline-size.%]="share(sl.totals.protein_g * 4, sl.totals.kcal)"></i><i class="b-l" [style.inline-size.%]="share(sl.totals.lipids_g * 9, sl.totals.kcal)"></i><i class="b-c" [style.inline-size.%]="share(sl.totals.carbs_g * 4, sl.totals.kcal)"></i></div>
-            <div class="gr"><span class="dc-sub">PRO<b>{{ round(sl.totals.protein_g) }} g</b></span><span class="dc-sub">LIP<b>{{ round(sl.totals.lipids_g) }} g</b></span><span class="dc-sub">HCO<b>{{ round(sl.totals.carbs_g) }} g</b></span></div>
+            <div class="gr"><span class="mc"><span class="mlab dc-sub"><i class="mdot m-p"></i>PRO</span><b>{{ round(sl.totals.protein_g) }} g</b></span><span class="mc"><span class="mlab dc-sub"><i class="mdot m-l"></i>LIP</span><b>{{ round(sl.totals.lipids_g) }} g</b></span><span class="mc"><span class="mlab dc-sub"><i class="mdot m-c"></i>HCO</span><b>{{ round(sl.totals.carbs_g) }} g</b></span></div>
           </article>
         }
       </div>
