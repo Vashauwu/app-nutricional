@@ -29,6 +29,7 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
   imports: [TuiButton, Icon, Badge, Modal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
+    :host { display: grid; gap: var(--space-5); align-content: start; min-inline-size: 0; }
     .layout { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
     @media (min-width: 64rem) { .layout { grid-template-columns: minmax(0, 1fr) 24rem; } .side { position: sticky; inset-block-start: var(--space-4); } }
     .row-g { display: grid; grid-template-columns: minmax(8rem, 11rem) minmax(8rem, 1fr) 5.5rem repeat(4, 3.25rem); gap: var(--space-3); align-items: center; padding: .375rem var(--space-4); border-block-end: 1px solid var(--line); }

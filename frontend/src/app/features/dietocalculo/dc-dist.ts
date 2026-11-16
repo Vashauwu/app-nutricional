@@ -31,7 +31,11 @@ export function fmtTime(t: string | undefined): string {
   imports: [TuiButton, Icon, Badge, Modal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    .cell { max-inline-size: 5rem; text-align: center; font-variant-numeric: tabular-nums; }
+    :host { display: grid; gap: var(--space-5); align-content: start; min-inline-size: 0; }
+    .cell { max-inline-size: 4.5rem; text-align: center; font-variant-numeric: tabular-nums; }
+    tbody th[scope='row'], tfoot th[scope='row'] { background: transparent; text-transform: none; letter-spacing: 0; font-size: inherit; font-weight: 500; white-space: normal; min-inline-size: 9rem; }
+    thead th.slot { text-align: center; white-space: normal; min-inline-size: 5.75rem; line-height: 1.25; }
+    td.slot { text-align: center; }
     th .sub { display: block; font-weight: 400; font-size: .8125rem; color: var(--muted); }
     tfoot th, tfoot td { font-weight: 700; border-block-start: 2px solid var(--line); }
     .bal { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
@@ -50,7 +54,7 @@ export function fmtTime(t: string | undefined): string {
             <tr>
               <th scope="col">Equivalente</th><th scope="col" class="num">Total</th><th scope="col" class="num">Restante</th>
               @for (sl of res.distribution; track $index) {
-                <th scope="col" class="num"><app-icon [name]="icon(sl.name)" [size]="16" /> {{ sl.name }}<span class="sub">{{ time(sl.time) }} · {{ sl.pct }} %</span></th>
+                <th scope="col" class="slot"><app-icon [name]="icon(sl.name)" [size]="16" /> {{ sl.name }}<span class="sub">{{ time(sl.time) }}</span><span class="sub">{{ sl.pct }} %</span></th>
               }
             </tr>
           </thead>
@@ -61,14 +65,14 @@ export function fmtTime(t: string | undefined): string {
                 <td class="num">{{ row.equivalents }}</td>
                 <td class="num">@if (rem(row.code) === 0) { <b><app-icon name="check" [size]="14" /> 0<span class="visually-hidden"> (todo repartido)</span></b> } @else { <b><app-icon name="alert" [size]="14" /> {{ rem(row.code) }}<span class="visually-hidden"> (por repartir)</span></b> }</td>
                 @for (sl of res.distribution; track $index) {
-                  <td class="num"><input class="input cell" type="number" min="0" step="0.5" [value]="sl.equivalents[row.code] ?? ''" [attr.aria-label]="row.name + ' en ' + sl.name" placeholder="–" (change)="onCell(row.code, $index, $event)" /></td>
+                  <td class="slot"><input class="input cell" type="number" min="0" step="0.5" [value]="sl.equivalents[row.code] ?? ''" [attr.aria-label]="row.name + ' en ' + sl.name" placeholder="–" (change)="onCell(row.code, $index, $event)" /></td>
                 }
               </tr>
             }
           </tbody>
           <tfoot>
-            <tr><th scope="row">Totales (eq)</th><td class="num">{{ eqTotal() }}</td><td class="num">{{ restTotal() }}</td>@for (t of slotEq(); track $index) { <td class="num">{{ t }}</td> }</tr>
-            <tr><th scope="row">Energía (kcal)</th><td class="num">{{ res.dietosintetico.totals.kcal }}</td><td></td>@for (sl of res.distribution; track $index) { <td class="num">{{ sl.totals.kcal }}</td> }</tr>
+            <tr><th scope="row">Totales (eq)</th><td class="num">{{ eqTotal() }}</td><td class="num">{{ restTotal() }}</td>@for (t of slotEq(); track $index) { <td class="slot">{{ t }}</td> }</tr>
+            <tr><th scope="row">Energía (kcal)</th><td class="num">{{ res.dietosintetico.totals.kcal }}</td><td></td>@for (sl of res.distribution; track $index) { <td class="slot">{{ sl.totals.kcal }}</td> }</tr>
           </tfoot>
         </table>
       </div>

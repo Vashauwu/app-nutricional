@@ -31,6 +31,12 @@ const BMI_TEXT: Record<string, string> = {
   selector: 'app-dc-calc',
   imports: [TuiButton, Icon, Badge, Switch],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    :host { display: grid; gap: var(--space-5); align-content: start; min-inline-size: 0; }
+    .opt { border: 1px solid var(--line); border-radius: var(--radius-m); padding: var(--space-3) var(--space-4); }
+    .opt summary { cursor: pointer; min-block-size: var(--tap); line-height: var(--tap); }
+    .opt[open] summary { margin-block-end: var(--space-2); }
+  `,
   template: `
     @let i = s.inp();
     @let res = s.r();
@@ -73,7 +79,7 @@ const BMI_TEXT: Record<string, string> = {
           @if (s.err('body_fat_pct')) { <p class="error" role="alert">{{ s.err('body_fat_pct') }}</p> }
         </div>
       </div>
-      <details class="u-pad-3-4 panel" [open]="hasOptional()">
+      <details class="opt" [open]="hasOptional()">
         <summary><strong>Perímetros opcionales (cintura, cadera, cuello) y meta</strong></summary>
         <div class="dc-grid dc-grid--m u-mt-1">
           <div class="field"><label for="f-waist">Cintura (cm)</label><input id="f-waist" class="input" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 80" [value]="i.waist_cm ?? ''" (input)="s.patch({ waist_cm: opt($event) })" /></div>
@@ -139,7 +145,7 @@ const BMI_TEXT: Record<string, string> = {
           <div class="grid grid--2">
             <section class="panel stack" aria-labelledby="h-naf">
               <div class="row row--between"><h2 id="h-naf" class="m-0 u-h2-ui">Nivel de actividad física</h2><span class="dc-sub">× {{ res.energy.activity_factor }}</span></div>
-              <div class="dc-grid dc-grid--s" role="radiogroup" aria-label="Nivel de actividad física">
+              <div class="dc-grid dc-grid--5" role="radiogroup" aria-label="Nivel de actividad física">
                 @for (a of activities; track a.id) {
                   <button type="button" class="dc-tile" role="radio" [attr.aria-checked]="i.activity === a.id" [disabled]="i.hospitalized" (click)="s.patch({ activity: a.id })"><span class="t-name">{{ a.label }}</span><span class="dc-sub">{{ af[a.id] }}</span></button>
                 }

@@ -23,17 +23,20 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
   imports: [TuiButton, Icon, Modal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
+    :host { display: grid; gap: var(--space-5); align-content: start; min-inline-size: 0; }
     .layout { display: grid; gap: var(--space-5); grid-template-columns: minmax(0, 1fr); align-items: start; }
     @media (min-width: 64rem) { .layout { grid-template-columns: minmax(0, 1fr) 22rem; } }
     .slots { display: flex; gap: var(--space-2); overflow-x: auto; padding-block-end: .25rem; }
     .slots button { flex: none; display: inline-flex; align-items: center; gap: var(--space-2); min-block-size: var(--tap); padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); color: inherit; font: inherit; cursor: pointer; }
     .slots button[aria-selected='true'] { background: var(--brand-ink); border-color: var(--brand-ink); color: var(--surface); font-weight: 600; }
     .item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-block-end: 1px solid var(--line); }
-    @media (max-width: 40rem) { .item { grid-template-columns: 1fr auto; } }
+    @media (max-width: 40rem) { .item { grid-template-columns: minmax(0, 1fr) auto; row-gap: var(--space-2); } .item .nm { grid-column: 1 / -1; } }
     .item .nm { display: grid; gap: .125rem; min-inline-size: 0; }
     .chips-pend { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .pend { display: inline-flex; align-items: center; gap: .375rem; min-block-size: 2.5rem; padding: 0 var(--space-3); border: 1px dashed var(--brand-ink); border-radius: 999px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
     .pend b { font-variant-numeric: tabular-nums; }
+    .item .icon-btn { min-inline-size: var(--tap); min-block-size: var(--tap); }
+    .pend { min-inline-size: var(--tap); }
     .pend.done { border-style: solid; border-color: var(--line); color: var(--muted); cursor: default; }
     .pend.over { border-color: var(--warn, #b45309); color: var(--nutri-texto); }
     .list-pick { display: grid; gap: var(--space-2); max-block-size: 22rem; overflow: auto; margin: 0; padding: 0; list-style: none; }
