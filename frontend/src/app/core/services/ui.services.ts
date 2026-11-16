@@ -1,4 +1,5 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
+import { paletteOf } from '../data/brand-palettes';
 import { DbService } from '../data/db.service';
 import { ThemeService } from './theme.service';
 
@@ -90,19 +91,25 @@ export class BrandService {
       const b = this.data.db().settings.brand;
       const root = document.documentElement.style;
       // En modo oscuro se usa la paleta propia: un color de marca pensado para fondo claro perdería contraste.
-      if (this.theme.dark()) {
-        ['--brand-primary', '--tui-background-accent-1', '--tui-text-action', '--tui-border-focus', '--brand-secondary'].forEach((v) => root.removeProperty(v));
-        document.title = `${b.businessName} · Gestión nutricional`;
-        return;
-      }
-      if (isHex(b.primary) && contrastRatio(b.primary, '#FAF7F2') >= 4.5) {
-        root.setProperty('--brand-primary', b.primary);
-        root.setProperty('--tui-background-accent-1', b.primary);
-        root.setProperty('--tui-text-action', b.primary);
-        root.setProperty('--tui-border-focus', b.primary);
-      }
-      if (isHex(b.secondary)) root.setProperty('--brand-secondary', b.secondary);
       document.title = `${b.businessName} · Gestión nutricional`;
+      const all = ['--brand-primary', '--brand-ink', '--tui-background-accent-1', '--tui-text-action', '--tui-border-focus', '--brand-secondary', '--nutri-lavanda'];
+      // La marca se aplica en claro y en oscuro. En oscuro cada color del paquete trae su variante (un color pensado
+      // para fondo claro perdería contraste); un color libre antiguo no tiene variante y usa la paleta oscura propia.
+      let ink: string | null = null;
+      let soft: string | null = null;
+      if (this.theme.dark()) {
+        const pal = paletteOf(b.primary);
+        if (pal) { ink = pal.darkPrimary; soft = pal.darkSecondary; }
+      } else {
+        if (isHex(b.primary) && contrastRatio(b.primary, '#FAF7F2') >= 4.5) ink = b.primary;
+        if (isHex(b.secondary)) soft = b.secondary;
+      }
+      all.forEach((v) => root.removeProperty(v));
+      if (ink) {
+        // `--brand-ink` es la tinta real de la interfaz (botones, foco, interruptores); `--brand-primary` es el alias heredado.
+        for (const v of ['--brand-primary', '--brand-ink', '--tui-background-accent-1', '--tui-text-action', '--tui-border-focus']) root.setProperty(v, ink);
+      }
+      if (soft) for (const v of ['--brand-secondary', '--nutri-lavanda']) root.setProperty(v, soft);
     });
   }
 }

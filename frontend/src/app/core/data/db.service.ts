@@ -65,7 +65,14 @@ export class DbService {
 
   private load(): Db {
     // Modo API: los datos clínicos viven en el servidor. Nunca se leen ni se guardan en el navegador (§4.2).
-    if (isApiMode()) return withoutDemoPatients(buildSeed());
+    if (isApiMode()) {
+      const d = withoutDemoPatients(buildSeed());
+      // Mientras llega la configuración real del servidor no se muestran los datos de la demostración (marca, contacto, reglas):
+      // los mismos valores neutros que el servidor usa por omisión.
+      d.settings.brand = { businessName: 'Nutrición', tagline: '', primary: '#4E344C', secondary: '#DDD6F2', phone: '', email: '', address: '', credentials: '', licenseNumber: '' };
+      d.settings.alerts.clinicalRules = [];
+      return d;
+    }
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) {

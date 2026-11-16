@@ -14,6 +14,12 @@ describe('Paquete de colores de marca', () => {
     expect(contrastRatio(p.primary, '#FFFFFF')).toBeGreaterThanOrEqual(7);
     expect(contrastRatio('#514653', p.secondary)).toBeGreaterThanOrEqual(4.5);
   });
+  it.each(BRAND_PALETTES.map((p) => [p.name, p] as const))('%s: variante oscura con contraste suficiente', (_n, p) => {
+    expect(contrastRatio(p.darkPrimary, '#1D181F')).toBeGreaterThanOrEqual(7); // fondo oscuro
+    expect(contrastRatio(p.darkPrimary, '#28222A')).toBeGreaterThanOrEqual(7); // superficie
+    expect(contrastRatio('#FBF5FB', p.darkSecondary)).toBeGreaterThanOrEqual(7); // texto fuerte sobre la selección
+    expect(contrastRatio(p.darkPrimary, p.darkSecondary)).toBeGreaterThanOrEqual(4.5); // letra del avatar
+  });
   it('el primero es el ciruela por omisión de la marca', () => {
     expect(BRAND_PALETTES[0].primary).toBe('#4E344C');
   });
