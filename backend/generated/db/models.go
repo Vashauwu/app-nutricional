@@ -110,6 +110,20 @@ type CustomFoodPortion struct {
 	GramsEquivalent decimal.Decimal `json:"grams_equivalent"`
 }
 
+type DietCalculation struct {
+	ID            uuid.UUID          `json:"id"`
+	Name          string             `json:"name"`
+	PatientID     uuid.NullUUID      `json:"patient_id"`
+	Inputs        []byte             `json:"inputs"`
+	Result        []byte             `json:"result"`
+	EngineVersion string             `json:"engine_version"`
+	Kcal          int32              `json:"kcal"`
+	CreatedBy     uuid.UUID          `json:"created_by"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+}
+
 type Dish struct {
 	ID             uuid.UUID          `json:"id"`
 	OwnerUserID    uuid.UUID          `json:"owner_user_id"`

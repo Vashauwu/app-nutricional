@@ -26,6 +26,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/clienterrors"
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/dashboard"
+	"github.com/nutri/app-nutricional/backend/internal/dietocalculo"
 	"github.com/nutri/app-nutricional/backend/internal/dishes"
 	"github.com/nutri/app-nutricional/backend/internal/mealplans"
 	"github.com/nutri/app-nutricional/backend/internal/middleware"
@@ -252,6 +253,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 	}, logger).Register(v1)
 	settingsSvc := settings.NewService(pool, logger)
 	settings.NewController(settingsSvc, authSvc, logger).Register(v1)
+	dietocalculo.NewController(dietocalculo.NewService(pool, logger), authSvc, logger).Register(v1)
 	agendaSvc := agenda.NewService(pool, logger)
 	agenda.NewController(agendaSvc, authSvc, func(c *gin.Context, userID uuid.UUID) (uuid.UUID, error) {
 		p, err := patientsSvc.ForUser(c.Request.Context(), userID)
