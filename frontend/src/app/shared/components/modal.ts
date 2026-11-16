@@ -29,7 +29,7 @@ let seq = 0;
           <h2 [id]="titleId">{{ title() }}</h2>
           <button type="button" class="icon-btn" aria-label="Cerrar" (click)="requestClose()"><app-icon name="x" /></button>
         </header>
-        <div class="body"><ng-content /></div>
+        <div class="body" tabindex="0" role="region" [attr.aria-label]="title()"><ng-content /></div>
         <footer><ng-content select="[modalFooter]" /></footer>
       </div>
     </dialog>

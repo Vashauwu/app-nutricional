@@ -7,12 +7,18 @@
 
 export type Sex = 'F' | 'M';
 export type Activity = 'sedentary' | 'light' | 'moderate' | 'intense' | 'very_intense';
-export type Formula = 'mifflin' | 'harris' | 'fao' | 'katch' | 'cunningham';
+export type Formula = 'valencia' | 'mifflin' | 'harris_orig' | 'harris' | 'fao' | 'owen' | 'katch' | 'cunningham';
+export type FatMethodId = 'captured' | 'durnin' | 'faulkner' | 'navy' | 'deurenberg';
 export type Tone = 'ok' | 'warn' | 'critical' | 'info';
 
-export interface Macros { carbs_pct: number; lipids_pct: number; protein_pct: number }
+export interface Macros { carbs_pct: number; lipids_pct: number; protein_pct: number; protein_g_per_kg?: number }
 export interface PregnancyIn { weeks: number; pre_weight_kg?: number; multiple?: boolean }
-export interface Slot { name: string; pct: number }
+export interface Slot { name: string; pct: number; time?: string }
+export interface Skinfolds { triceps?: number; biceps?: number; subscapular?: number; suprailiac?: number; abdominal?: number; calf?: number }
+export interface MenuItem {
+  id: string; kind: 'dish' | 'food'; ref_id?: string; name: string; qty?: string; qty_n: number;
+  kcal: number; protein_g: number; carbs_g: number; lipids_g: number; fiber_g: number; eq?: Record<string, number>;
+}
 
 export interface DietInputs {
   sex: Sex;
@@ -26,9 +32,13 @@ export interface DietInputs {
   wrist_cm?: number;
   knee_height_cm?: number;
   target_fat_pct?: number;
+  arm_circ_cm?: number;
+  skinfolds?: Skinfolds;
+  fat_method?: '' | FatMethodId;
   activity: Activity;
   formula: Formula;
   thermic: boolean;
+  thermic_pct?: number;
   athlete: boolean;
   hospitalized: boolean;
   stress_factor?: number;
@@ -41,22 +51,31 @@ export interface DietInputs {
   macros: Macros;
   equivalents?: Record<string, number>;
   slots?: Slot[];
+  dist_override?: Record<string, number[]>;
+  menu?: Record<string, MenuItem[]>;
 }
 
+export interface FatMethodRow { id: FatMethodId; name: string; tag: string; available: boolean; fat_pct?: number; requires?: string }
+export interface Equation { id: string; name: string; tag: string; available: boolean; bmr?: number; get?: number; note?: string }
 export interface Classification { label: string; tone: Tone; note?: string }
 export interface Totals { kcal: number; carbs_g: number; protein_g: number; lipids_g: number }
 export interface GroupRow { code: string; name: string; equivalents: number; kcal: number; carbs_g: number; protein_g: number; lipids_g: number; fixed?: boolean }
-export interface SlotRow { name: string; pct: number; equivalents: Record<string, number>; totals: Totals; target_kcal: number; diff_kcal: number }
+export interface SlotRow { name: string; pct: number; time?: string; equivalents: Record<string, number>; totals: Totals; target_kcal: number; diff_kcal: number }
 export interface Warning { code: string; message: string; level: 'info' | 'warn' | 'critical' }
 
 export interface DietResult {
   anthro: {
     weight_used_kg: number; bmi: number; bmi_class: Classification; ideal_weight_kg: number; bsa_mosteller: number; bsa_dubois: number;
     waist_hip?: number; waist_hip_class?: Classification; waist_height?: number; waist_height_class?: Classification; waist_class?: Classification;
+    ideal_weights: { id: string; name: string; kg: number }[]; ideal_avg_kg: number; adjusted_weight_kg?: number;
     stature_chumlea_cm?: number; frame_ratio?: number; frame?: string;
   };
-  composition: { fat_pct: number; fat_source: 'captured' | 'navy' | 'deurenberg'; fat_mass_kg: number; lean_mass_kg: number; target_fat_pct?: number; target_weight_kg?: number };
+  composition: {
+    fat_pct: number; fat_source: FatMethodId; methods: FatMethodRow[]; fat_mass_kg: number; lean_mass_kg: number; ffmi: number; cama_cm2?: number; agb_cm2?: number; tbw_l: number;
+    target_fat_pct?: number; target_weight_kg?: number;
+  };
   energy: {
+    equations: Equation[]; thermic_pct?: number;
     formula: string; formula_used: string; bmr: number; activity_factor: number; tee: number; thermic_kcal: number; stress_factor?: number;
     pregnancy_kcal: number; lactation_kcal: number; adjust_kcal: number; prescription_kcal: number;
   };
@@ -67,11 +86,12 @@ export interface DietResult {
   macros: { kcal: number; carbs_g: number; protein_g: number; lipids_g: number; carbs_pct: number; protein_pct: number; lipids_pct: number; protein_g_per_kg: number };
   dietosintetico: { rows: GroupRow[]; totals: Totals; target: Totals; diff_kcal: number; diff_pct: number; aoa_kind: string };
   distribution: SlotRow[];
+  distribution_remaining: Record<string, number>;
   warnings: Warning[];
   engine_version: string;
 }
 
-export const ENGINE_VERSION = '1.0.0';
+export const ENGINE_VERSION = '1.1.0';
 export type FieldErrors = Record<string, string>;
 
 // ---------- Utilidades (redondeo «lejos de cero», igual que Go) ----------
@@ -131,8 +151,13 @@ function computeAnthro(i: DietInputs): DietResult['anthro'] {
   const bmi = w / (hm * hm);
   const a: DietResult['anthro'] = {
     weight_used_kg: r1(w), bmi: r1(bmi), bmi_class: bmiClass(bmi, i.height_cm, i.sex), ideal_weight_kg: r1(idealWeight(i.height_cm, i.sex)),
-    bsa_mosteller: r2(Math.sqrt((i.height_cm * w) / 3600)), bsa_dubois: r2(0.007184 * Math.pow(w, 0.425) * Math.pow(i.height_cm, 0.725)),
+    bsa_mosteller: r2(Math.sqrt((i.height_cm * w) / 3600)), bsa_dubois: r2(0.007184 * Math.pow(w, 0.425) * Math.pow(i.height_cm, 0.725)), ideal_weights: [], ideal_avg_kg: 0,
   };
+  const iw = idealWeights(i.height_cm, i.sex);
+  a.ideal_weights = iw.list;
+  a.ideal_avg_kg = iw.avg;
+  const devine = idealWeight(i.height_cm, i.sex);
+  if (w > devine) a.adjusted_weight_kg = r1(devine + 0.25 * (w - devine));
   const waist = i.waist_cm ?? 0, hip = i.hip_cm ?? 0;
   if (waist > 0) {
     const lim = i.sex === 'M' ? 90 : 80;
@@ -161,43 +186,128 @@ function computeAnthro(i: DietInputs): DietResult['anthro'] {
   return a;
 }
 
-function computeComposition(i: DietInputs, w: number): DietResult['composition'] {
-  let pct: number, src: 'captured' | 'navy' | 'deurenberg';
-  const navy = bodyFatNavy(i);
-  if ((i.body_fat_pct ?? 0) > 0) { pct = i.body_fat_pct as number; src = 'captured'; }
-  else if (navy !== null && navy > 2 && navy < 60) { pct = navy; src = 'navy'; }
-  else {
-    const bmi = w / Math.pow(i.height_cm / 100, 2);
-    pct = 1.2 * bmi + 0.23 * i.age - 10.8 * (i.sex === 'M' ? 1 : 0) - 5.4; src = 'deurenberg';
-  }
-  pct = Math.max(3, Math.min(60, pct));
+const KG_PER_LB = 0.45359237;
+
+/** Pesos teóricos con fórmulas publicadas (Hamwi, Robinson, Miller, Lorentz, Devine) y su promedio. */
+function idealWeights(h: number, sex: Sex): { list: { id: string; name: string; kg: number }[]; avg: number } {
+  const i = Math.max(0, h / 2.54 - 60);
+  const m = sex === 'M';
+  const pick = (f: number, mm: number): number => (m ? mm : f);
+  const lorentzDiv = pick(2, 4);
+  const list = [
+    { id: 'hamwi', name: 'Hamwi', kg: r1(pick(100 + 5 * i, 106 + 6 * i) * KG_PER_LB) },
+    { id: 'robinson', name: 'Robinson', kg: r1(pick(49 + 1.7 * i, 52 + 1.9 * i)) },
+    { id: 'miller', name: 'Miller', kg: r1(pick(53.1 + 1.36 * i, 56.2 + 1.41 * i)) },
+    { id: 'lorentz', name: 'Lorentz', kg: r1(h - 100 - (h - 150) / lorentzDiv) },
+    { id: 'devine', name: 'Devine', kg: r1(pick(45.5 + 2.3 * i, 50 + 2.3 * i)) },
+  ];
+  let sum = 0;
+  for (const x of list) sum += x.kg;
+  return { list, avg: r1(sum / list.length) };
+}
+
+/** Durnin-Womersley (1974) con la suma de 4 pliegues y Siri (1961). */
+function durninFat(sex: Sex, age: number, sum4: number): number | null {
+  if (age < 17 || sum4 <= 0) return null;
+  let c: number, m: number;
+  if (sex === 'M') {
+    if (age < 20) [c, m] = [1.162, 0.063];
+    else if (age < 30) [c, m] = [1.1631, 0.0632];
+    else if (age < 40) [c, m] = [1.1422, 0.0544];
+    else if (age < 50) [c, m] = [1.162, 0.07];
+    else [c, m] = [1.1715, 0.0779];
+  } else if (age < 30) [c, m] = [1.1549, 0.0678];
+  else if (age < 40) [c, m] = [1.1599, 0.0717];
+  else if (age < 50) [c, m] = [1.1423, 0.0632];
+  else [c, m] = [1.1333, 0.0612];
+  const d = c - m * Math.log10(sum4);
+  return 495 / d - 450;
+}
+
+function computeComposition(i: DietInputs, w: number): { c: DietResult['composition']; lean: number } {
+  const sf = i.skinfolds ?? {};
+  const tri = sf.triceps ?? 0, bic = sf.biceps ?? 0, sub = sf.subscapular ?? 0, sup = sf.suprailiac ?? 0, abd = sf.abdominal ?? 0;
+  const bmi = w / Math.pow(i.height_cm / 100, 2);
+  const male = i.sex === 'M' ? 1 : 0;
+  interface Cand { id: FatMethodId; name: string; tag: string; req: string; pct: number; ok: boolean }
+  const cands: Cand[] = [{ id: 'captured', name: 'Capturado', tag: 'Medido', req: 'Captura el % de grasa', pct: i.body_fat_pct ?? 0, ok: (i.body_fat_pct ?? 0) > 0 }];
+  let dp: number | null = null;
+  if (tri > 0 && bic > 0 && sub > 0 && sup > 0) dp = durninFat(i.sex, i.age, tri + bic + sub + sup);
+  cands.push({ id: 'durnin', name: 'Durnin-Womersley (4 pliegues)', tag: 'Siri', req: 'Requiere edad ≥ 17 y tríceps, bíceps, subescapular y suprailíaco', pct: dp ?? 0, ok: dp !== null });
+  const fok = tri > 0 && sub > 0 && sup > 0 && abd > 0;
+  cands.push({ id: 'faulkner', name: 'Faulkner (deportistas)', tag: '4 pliegues', req: 'Requiere tríceps, subescapular, suprailíaco y abdominal', pct: fok ? (tri + sub + sup + abd) * 0.153 + 5.783 : 0, ok: fok });
+  const np = bodyFatNavy(i);
+  cands.push({ id: 'navy', name: 'US Navy', tag: 'Circunferencias', req: 'Requiere cintura, cuello (y cadera en mujeres)', pct: np ?? 0, ok: np !== null && np > 2 && np < 60 });
+  cands.push({ id: 'deurenberg', name: 'Deurenberg', tag: 'Poblacional', req: '', pct: 1.2 * bmi + 0.23 * i.age - 10.8 * male - 5.4, ok: true });
+
+  const methods: FatMethodRow[] = [];
+  let chosen = -1;
+  cands.forEach((c, idx) => {
+    const fm: FatMethodRow = { id: c.id, name: c.name, tag: c.tag, available: c.ok };
+    if (c.ok) fm.fat_pct = r1(Math.max(3, Math.min(60, c.pct)));
+    else fm.requires = c.req;
+    methods.push(fm);
+    if (c.ok && c.id === i.fat_method) chosen = idx;
+  });
+  if (chosen < 0) chosen = cands.findIndex((c) => c.ok);
+  const pct = Math.max(3, Math.min(60, cands[chosen].pct));
   const fat = (w * pct) / 100;
-  const c: DietResult['composition'] = { fat_pct: r1(pct), fat_source: src, fat_mass_kg: r1(fat), lean_mass_kg: r1(w - fat) };
+  const lean = w - fat;
+  const tbw = i.sex === 'M' ? 2.447 - 0.09516 * i.age + 0.1074 * i.height_cm + 0.3362 * w : -2.097 + 0.1069 * i.height_cm + 0.2466 * w;
+  const c: DietResult['composition'] = {
+    fat_pct: r1(pct), fat_source: cands[chosen].id, methods, fat_mass_kg: r1(fat), lean_mass_kg: r1(lean), ffmi: r1(lean / Math.pow(i.height_cm / 100, 2)), tbw_l: r1(tbw),
+  };
+  if ((i.arm_circ_cm ?? 0) > 0 && tri > 0) {
+    const tsf = tri / 10;
+    const corr = i.sex === 'M' ? 10 : 6.5;
+    const arm = i.arm_circ_cm as number;
+    c.cama_cm2 = opt(r1(Math.pow(arm - Math.PI * tsf, 2) / (4 * Math.PI) - corr));
+    c.agb_cm2 = opt(r1((arm * tsf) / 2 - (Math.PI * tsf * tsf) / 4));
+  }
   const t = i.target_fat_pct ?? 0;
-  if (t > 0 && t < 60) { c.target_fat_pct = t; c.target_weight_kg = r1((w - fat) / (1 - t / 100)); }
-  return c;
+  if (t > 0 && t < 60) { c.target_fat_pct = t; c.target_weight_kg = r1(lean / (1 - t / 100)); }
+  return { c, lean };
 }
 
 // ---------- Energía ----------
 export const ACTIVITY_FACTOR: Record<Activity, number> = { sedentary: 1.2, light: 1.375, moderate: 1.55, intense: 1.725, very_intense: 1.9 };
 
-function bmrFor(formula: Formula, i: DietInputs, w: number, lean: number): [number, string] {
+/** Ecuaciones comparables, en el orden en que se muestran. */
+export const EQUATION_DEFS: { id: Formula; name: string; tag: string }[] = [
+  { id: 'valencia', name: 'Valencia (2008) · México', tag: 'Población mexicana' },
+  { id: 'mifflin', name: 'Mifflin-St Jeor (1990)', tag: 'Clínica general' },
+  { id: 'harris_orig', name: 'Harris-Benedict (1919)', tag: 'Clásica' },
+  { id: 'harris', name: 'Roza y Shizgal (1984)', tag: 'Harris-Benedict revisada' },
+  { id: 'fao', name: 'FAO/OMS/UNU (1985)', tag: 'Peso (Schofield)' },
+  { id: 'owen', name: 'Owen (1986/1987)', tag: 'Adulto' },
+  { id: 'katch', name: 'Katch-McArdle (1996)', tag: 'Masa magra' },
+  { id: 'cunningham', name: 'Cunningham (1980)', tag: 'Deporte / masa magra' },
+];
+
+function bmrOf(id: string, i: DietInputs, w: number, lean: number): { bmr: number; ok: boolean; note: string } {
   const male = i.sex === 'M';
-  switch (formula) {
+  const ok = (bmr: number): { bmr: number; ok: boolean; note: string } => ({ bmr, ok: true, note: '' });
+  switch (id) {
+    case 'valencia':
+      // Solo está cargado el tramo de mujeres de 18 a 30 años, verificado contra la referencia.
+      if (!male && i.age >= 18 && i.age < 30) return ok(11.02 * w + 679);
+      return { bmr: 0, ok: false, note: 'Solo disponible para mujeres de 18 a 29 años; falta validar los demás tramos.' };
+    case 'harris_orig':
+      return ok(male ? 66.47 + 13.75 * w + 5.0 * i.height_cm - 6.76 * i.age : 655.1 + 9.563 * w + 1.85 * i.height_cm - 4.676 * i.age);
     case 'harris':
-      return [male ? 88.362 + 13.397 * w + 4.799 * i.height_cm - 5.677 * i.age : 447.593 + 9.247 * w + 3.098 * i.height_cm - 4.33 * i.age, 'harris'];
+      return ok(male ? 88.362 + 13.397 * w + 4.799 * i.height_cm - 5.677 * i.age : 447.593 + 9.247 * w + 3.098 * i.height_cm - 4.33 * i.age);
     case 'fao':
-      if (i.age >= 60) return [male ? 11.711 * w + 587.7 : 9.082 * w + 658.5, 'fao'];
-      if (i.age >= 30) return [male ? 11.472 * w + 873.1 : 8.126 * w + 845.6, 'fao'];
-      return [male ? 15.057 * w + 692.2 : 14.818 * w + 486.6, 'fao'];
+      if (i.age >= 60) return ok(male ? 11.711 * w + 587.7 : 9.082 * w + 658.5);
+      if (i.age >= 30) return ok(male ? 11.472 * w + 873.1 : 8.126 * w + 845.6);
+      return ok(male ? 15.057 * w + 692.2 : 14.818 * w + 486.6);
+    case 'owen':
+      return ok(male ? 879 + 10.2 * w : 795 + 7.18 * w);
     case 'katch':
-      if (lean > 0) return [370 + 21.6 * lean, 'katch'];
-      break;
+      return { bmr: 370 + 21.6 * lean, ok: lean > 0, note: '' };
     case 'cunningham':
-      if (lean > 0) return [500 + 22 * lean, 'cunningham'];
-      break;
+      return { bmr: 500 + 22 * lean, ok: lean > 0, note: '' };
   }
-  return [10 * w + 6.25 * i.height_cm - 5 * i.age + (male ? 5 : -161), 'mifflin'];
+  return ok(10 * w + 6.25 * i.height_cm - 5 * i.age + (male ? 5 : -161)); // Mifflin-St Jeor
 }
 
 function computePregnancy(i: DietInputs, w: number): DietResult['pregnancy'] | undefined {
@@ -236,20 +346,32 @@ function computePregnancy(i: DietInputs, w: number): DietResult['pregnancy'] | u
 
 function computeEnergy(i: DietInputs, w: number, lean: number, preg: DietResult['pregnancy']): DietResult['energy'] {
   const f = i.formula || 'mifflin';
-  const [bmr, used] = bmrFor(f, i, w, lean);
   let af = ACTIVITY_FACTOR[i.activity] ?? ACTIVITY_FACTOR.sedentary;
   if (i.hospitalized) af = 1.2;
   if (i.athlete && af < 1.725) af = 1.725;
-  let tee = bmr * af;
+  const stress = i.hospitalized ? Math.min(2, Math.max(1, i.stress_factor ?? 0)) : 1;
+  let pct = 0;
+  if (i.thermic) { pct = i.thermic_pct ?? 0; if (pct <= 0) pct = 10; }
   const e: DietResult['energy'] = {
-    formula: f, formula_used: used, bmr: r0(bmr), activity_factor: af, tee: 0, thermic_kcal: 0, pregnancy_kcal: 0, lactation_kcal: 0, adjust_kcal: 0, prescription_kcal: 0,
+    equations: [], formula: f, formula_used: f, bmr: 0, activity_factor: af, tee: 0, thermic_kcal: 0, pregnancy_kcal: 0, lactation_kcal: 0, adjust_kcal: 0, prescription_kcal: 0,
   };
-  if (i.hospitalized) {
-    const s = Math.min(2, Math.max(1, i.stress_factor ?? 0));
-    e.stress_factor = s;
-    tee *= s;
+  if (pct > 0) e.thermic_pct = pct;
+  if (i.hospitalized) e.stress_factor = stress;
+  let chosenOk = false;
+  for (const d of EQUATION_DEFS) {
+    const { bmr, ok, note } = bmrOf(d.id, i, w, lean);
+    const eq: Equation = { id: d.id, name: d.name, tag: d.tag, available: ok };
+    if (note) eq.note = note;
+    if (ok) { eq.bmr = r0(bmr); eq.get = r0(bmr * af * stress * (1 + pct / 100)); }
+    e.equations.push(eq);
+    if (d.id === f && ok) chosenOk = true;
   }
-  if (i.thermic) { e.thermic_kcal = r0(tee * 0.1); tee += tee * 0.1; }
+  const used = chosenOk ? f : 'mifflin';
+  e.formula_used = used;
+  const b = bmrOf(used, i, w, lean).bmr;
+  e.bmr = r0(b);
+  let tee = b * af * stress;
+  if (i.thermic) { e.thermic_kcal = r0((tee * pct) / 100); tee += (tee * pct) / 100; }
   e.tee = r0(tee);
   e.pregnancy_kcal = preg?.extra_kcal ?? 0;
   e.lactation_kcal = i.lactation === '0-6' ? 330 : i.lactation === '7-12' ? 400 : 0;
@@ -263,11 +385,22 @@ function computeEnergy(i: DietInputs, w: number, lean: number, preg: DietResult[
 
 // ---------- Macros ----------
 function computeMacros(i: DietInputs, kcal: number, w: number): DietResult['macros'] {
-  let m = i.macros;
-  if (m.carbs_pct <= 0 && m.lipids_pct <= 0 && m.protein_pct <= 0) m = { carbs_pct: 55, lipids_pct: 25, protein_pct: 20 };
-  let sum = m.carbs_pct + m.lipids_pct + m.protein_pct;
+  const m = i.macros;
+  if ((m.protein_g_per_kg ?? 0) > 0) {
+    const lp = m.lipids_pct > 0 ? m.lipids_pct : 25;
+    const pKcal = (m.protein_g_per_kg as number) * w * 4;
+    const lKcal = (kcal * lp) / 100;
+    const cKcal = Math.max(0, kcal - pKcal - lKcal);
+    const t = { kcal, carbs_g: r1(cKcal / 4), protein_g: r1(pKcal / 4), lipids_g: r1(lKcal / 9), carbs_pct: 0, protein_pct: 0, lipids_pct: 0, protein_g_per_kg: 0 };
+    if (kcal > 0) { t.carbs_pct = r1((cKcal / kcal) * 100); t.protein_pct = r1((pKcal / kcal) * 100); t.lipids_pct = r1((lKcal / kcal) * 100); }
+    t.protein_g_per_kg = r2(t.protein_g / w);
+    return t;
+  }
+  let mm = m;
+  if (mm.carbs_pct <= 0 && mm.lipids_pct <= 0 && mm.protein_pct <= 0) mm = { carbs_pct: 55, lipids_pct: 25, protein_pct: 20 };
+  let sum = mm.carbs_pct + mm.lipids_pct + mm.protein_pct;
   if (sum <= 0) sum = 100;
-  const cp = (m.carbs_pct / sum) * 100, lp = (m.lipids_pct / sum) * 100, pp = (m.protein_pct / sum) * 100;
+  const cp = (mm.carbs_pct / sum) * 100, lp = (mm.lipids_pct / sum) * 100, pp = (mm.protein_pct / sum) * 100;
   const t = {
     kcal, carbs_g: r1((kcal * cp) / 100 / 4), protein_g: r1((kcal * pp) / 100 / 4), lipids_g: r1((kcal * lp) / 100 / 9),
     carbs_pct: r1(cp), protein_pct: r1(pp), lipids_pct: r1(lp), protein_g_per_kg: 0,
@@ -278,21 +411,28 @@ function computeMacros(i: DietInputs, kcal: number, w: number): DietResult['macr
 
 // ---------- Cuadro dietosintético ----------
 export interface Group { code: string; name: string; kcal: number; c: number; p: number; l: number }
-/** Aporte de UN equivalente (SMAE 4.ª ed.). */
+/** Aporte de UN equivalente (SMAE 4.ª ed.). Los códigos son los de los subgrupos del catálogo. */
 export const GROUPS: Group[] = [
   { code: 'VER', name: 'Verduras', kcal: 25, c: 4, p: 2, l: 0 },
   { code: 'FRU', name: 'Frutas', kcal: 60, c: 15, p: 0, l: 0 },
-  { code: 'CER', name: 'Cereales y tubérculos (sin grasa)', kcal: 70, c: 15, p: 2, l: 0 },
+  { code: 'CER-SG', name: 'Cereales sin grasa', kcal: 70, c: 15, p: 2, l: 0 },
+  { code: 'CER-CG', name: 'Cereales con grasa', kcal: 115, c: 15, p: 2, l: 5 },
   { code: 'LEG', name: 'Leguminosas', kcal: 120, c: 20, p: 8, l: 1 },
   { code: 'AOA-MB', name: 'AOA muy bajo aporte de grasa', kcal: 40, c: 0, p: 7, l: 1 },
   { code: 'AOA-B', name: 'AOA bajo aporte de grasa', kcal: 55, c: 0, p: 7, l: 3 },
   { code: 'AOA-M', name: 'AOA moderado aporte de grasa', kcal: 75, c: 0, p: 7, l: 5 },
+  { code: 'AOA-A', name: 'AOA alto aporte de grasa', kcal: 100, c: 0, p: 7, l: 8 },
   { code: 'LEC-D', name: 'Leche descremada', kcal: 95, c: 12, p: 9, l: 2 },
-  { code: 'GRA', name: 'Aceites y grasas (sin proteína)', kcal: 45, c: 0, p: 0, l: 5 },
-  { code: 'AZU', name: 'Azúcares (sin grasa)', kcal: 40, c: 10, p: 0, l: 0 },
+  { code: 'LEC-S', name: 'Leche semidescremada', kcal: 110, c: 12, p: 9, l: 4 },
+  { code: 'LEC-E', name: 'Leche entera', kcal: 150, c: 12, p: 9, l: 8 },
+  { code: 'LEC-A', name: 'Leche con azúcar', kcal: 200, c: 30, p: 8, l: 5 },
+  { code: 'GRA', name: 'Aceites y grasas sin proteína', kcal: 45, c: 0, p: 0, l: 5 },
+  { code: 'GRP', name: 'Aceites y grasas con proteína', kcal: 70, c: 3, p: 3, l: 5 },
+  { code: 'AZU', name: 'Azúcares sin grasa', kcal: 40, c: 10, p: 0, l: 0 },
+  { code: 'AZU-CG', name: 'Azúcares con grasa', kcal: 85, c: 10, p: 0, l: 5 },
 ];
-const group = (code: string): Group | undefined => GROUPS.find((g) => g.code === code);
-const isAOA = (c: string): boolean => c === 'AOA-MB' || c === 'AOA-B' || c === 'AOA-M';
+export const group = (code: string): Group | undefined => GROUPS.find((g) => g.code === code);
+const isAOA = (c: string): boolean => c === 'AOA-MB' || c === 'AOA-B' || c === 'AOA-M' || c === 'AOA-A';
 
 function baseFixed(kcal: number, pregnant: boolean, lactating: boolean): Record<string, number> {
   let ver = 4, fru = 3, leg = 1, lec = 1;
@@ -310,17 +450,22 @@ function computeDietosintetico(i: DietInputs, t: DietResult['macros']): DietResu
   for (const [k, v] of Object.entries(i.equivalents ?? {})) {
     if (group(k) && v >= 0) { eq[k] = halves(v); fixed[k] = true; }
   }
+  for (const g of GROUPS) {
+    if (['VER', 'FRU', 'LEG', 'LEC-D', 'CER-SG', 'GRA'].includes(g.code)) continue;
+    if (!fixed[g.code] && !isAOA(g.code)) eq[g.code] = 0;
+  }
   const e = (c: string): number => eq[c] ?? 0;
   const cho = (): number => GROUPS.reduce((s, g) => s + e(g.code) * g.c, 0);
-  if (!fixed['AZU']) eq['AZU'] = 0;
-  if (!fixed['CER']) {
-    const other = cho() - e('CER') * (group('CER') as Group).c;
-    eq['CER'] = Math.max(0, halves((t.carbs_g - other) / (group('CER') as Group).c));
+  const cer = group('CER-SG') as Group;
+  if (!fixed['CER-SG']) {
+    const other = cho() - e('CER-SG') * cer.c;
+    eq['CER-SG'] = Math.max(0, halves((t.carbs_g - other) / cer.c));
   }
   const protOther = (): number => GROUPS.reduce((s, g) => (isAOA(g.code) ? s : s + e(g.code) * g.p), 0);
   let aoaKind = 'AOA-M';
-  for (const k of ['AOA-MB', 'AOA-B', 'AOA-M']) if (fixed[k]) aoaKind = k;
-  if (!fixed['AOA-MB'] && !fixed['AOA-B'] && !fixed['AOA-M']) {
+  let anyAOAFixed = false;
+  for (const k of ['AOA-MB', 'AOA-B', 'AOA-M', 'AOA-A']) if (fixed[k]) { aoaKind = k; anyAOAFixed = true; }
+  if (!anyAOAFixed) {
     const need = Math.max(0, halves((t.protein_g - protOther()) / 7));
     const lipOther = GROUPS.reduce((s, g) => (isAOA(g.code) || g.code === 'GRA' ? s : s + e(g.code) * g.l), 0);
     for (const k of ['AOA-M', 'AOA-B', 'AOA-MB']) {
@@ -329,6 +474,7 @@ function computeDietosintetico(i: DietInputs, t: DietResult['macros']): DietResu
     }
     eq[aoaKind] = need;
   }
+  for (const k of ['AOA-MB', 'AOA-B', 'AOA-M', 'AOA-A']) if (!fixed[k] && k !== aoaKind) eq[k] = 0;
   if (!fixed['GRA']) {
     const lip = GROUPS.reduce((s, g) => (g.code === 'GRA' ? s : s + e(g.code) * g.l), 0);
     eq['GRA'] = Math.max(0, halves((t.lipids_g - lip) / 5));
@@ -337,7 +483,6 @@ function computeDietosintetico(i: DietInputs, t: DietResult['macros']): DietResu
   const tot = { kcal: 0, carbs_g: 0, protein_g: 0, lipids_g: 0 };
   for (const g of GROUPS) {
     const q = e(g.code);
-    if (isAOA(g.code) && g.code !== aoaKind && !fixed[g.code]) continue;
     const row: GroupRow = { code: g.code, name: g.name, equivalents: q, kcal: r1(q * g.kcal), carbs_g: r1(q * g.c), protein_g: r1(q * g.p), lipids_g: r1(q * g.l) };
     if (fixed[g.code]) row.fixed = true;
     rows.push(row);
@@ -353,7 +498,8 @@ function computeDietosintetico(i: DietInputs, t: DietResult['macros']): DietResu
 
 // ---------- Distribución ----------
 export const DEFAULT_SLOTS: Slot[] = [
-  { name: 'Desayuno', pct: 25 }, { name: 'Colación matutina', pct: 10 }, { name: 'Comida', pct: 30 }, { name: 'Colación vespertina', pct: 10 }, { name: 'Cena', pct: 25 },
+  { name: 'Desayuno', pct: 25, time: '08:00' }, { name: 'Colación matutina', pct: 10, time: '11:00' }, { name: 'Comida', pct: 30, time: '14:30' },
+  { name: 'Colación vespertina', pct: 10, time: '18:00' }, { name: 'Cena', pct: 25, time: '21:00' },
 ];
 const SLOT_WEIGHTS: Record<string, Record<string, number>> = {
   VER: { 'Desayuno': 1, 'Colación matutina': 0, 'Comida': 3, 'Colación vespertina': 0, 'Cena': 2 },
@@ -361,10 +507,19 @@ const SLOT_WEIGHTS: Record<string, Record<string, number>> = {
   CER: { 'Desayuno': 3, 'Colación matutina': 1, 'Comida': 4, 'Colación vespertina': 1, 'Cena': 3 },
   LEG: { 'Desayuno': 0, 'Colación matutina': 0, 'Comida': 4, 'Colación vespertina': 0, 'Cena': 2 },
   AOA: { 'Desayuno': 3, 'Colación matutina': 0, 'Comida': 4, 'Colación vespertina': 0, 'Cena': 3 },
-  'LEC-D': { 'Desayuno': 3, 'Colación matutina': 2, 'Comida': 0, 'Colación vespertina': 2, 'Cena': 3 },
+  LEC: { 'Desayuno': 3, 'Colación matutina': 2, 'Comida': 0, 'Colación vespertina': 2, 'Cena': 3 },
   GRA: { 'Desayuno': 2, 'Colación matutina': 0, 'Comida': 3, 'Colación vespertina': 0, 'Cena': 2 },
   AZU: { 'Desayuno': 1, 'Colación matutina': 2, 'Comida': 1, 'Colación vespertina': 2, 'Cena': 0 },
 };
+/** Familia de subgrupos que comparte patrón de reparto. */
+function weightKey(code: string): string {
+  if (isAOA(code)) return 'AOA';
+  if (code.startsWith('CER')) return 'CER';
+  if (code.startsWith('LEC')) return 'LEC';
+  if (code === 'GRA' || code === 'GRP') return 'GRA';
+  if (code.startsWith('AZU')) return 'AZU';
+  return code;
+}
 
 /** Reparte `eq` equivalentes (en medios) con el método del mayor residuo. */
 function distribute(eq: number, w: number[]): number[] {
@@ -386,34 +541,49 @@ function distribute(eq: number, w: number[]): number[] {
   return cnt.map((c) => c / 2);
 }
 
-function computeDistribution(i: DietInputs, d: DietResult['dietosintetico']): SlotRow[] {
+function computeDistribution(i: DietInputs, d: DietResult['dietosintetico']): { rows: SlotRow[]; remaining: Record<string, number> } {
   const slots = i.slots?.length ? i.slots : DEFAULT_SLOTS;
-  const rows: SlotRow[] = slots.map((s) => ({ name: s.name, pct: s.pct, equivalents: {}, totals: { kcal: 0, carbs_g: 0, protein_g: 0, lipids_g: 0 }, target_kcal: r0((d.target.kcal * s.pct) / 100), diff_kcal: 0 }));
+  const rows: SlotRow[] = slots.map((s) => {
+    const row: SlotRow = { name: s.name, pct: s.pct, equivalents: {}, totals: { kcal: 0, carbs_g: 0, protein_g: 0, lipids_g: 0 }, target_kcal: r0((d.target.kcal * s.pct) / 100), diff_kcal: 0 };
+    if (s.time) row.time = s.time;
+    return row;
+  });
+  const remaining: Record<string, number> = {};
   for (const r of d.rows) {
     if (r.equivalents <= 0) continue;
-    const wk = isAOA(r.code) ? 'AOA' : r.code;
-    const w = slots.map(() => 0);
-    let allZero = true;
-    slots.forEach((s, idx) => {
-      if (s.pct <= 0) return;
-      const base = SLOT_WEIGHTS[wk]?.[s.name] ?? 1;
-      w[idx] = base * s.pct;
-      if (w[idx] > 0) allZero = false;
-    });
-    if (allZero) slots.forEach((s, idx) => { w[idx] = s.pct; });
+    let parts: number[];
+    const ov = i.dist_override?.[r.code];
+    if (ov && ov.length === slots.length) {
+      parts = ov.map((v) => halves(Math.max(0, v)));
+    } else {
+      const wk = weightKey(r.code);
+      const w = slots.map(() => 0);
+      let allZero = true;
+      slots.forEach((s, idx) => {
+        if (s.pct <= 0) return;
+        const base = SLOT_WEIGHTS[wk]?.[s.name] ?? 1;
+        w[idx] = base * s.pct;
+        if (w[idx] > 0) allZero = false;
+      });
+      if (allZero) slots.forEach((s, idx) => { w[idx] = s.pct; });
+      parts = distribute(r.equivalents, w);
+    }
     const g = group(r.code) as Group;
-    distribute(r.equivalents, w).forEach((p, idx) => {
+    let assigned = 0;
+    parts.forEach((p, idx) => {
+      assigned += p;
       if (p <= 0) return;
       rows[idx].equivalents[r.code] = p;
       rows[idx].totals.kcal += p * g.kcal; rows[idx].totals.carbs_g += p * g.c; rows[idx].totals.protein_g += p * g.p; rows[idx].totals.lipids_g += p * g.l;
     });
+    remaining[r.code] = r1(r.equivalents - assigned);
   }
   for (const row of rows) {
     const t = row.totals;
     row.totals = { kcal: r1(t.kcal), carbs_g: r1(t.carbs_g), protein_g: r1(t.protein_g), lipids_g: r1(t.lipids_g) };
     row.diff_kcal = r1(t.kcal - row.target_kcal);
   }
-  return rows;
+  return { rows, remaining };
 }
 
 // ---------- Validación y punto de entrada ----------
@@ -430,15 +600,36 @@ export function normalize(i: DietInputs): FieldErrors | null {
   if (i.lactation && i.lactation !== '0-6' && i.lactation !== '7-12') e['lactation'] = 'usa 0-6 o 7-12 meses';
   if (!i.activity) i.activity = 'sedentary';
   if (!(i.activity in ACTIVITY_FACTOR)) e['activity'] = 'actividad no válida';
-  if (i.formula && !['mifflin', 'harris', 'fao', 'katch', 'cunningham'].includes(i.formula)) e['formula'] = 'fórmula no válida';
+  if (i.formula && !EQUATION_DEFS.some((d) => d.id === i.formula)) e['formula'] = 'fórmula no válida';
   if (!i.goal) i.goal = 'maintain';
   const m = i.macros;
-  if (m.carbs_pct < 0 || m.lipids_pct < 0 || m.protein_pct < 0) e['macros'] = 'los porcentajes no pueden ser negativos';
+  const pk = m.protein_g_per_kg ?? 0;
+  if (pk < 0 || pk > 4) e['macros'] = 'la proteína debe estar entre 0 y 4 g/kg';
+  else if (pk > 0) {
+    if (m.lipids_pct < 0 || m.lipids_pct > 60) e['macros'] = 'los lípidos deben estar entre 0 y 60 %';
+  } else if (m.carbs_pct < 0 || m.lipids_pct < 0 || m.protein_pct < 0) e['macros'] = 'los porcentajes no pueden ser negativos';
   else {
     const s = m.carbs_pct + m.lipids_pct + m.protein_pct;
     if (s > 0 && Math.abs(s - 100) > 0.5) e['macros'] = 'los porcentajes deben sumar 100';
   }
+  if ((i.thermic_pct ?? 0) < 0 || (i.thermic_pct ?? 0) > 30) e['thermic_pct'] = 'el efecto térmico va de 0 a 30 %';
+  if (i.fat_method && !['captured', 'durnin', 'faulkner', 'navy', 'deurenberg'].includes(i.fat_method)) e['fat_method'] = 'método no válido';
+  if (i.skinfolds && Object.values(i.skinfolds).some((v) => (v ?? 0) < 0 || (v ?? 0) > 100)) e['skinfolds'] = 'los pliegues deben estar entre 0 y 100 mm';
+  if ((i.arm_circ_cm ?? 0) < 0 || (i.arm_circ_cm ?? 0) > 100) e['arm_circ_cm'] = 'la circunferencia del brazo debe estar entre 0 y 100 cm';
   if ((i.kcal_target ?? 0) < 0 || (i.kcal_target ?? 0) > 8000) e['kcal_target'] = 'la prescripción debe estar entre 0 y 8000 kcal';
+  if ((i.slots?.length ?? 0) > 8) e['slots'] = 'usa como máximo 8 tiempos de comida';
+  if (i.slots?.some((s) => s.name.length === 0 || s.name.length > 40)) e['slots'] = 'cada tiempo necesita un nombre de hasta 40 caracteres';
+  for (const [code, arr] of Object.entries(i.dist_override ?? {})) {
+    if (!group(code)) e['dist_override'] = 'grupo no válido';
+    if (arr.some((v) => !(v >= 0 && v <= 100))) e['dist_override'] = 'los equivalentes por tiempo deben estar entre 0 y 100';
+  }
+  for (const [slot, items] of Object.entries(i.menu ?? {})) {
+    if (items.length > 40 || slot.length > 40) e['menu'] = 'demasiados elementos en un tiempo de comida';
+    for (const it of items) {
+      if (it.kind !== 'dish' && it.kind !== 'food') e['menu'] = 'tipo de elemento no válido';
+      if (it.name.length === 0 || it.name.length > 160 || it.qty_n <= 0 || it.qty_n > 100 || it.kcal < 0 || it.protein_g < 0 || it.carbs_g < 0 || it.lipids_g < 0 || it.fiber_g < 0) e['menu'] = 'elemento de dieta no válido';
+    }
+  }
   if (i.slots?.length) {
     if (i.slots.some((s) => s.pct < 0 || s.pct > 100)) e['slots'] = 'cada tiempo debe tener entre 0 y 100 %';
     const sum = i.slots.reduce((s, x) => s + x.pct, 0);
@@ -466,6 +657,8 @@ function warningsFor(i: DietInputs, r: DietResult): Warning[] {
   if (r.macros.carbs_pct > 0 && r.macros.carbs_pct < 45) add('carbs_low', 'Los hidratos de carbono están por debajo de 45 % de la energía.', 'info');
   if (Math.abs(r.dietosintetico.diff_pct) > 5) add('cuadro_diff', 'El cuadro dietosintético se desvía más de 5 % de la prescripción; ajusta equivalentes.', 'warn');
   if (i.age < 18) add('age_minor', 'En menores de 18 años estas fórmulas no son las indicadas (usa curvas y requerimientos pediátricos).', 'critical');
+  if (i.formula === 'valencia' && r.energy.formula_used !== 'valencia') add('formula_fallback', 'La ecuación de Valencia no está disponible para este paciente; se usó Mifflin-St Jeor.', 'info');
+  if (Object.values(r.distribution_remaining).some((v) => v !== 0)) add('dist_remaining', 'Hay equivalentes sin repartir (o repartidos de más) entre los tiempos de comida.', 'warn');
   if (r.pregnancy?.pre_bmi_assumed) add('preg_pre_weight', 'No se indicó el peso pregestacional: se usó el peso actual para clasificar la ganancia.', 'info');
   return out;
 }
@@ -474,12 +667,13 @@ function warningsFor(i: DietInputs, r: DietResult): Warning[] {
 export function compute(i: DietInputs): DietResult {
   const anthro = computeAnthro(i);
   const w = anthro.weight_used_kg > 0 ? anthro.weight_used_kg : i.weight_kg;
-  const composition = computeComposition(i, w);
+  const { c: composition, lean } = computeComposition(i, w);
   const pregnancy = computePregnancy(i, w);
-  const energy = computeEnergy(i, w, composition.lean_mass_kg, pregnancy);
+  const energy = computeEnergy(i, w, lean, pregnancy);
   const macros = computeMacros(i, energy.prescription_kcal, w);
   const dietosintetico = computeDietosintetico(i, macros);
-  const r: DietResult = { anthro, composition, energy, pregnancy, macros, dietosintetico, distribution: computeDistribution(i, dietosintetico), warnings: [], engine_version: ENGINE_VERSION };
+  const dist = computeDistribution(i, dietosintetico);
+  const r: DietResult = { anthro, composition, energy, pregnancy, macros, dietosintetico, distribution: dist.rows, distribution_remaining: dist.remaining, warnings: [], engine_version: ENGINE_VERSION };
   r.warnings = warningsFor(i, r);
   return r;
 }

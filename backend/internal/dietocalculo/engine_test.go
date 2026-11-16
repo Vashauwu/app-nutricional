@@ -117,7 +117,7 @@ func TestDistributionSumsEqualCuadro(t *testing.T) {
 		require.InDelta(t, row.Eq, s, 1e-9, row.Code)
 	}
 	// Sin colaciones: nada se asigna a los tiempos con 0 %.
-	in.Slots = []Slot{{"Desayuno", 30}, {"Colación matutina", 0}, {"Comida", 40}, {"Colación vespertina", 0}, {"Cena", 30}}
+	in.Slots = []Slot{{Name: "Desayuno", Pct: 30}, {Name: "Colación matutina", Pct: 0}, {Name: "Comida", Pct: 40}, {Name: "Colación vespertina", Pct: 0}, {Name: "Cena", Pct: 30}}
 	r = Compute(in)
 	require.Empty(t, r.Distribution[1].Eq)
 	require.Empty(t, r.Distribution[3].Eq)
@@ -150,6 +150,148 @@ func TestBodyComposition(t *testing.T) {
 	require.Equal(t, "deurenberg", Compute(base()).Composition.FatSource)
 }
 
+func eqByID(r Result, id string) Equation {
+	for _, e := range r.Energy.Equations {
+		if e.ID == id {
+			return e
+		}
+	}
+	return Equation{}
+}
+
+// Valores de referencia: una mujer de 27 años, 55 kg, 173 cm, 15 % de grasa, actividad ligera y ETA 10 %.
+func TestEquationsAgainstReference(t *testing.T) {
+	in := base()
+	in.BodyFatPct, in.Thermic = 15, true
+	r := Compute(in)
+	require.Equal(t, 1285.0, eqByID(r, "valencia").BMR)
+	require.Equal(t, 1944.0, eqByID(r, "valencia").GET) // 1285 × 1.375 × 1.10
+	require.Equal(t, 1375.0, eqByID(r, "harris_orig").BMR)
+	require.Equal(t, 1380.0, eqByID(r, "katch").BMR)
+	require.Equal(t, 1529.0, eqByID(r, "cunningham").BMR)
+	require.Equal(t, 1190.0, eqByID(r, "owen").BMR) // 795 + 7.18·55
+	m := in
+	m.Sex = "M"
+	rm := Compute(m)
+	require.Equal(t, 1440.0, eqByID(rm, "owen").BMR)
+	require.Equal(t, 1505.0, eqByID(rm, "harris_orig").BMR)
+	require.Equal(t, 1502.0, eqByID(rm, "harris").BMR)
+	require.Equal(t, 1520.0, eqByID(rm, "fao").BMR)
+	// Valencia solo está cargada para mujeres de 18–29: en hombres no se calcula y se usa Mifflin.
+	require.False(t, eqByID(rm, "valencia").Available)
+	m.Formula = "valencia"
+	rv := Compute(m)
+	require.Equal(t, "mifflin", rv.Energy.FormulaUsed)
+	require.Contains(t, warnCodes(rv), "formula_fallback")
+}
+
+func warnCodes(r Result) []string {
+	var out []string
+	for _, w := range r.Warnings {
+		out = append(out, w.Code)
+	}
+	return out
+}
+
+func TestIdealWeightsAndComposition(t *testing.T) {
+	r := Compute(base())
+	byID := map[string]float64{}
+	for _, w := range r.Anthro.IdealWeights {
+		byID[w.ID] = w.Kg
+	}
+	require.Equal(t, 63.8, byID["hamwi"])
+	require.Equal(t, 64.2, byID["devine"])
+	require.Equal(t, 30.0, r.Composition.TBW) // Watson, mujer 173 cm / 55 kg
+	in := base()
+	in.BodyFatPct = 15
+	require.Equal(t, 15.6, Compute(in).Composition.FFMI) // 46.75 / 1.73²
+	// Peso ajustado solo cuando el peso supera el ideal.
+	require.Zero(t, r.Anthro.AdjustedWeight)
+	in.WeightKg = 90
+	require.NotZero(t, Compute(in).Anthro.AdjustedWeight)
+}
+
+func TestSkinfoldMethods(t *testing.T) {
+	in := base()
+	in.Skinfolds = &Skinfolds{Triceps: 14, Biceps: 8, Subscapular: 12, Suprailiac: 10, Abdominal: 16}
+	in.ArmCircCm = 26
+	r := Compute(in)
+	var durnin, faulkner FatMethod
+	for _, m := range r.Composition.Methods {
+		switch m.ID {
+		case "durnin":
+			durnin = m
+		case "faulkner":
+			faulkner = m
+		}
+	}
+	require.True(t, durnin.Available && faulkner.Available)
+	require.Equal(t, r1((14+12+10+16)*0.153+5.783), faulkner.FatPct)
+	require.Equal(t, "durnin", r.Composition.FatSource) // automático: el primero disponible tras el capturado
+	require.NotZero(t, r.Composition.CAMA)
+	in.FatMethod = "faulkner"
+	require.Equal(t, "faulkner", Compute(in).Composition.FatSource)
+	in.FatMethod = "navy" // sin datos: cae al automático
+	require.NotEqual(t, "navy", Compute(in).Composition.FatSource)
+}
+
+func TestProteinPerKgMode(t *testing.T) {
+	in := base()
+	in.KcalTarget = 2000
+	in.Macros = Macros{ProteinGKg: 1.8, LipidsPct: 25}
+	r := Compute(in)
+	require.Equal(t, 99.0, r.Macros.ProteinG) // 1.8 × 55
+	require.Equal(t, 55.6, r.Macros.LipidsG)
+	require.InDelta(t, 2000, r.Macros.CarbsG*4+r.Macros.ProteinG*4+r.Macros.LipidsG*9, 1.0)
+	require.Nil(t, in.Normalize())
+}
+
+func TestDistributionOverrideAndRemaining(t *testing.T) {
+	in := base()
+	in.KcalTarget = 2000
+	r := Compute(in)
+	for _, v := range r.Remaining {
+		require.Zero(t, v)
+	}
+	// Reparto manual de las frutas: todo al desayuno, y de menos en otro grupo.
+	var fru float64
+	for _, row := range r.Dietosint.Rows {
+		if row.Code == "FRU" {
+			fru = row.Eq
+		}
+	}
+	in.DistOverride = map[string][]float64{"FRU": {fru, 0, 0, 0, 0}, "VER": {1, 0, 0, 0, 0}}
+	r = Compute(in)
+	require.Equal(t, fru, r.Distribution[0].Eq["FRU"])
+	require.Zero(t, r.Remaining["FRU"])
+	require.Greater(t, r.Remaining["VER"], 0.0)
+	require.Contains(t, warnCodes(r), "dist_remaining")
+	in.DistOverride = map[string][]float64{"XXX": {1}}
+	require.Contains(t, in.Normalize(), "dist_override")
+}
+
+func TestAllSeventeenGroups(t *testing.T) {
+	r := Compute(base())
+	require.Len(t, r.Dietosint.Rows, 17)
+	in := base()
+	in.Equivalents = map[string]float64{"AOA-A": 3, "LEC-E": 1, "CER-CG": 2}
+	r = Compute(in)
+	got := map[string]float64{}
+	for _, x := range r.Dietosint.Rows {
+		got[x.Code] = x.Eq
+	}
+	require.Equal(t, 3.0, got["AOA-A"])
+	require.Zero(t, got["AOA-M"]) // al fijar un AOA a mano, el automático no suma otro
+}
+
+func TestMenuValidation(t *testing.T) {
+	in := base()
+	in.Menu = map[string][]MenuItem{"Desayuno": {{ID: "1", Kind: "dish", Name: "Avena", QtyN: 1, Kcal: 300}}}
+	require.Nil(t, in.Normalize())
+	in.Menu["Desayuno"][0].Kind = "otro"
+	require.Contains(t, in.Normalize(), "menu")
+}
+
 func abs(x float64) float64 {
 	if x < 0 {
 		return -x
@@ -172,11 +314,22 @@ func goldenCases() []Inputs {
 	e.Sex, e.Age, e.WeightKg, e.HeightCm, e.Hospital, e.Stress, e.Amputations = "M", 68, 70, 168, true, 1.3, []string{"below_knee"}
 	e.Formula = "fao"
 	g := base()
-	g.KcalTarget, g.Equivalents = 1600, map[string]float64{"CER": 6, "GRA": 3}
-	g.Slots = []Slot{{"Desayuno", 30}, {"Colación matutina", 0}, {"Comida", 40}, {"Colación vespertina", 0}, {"Cena", 30}}
+	g.KcalTarget, g.Equivalents = 1600, map[string]float64{"CER-SG": 6, "GRA": 3}
+	g.Slots = []Slot{{Name: "Desayuno", Pct: 30}, {Name: "Colación matutina", Pct: 0}, {Name: "Comida", Pct: 40}, {Name: "Colación vespertina", Pct: 0}, {Name: "Cena", Pct: 30}}
 	h := base()
 	h.Sex, h.WeightKg, h.HeightCm, h.Age, h.Athlete, h.Thermic, h.AdjustKcal = "M", 95, 185, 24, true, true, 300
-	return []Inputs{a, b, c, d, e, g, h}
+	// Valencia, pliegues cutáneos, proteína por kg y reparto manual.
+	i := base()
+	i.BodyFatPct, i.Thermic, i.Formula = 15, true, "valencia"
+	j := base()
+	j.Skinfolds, j.ArmCircCm, j.FatMethod, j.Formula = &Skinfolds{Triceps: 14, Biceps: 8, Subscapular: 12, Suprailiac: 10, Abdominal: 16}, 26, "durnin", "owen"
+	k := base()
+	k.Sex, k.Age, k.WeightKg, k.HeightCm, k.Formula = "M", 45, 98, 180, "harris_orig"
+	k.KcalTarget, k.Macros = 2400, Macros{ProteinGKg: 1.6, LipidsPct: 30}
+	k.Equivalents = map[string]float64{"AOA-A": 3, "LEC-E": 1, "CER-CG": 2}
+	k.DistOverride = map[string][]float64{"VER": {1, 0, 2, 0, 1}}
+	k.Slots = []Slot{{Name: "Desayuno", Pct: 25, Time: "08:00"}, {Name: "Colación matutina", Pct: 10, Time: "11:00"}, {Name: "Comida", Pct: 30, Time: "14:30"}, {Name: "Colación vespertina", Pct: 10, Time: "18:00"}, {Name: "Cena", Pct: 25, Time: "21:00"}}
+	return []Inputs{a, b, c, d, e, g, h, i, j, k}
 }
 
 type goldenCase struct {
