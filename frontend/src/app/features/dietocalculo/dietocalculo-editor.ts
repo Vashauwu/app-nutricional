@@ -37,6 +37,7 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .bar { display: grid; gap: var(--space-4); }
+    .tabs button { display: inline-flex; align-items: center; gap: var(--space-2); }
     .kcal { font-size: 1.375rem; font-weight: 700; font-variant-numeric: tabular-nums; }
     .prev { display: grid; gap: var(--space-4); }
     .prev h3 { margin: 0; font-size: 1.0625rem; font-family: var(--nutri-font-ui); }

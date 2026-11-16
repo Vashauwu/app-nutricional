@@ -599,7 +599,7 @@ p {
   text-align: center;
   color: var(--muted);
 
-  app-icon {
+  > app-icon {
     color: var(--nutri-texto);
   }
 
@@ -957,6 +957,7 @@ body.has-bottom-nav {
 // ---------- Dietocálculo ----------
 .dc-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
 .dc-grid--s { grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); }
+.dc-grid--5 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 6.25rem), 1fr)); }
 .dc-grid--m { grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr)); }
 
 .dc-tile {
@@ -980,7 +981,7 @@ button.dc-tile:hover:not([disabled]) { border-color: var(--brand-ink); }
 .dc-kv dt { color: var(--muted); }
 .dc-kv dd { margin: 0; font-weight: 600; text-align: end; font-variant-numeric: tabular-nums; }
 
-.dc-seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-m); overflow: hidden; flex-wrap: wrap; }
+.dc-seg { justify-self: start; align-self: start; display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-m); overflow: hidden; flex-wrap: wrap; }
 .dc-seg button {
   min-block-size: var(--field-h); padding: 0 var(--space-4); border: 0; background: var(--surface); color: var(--nutri-texto); font: inherit; cursor: pointer;
   &[aria-checked='true'] { background: var(--brand-ink); color: var(--surface); font-weight: 600; }

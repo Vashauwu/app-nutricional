@@ -17,6 +17,10 @@ import { formatDate } from '../../shared/utils/format';
   selector: 'app-dietocalculo-list',
   imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Combobox],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    .filters { display: grid; gap: var(--space-3) var(--space-4); align-items: center; grid-template-columns: minmax(12rem, 2fr) minmax(10rem, 1fr) auto; padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
+    @media (max-width: 48rem) { .filters { grid-template-columns: minmax(0, 1fr); } }
+  `,
   template: `
     <section class="page" aria-labelledby="dc-title">
       <app-page-header title="Dietocálculo" sub="Calcula el gasto, los macronutrimentos y el cuadro dietosintético de una dieta. Puedes guardarla suelta o enlazarla a un paciente.">
