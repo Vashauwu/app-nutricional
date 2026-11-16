@@ -1,7 +1,9 @@
 package mealplans
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -62,6 +64,7 @@ func (ct *Controller) fail(c *gin.Context, err error) {
 }
 
 func (ct *Controller) validation(c *gin.Context, f ValidationError) {
+	ct.log.WarnContext(c.Request.Context(), "mealplans_validation_failed", slog.String("request_id", middleware.GetRequestID(c)), slog.String("method", c.Request.Method), slog.String("path", c.FullPath()), slog.Any("fields", f))
 	c.AbortWithStatusJSON(http.StatusUnprocessableEntity, shared.ErrorBody{Error: shared.ErrorDetail{
 		Code: "validation_failed", Message: "Revisa los datos marcados.", RequestID: middleware.GetRequestID(c), Fields: f}})
 }
@@ -166,10 +169,19 @@ func (ct *Controller) save(c *gin.Context) {
 		ct.fail(c, ErrNotFound)
 		return
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20)
+	raw, err := io.ReadAll(http.MaxBytesReader(c.Writer, c.Request.Body, 4<<20))
+	if err != nil {
+		ct.validation(c, ValidationError{"body": "el plan enviado es demasiado grande o se interrumpió"})
+		return
+	}
 	var in saveReq
-	if err := c.ShouldBindJSON(&in); err != nil {
-		ct.validation(c, ValidationError{"body": "el plan enviado no tiene un formato válido (los identificadores deben ser UUID y los números, decimales)"})
+	if err := json.Unmarshal(raw, &in); err != nil {
+		// Se señala el campo exacto (p. ej. un platillo de demostración cuyo id no es UUID) en lugar de un error genérico.
+		fields := diagnoseBody(raw)
+		if len(fields) == 0 {
+			fields = ValidationError{"body": "el plan enviado no tiene un formato válido (los identificadores deben ser UUID y los números, decimales)"}
+		}
+		ct.validation(c, fields)
 		return
 	}
 	if in.ExpectedRevision < 1 {

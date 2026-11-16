@@ -86,6 +86,15 @@ const SAVE_TEXT: Record<SaveState, string> = {
           <div class="row"><button tuiButton type="button" size="s" (click)="store.resolveConflict('theirs')">Cargar la versión más reciente (descarto mis cambios)</button><button tuiButton type="button" size="s" appearance="secondary-destructive" (click)="store.resolveConflict('mine')">Conservar mis cambios y reemplazar</button></div>
         </div></div>
       }
+      @if (store.saveState() === 'error' && store.saveError()) {
+        <div class="callout callout--crit banner" role="alert"><app-icon name="alert" /><div class="callout-body">
+          <p><strong>No se pudo guardar.</strong> {{ store.saveError() }}</p>
+          <div class="row">
+            @if (store.invalidItems().length) { <button tuiButton type="button" size="s" (click)="store.removeInvalidItems()"><app-icon name="trash" [size]="16" /> Quitar {{ store.invalidItems().length === 1 ? 'el platillo' : 'los platillos' }} de ejemplo</button> }
+            <button tuiButton type="button" size="s" appearance="secondary" (click)="store.retry()">Reintentar</button>
+          </div>
+        </div></div>
+      }
       @if (store.recovered()) {
         <div class="callout callout--warn banner" role="status"><app-icon name="refresh" /><div class="callout-body">Recuperamos cambios pendientes de tu última sesión y se están sincronizando.</div></div>
       }

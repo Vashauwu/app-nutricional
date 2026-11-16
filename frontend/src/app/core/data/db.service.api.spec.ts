@@ -9,6 +9,7 @@ describe('DbService en modo API', () => {
     window.NUTRI_CONFIG = { apiMode: 'api' };
     const db = TestBed.inject(DbService).db();
     expect(db.patients).toHaveLength(0);
+    expect(db.dishes).toHaveLength(0); // sus ids no son UUID: el servidor rechazaría un plan que los use (422)
     expect(db.settings.brand.tagline).toBe('');
     expect(db.settings.brand.phone).toBe('');
     expect(db.settings.brand.email).toBe('');

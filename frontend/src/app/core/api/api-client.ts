@@ -38,6 +38,7 @@ function toApiError(e: unknown): ApiError {
     const d = (e.error as { error?: { code?: string; message?: string; fields?: Record<string, string> } } | null)?.error;
     if (d?.message) return new ApiError(d.message, e.status, d.code ?? 'error', d.fields ?? {});
     if (e.status === 0) return new ApiError('No hay conexión con el servidor. Revisa tu red e inténtalo de nuevo.', 0, 'network');
+    if (e.status === 502 || e.status === 503 || e.status === 504) return new ApiError('El servidor tardó demasiado en responder. Tus cambios siguen en este navegador; se reintentará solo.', e.status, 'unavailable');
     return new ApiError('Ocurrió un error inesperado. Inténtalo de nuevo.', e.status, 'error');
   }
   return e instanceof ApiError ? e : new ApiError('Ocurrió un error inesperado.', 500, 'error');

@@ -604,3 +604,21 @@ func TestMealPlansIntegration(t *testing.T) {
 		}
 	})
 }
+
+// Un platillo de demostración (id que no es UUID) debe rechazarse señalando el campo exacto, no con un error genérico.
+func TestSaveRejectsNonUUIDDish(t *testing.T) {
+	e := start(t)
+	nutri := e.login(t, "nutri@demo.mx", "nutritionist")
+	pa := newPatient(t, e, nutri, "diag@demo.mx", true)
+	mx, _ := time.LoadLocation("America/Mexico_City")
+	in := func(d int) string { return time.Now().In(mx).AddDate(0, 0, d).Format("2006-01-02") }
+
+	v := createPlan(t, nutri, pa, "Diag", in(1), in(7))
+	d := docOf(v)
+	d["days"].([]any)[0].(map[string]any)["slots"].([]any)[2].(map[string]any)["items"] = []any{item(uuid.NewString(), "d-yogurt", 1, "1")}
+	code, b := save(t, nutri, v["id"].(string), 1, d)
+	require.Equal(t, 422, code)
+	fields := b["error"].(map[string]any)["fields"].(map[string]any)
+	require.Contains(t, fields, "days[0].slots[2].items[0].dish_id")
+	require.NotContains(t, fields, "body")
+}
