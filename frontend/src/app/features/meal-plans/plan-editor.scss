@@ -113,6 +113,8 @@
 }
 
 .scroller {
+  // Contiene los textos «solo lector» (posición absoluta) de cada día: sin esto sobresalían de la semana y ampliaban toda la página.
+  position: relative;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   padding-block-end: var(--space-2);
@@ -320,8 +322,18 @@
     grid-template-columns: 16.5rem minmax(0, 1fr);
   }
 
+  // La biblioteca fija ocupa las dos filas (calendario y resumen): una pieza «sticky» se mueve dentro de TODO el
+  // contenedor, así que si el resumen ocupara el ancho completo la biblioteca se encimaba sobre él al desplazarse.
+  .lib {
+    grid-row: 1 / span 2;
+  }
+
+  .cal,
   .sum {
-    grid-column: 1 / -1;
+    grid-column: 2;
+  }
+
+  .sum {
     position: static;
     max-block-size: none;
   }
@@ -330,6 +342,13 @@
 @media (max-width: 62rem) {
   .ed {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lib,
+  .cal,
+  .sum {
+    grid-row: auto;
+    grid-column: 1;
   }
 
   .lib {
@@ -350,9 +369,19 @@
   }
 }
 
+// En pantallas angostas cada día conserva un ancho legible y la semana se desplaza de lado (con imán por día).
 @media (max-width: 48rem) {
+  .scroller {
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.25rem;
+  }
+
   .week {
-    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-columns: minmax(min(16rem, 85%), 1fr);
+  }
+
+  .day {
+    scroll-snap-align: start;
   }
 }
 
