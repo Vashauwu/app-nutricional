@@ -48,6 +48,9 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
     @media (min-width: 48rem) { .row-g .vals { display: contents; } }
     .layout > *, .side > * { min-inline-size: 0; }
     @media (max-width: 30rem) { .side .panel { padding: var(--space-4); } }
+    .acts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+    .acts > button { inline-size: 100%; }
+    .hd-r { gap: var(--space-2); flex-wrap: nowrap; }
     .mx { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-4); align-items: center; }
     @media (max-width: 40rem) {
       .mx { grid-template-columns: minmax(0, 1fr); }
@@ -73,7 +76,7 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
 
       <aside class="stack side" aria-label="Resumen del cuadro dietosintético">
         <section class="panel stack" aria-labelledby="h-cuadro">
-          <div class="row row--between"><h2 id="h-cuadro" class="m-0 u-h2-ui">Cuadro dietosintético</h2><app-badge [tone]="adqTone(kcalPct())">{{ kcalPct() }} %</app-badge></div>
+          <div class="row row--between"><h2 id="h-cuadro" class="m-0 u-h2-ui">Cuadro dietosintético</h2><span class="row hd-r"><app-badge [tone]="adqTone(kcalPct())">{{ kcalPct() }} %</app-badge><button type="button" class="icon-btn no-print" aria-label="Configuración del Dietocálculo" title="Configuración" (click)="cfgOpen.set(true)"><app-icon name="sliders" [size]="20" /></button></span></div>
           <div class="field"><label for="f-meta">Calorías totales (meta)</label><div class="dc-unit"><input id="f-meta" class="input" type="number" step="10" [value]="res.energy.prescription_kcal" (change)="s.patch({ kcal_target: opt($event) })" /><span>kcal</span></div></div>
           <div class="dc-pills no-print" role="group" aria-label="Distribuciones habituales (HCO-LIP-PRO)">
             @for (p of presets; track p.join()) { <button type="button" class="dc-pill" (click)="s.setPercentMacros(p[0], p[1], p[2])">{{ p[0] }}-{{ p[1] }}-{{ p[2] }}</button> }
@@ -110,10 +113,9 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
           </div>
           <p class="small" [class.error]="absPct() > 5"><strong>Diferencia:</strong> {{ d.diff_kcal }} kcal ({{ d.diff_pct }} %)@if (absPct() <= 5) { · dentro de ±5 % } @else { · fuera de ±5 % }</p>
 
-          <div class="row no-print">
+          <div class="acts no-print">
             <button tuiButton type="button" size="m" appearance="secondary" (click)="clear()"><app-icon name="trash" [size]="18" /> Limpiar</button>
-            <button tuiButton type="button" size="m" appearance="secondary" (click)="auditOpen.set(true)"><app-icon name="scale" [size]="18" /> Auditoría empírica</button>
-            <button type="button" class="icon-btn" aria-label="Configuración del Dietocálculo" title="Configuración" (click)="cfgOpen.set(true)"><app-icon name="sliders" [size]="20" /></button>
+            <button tuiButton type="button" size="m" appearance="secondary" aria-label="Auditoría empírica" title="Auditoría empírica" (click)="auditOpen.set(true)"><app-icon name="scale" [size]="18" /> Auditoría</button>
           </div>
         </section>
         @if (res.warnings.length) {
