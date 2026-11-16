@@ -248,7 +248,11 @@ export class PatientDetail {
   protected readonly moreItems = computed<MenuItem[]>(() => {
     const p = this.patient();
     if (!p) return [];
-    const items: MenuItem[] = [{ label: 'Editar datos', icon: 'edit', run: () => this.openEdit() }];
+    const items: MenuItem[] = [
+      { label: 'Editar datos', icon: 'edit', run: () => this.openEdit() },
+      { label: 'Nueva dieta (Dietocálculo)', icon: 'scale', run: () => void this.router.navigate(['/dietocalculo/nuevo'], { queryParams: { paciente: p.id } }) },
+      { label: 'Dietas guardadas', icon: 'list', run: () => void this.router.navigate(['/dietocalculo'], { queryParams: { paciente: p.id } }) },
+    ];
     if (this.patients.apiMode && !p.userId) items.push({ label: 'Invitar al paciente', icon: 'send', run: () => this.resend() });
     else if (p.status === 'invited') items.push({ label: 'Reenviar invitación', icon: 'send', run: () => this.resend() });
     items.push({ label: 'Desactivar paciente', icon: 'ban', danger: true, separator: true, run: () => this.deactivate() });

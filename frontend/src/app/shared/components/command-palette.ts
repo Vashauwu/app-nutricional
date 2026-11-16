@@ -25,6 +25,7 @@ interface Entry {
 const ACTIONS: Entry[] = [
   { group: 'Acciones', label: 'Nuevo paciente', icon: 'user-plus', link: '/pacientes/nuevo' },
   { group: 'Acciones', label: 'Nuevo plan alimentario', icon: 'calendar', link: '/planes/nuevo' },
+  { group: 'Acciones', label: 'Nueva dieta (Dietocálculo)', icon: 'scale', link: '/dietocalculo/nuevo' },
   { group: 'Acciones', label: 'Nuevo platillo', icon: 'dish', link: '/platillos/nuevo' },
   { group: 'Acciones', label: 'Agendar consulta', icon: 'clock', link: '/consultas' },
 ];
@@ -33,6 +34,7 @@ const PAGES: Entry[] = [
   { group: 'Ir a', label: 'Pacientes', icon: 'users', link: '/pacientes' },
   { group: 'Ir a', label: 'Consultas', icon: 'clock', link: '/consultas' },
   { group: 'Ir a', label: 'Planes', icon: 'calendar', link: '/planes' },
+  { group: 'Ir a', label: 'Dietocálculo', icon: 'scale', link: '/dietocalculo' },
   { group: 'Ir a', label: 'Seguimiento', icon: 'activity', link: '/seguimiento' },
   { group: 'Ir a', label: 'Platillos', icon: 'dish', link: '/platillos' },
   { group: 'Ir a', label: 'Catálogo SMAE', icon: 'book', link: '/catalogo' },

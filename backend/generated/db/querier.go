@@ -60,6 +60,7 @@ type Querier interface {
 	GetAppointment(ctx context.Context, id uuid.UUID) (Appointment, error)
 	GetCalendarFeed(ctx context.Context, userID uuid.UUID) (CalendarFeed, error)
 	GetCustomFood(ctx context.Context, id uuid.UUID) (CustomFood, error)
+	GetDietCalculation(ctx context.Context, id uuid.UUID) (GetDietCalculationRow, error)
 	GetDish(ctx context.Context, id uuid.UUID) (Dish, error)
 	GetDishForPlan(ctx context.Context, id uuid.UUID) (GetDishForPlanRow, error)
 	GetDishVersion(ctx context.Context, arg GetDishVersionParams) (DishVersion, error)
@@ -101,6 +102,8 @@ type Querier interface {
 	// ---------- Alimentos personalizados ----------
 	InsertCustomFood(ctx context.Context, arg InsertCustomFoodParams) (CustomFood, error)
 	InsertCustomPortion(ctx context.Context, arg InsertCustomPortionParams) error
+	// ---------- Dietocálculo ----------
+	InsertDietCalculation(ctx context.Context, arg InsertDietCalculationParams) (DietCalculation, error)
 	InsertDish(ctx context.Context, arg InsertDishParams) (Dish, error)
 	InsertDishVersion(ctx context.Context, arg InsertDishVersionParams) (DishVersion, error)
 	InsertDocument(ctx context.Context, arg InsertDocumentParams) (PatientDocument, error)
@@ -160,6 +163,7 @@ type Querier interface {
 	ListCustomFoods(ctx context.Context, arg ListCustomFoodsParams) ([]ListCustomFoodsRow, error)
 	ListCustomPortionsFor(ctx context.Context, dollar_1 []uuid.UUID) ([]CustomFoodPortion, error)
 	ListDays(ctx context.Context, planID uuid.UUID) ([]MealPlanDay, error)
+	ListDietCalculations(ctx context.Context, arg ListDietCalculationsParams) ([]ListDietCalculationsRow, error)
 	ListDishVersions(ctx context.Context, dishID uuid.UUID) ([]ListDishVersionsRow, error)
 	// Listado con filtros en el servidor y carga progresiva (§6.1, §16).
 	ListDishes(ctx context.Context, arg ListDishesParams) ([]ListDishesRow, error)
@@ -234,6 +238,7 @@ type Querier interface {
 	SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (MealPlan, error)
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	SlotPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]SlotPlanIDsRow, error)
+	SoftDeleteDietCalculation(ctx context.Context, id uuid.UUID) (int64, error)
 	SoftDeleteDocument(ctx context.Context, arg SoftDeleteDocumentParams) (uuid.UUID, error)
 	SoftDeleteFile(ctx context.Context, id uuid.UUID) error
 	SoftDeleteNote(ctx context.Context, arg SoftDeleteNoteParams) (int64, error)
@@ -249,6 +254,7 @@ type Querier interface {
 	UpdateCondition(ctx context.Context, arg UpdateConditionParams) (PatientCondition, error)
 	// Al editar los valores se invalida la validación previa.
 	UpdateCustomFood(ctx context.Context, arg UpdateCustomFoodParams) (CustomFood, error)
+	UpdateDietCalculation(ctx context.Context, arg UpdateDietCalculationParams) (DietCalculation, error)
 	UpdateDishMeta(ctx context.Context, arg UpdateDishMetaParams) error
 	UpdateDocument(ctx context.Context, arg UpdateDocumentParams) (PatientDocument, error)
 	UpdateMedication(ctx context.Context, arg UpdateMedicationParams) (PatientMedication, error)

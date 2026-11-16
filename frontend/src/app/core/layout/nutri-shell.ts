@@ -132,6 +132,7 @@ export class NutriShell {
         { path: '/pacientes', label: 'Pacientes', icon: 'users' },
         { path: '/consultas', label: 'Consultas', icon: 'clock' },
         { path: '/planes', label: 'Planes', icon: 'calendar' },
+        { path: '/dietocalculo', label: 'Dietocálculo', icon: 'scale' },
         { path: '/seguimiento', label: 'Seguimiento', icon: 'activity', badge: () => this.toReview() },
       ],
     },
