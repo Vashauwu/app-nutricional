@@ -46,11 +46,19 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
     }
     @media (min-width: 48rem) { .row-g .vals { display: contents; } }
     .layout > *, .side > * { min-inline-size: 0; }
-    table.mini { inline-size: 100%; border-collapse: collapse; } table.mini td, table.mini th { padding: .25rem .25rem; white-space: nowrap; }
+    table.mini { inline-size: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+    table.mini th, table.mini td { padding: .375rem var(--space-2); white-space: nowrap; text-align: end; vertical-align: middle; }
+    table.mini thead th { font-weight: 600; }
+    table.mini thead th:first-child, table.mini tbody th { text-align: start; }
+    table.mini tbody th { font-weight: 600; }
+    table.mini tbody tr + tr > * { border-block-start: 1px solid var(--line); }
+    table.mini .dc-num-in { inline-size: 100%; max-inline-size: 4.5rem; margin-inline-start: auto; text-align: end; }
+    table.mini .c-name { inline-size: 24%; } table.mini .c-in { inline-size: 28%; }
+    table.mini.adq-t td, table.mini.adq-t th { padding-block: .5rem; }
+    table.mini .pct { display: inline-flex; align-items: center; gap: .25rem; font-weight: 700; justify-content: flex-end; }
     @media (max-width: 30rem) {
       .side .panel { padding: var(--space-4); }
-      table.mini td, table.mini th { padding: .25rem .125rem; font-size: .8125rem; }
-      table.mini .dc-num-in { max-inline-size: 4.25rem; }
+      table.mini th, table.mini td { padding-inline: .125rem; font-size: .8125rem; }
     }
     .mx { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2) var(--space-4); align-items: center; }
     @media (max-width: 40rem) {
@@ -85,31 +93,31 @@ const PRESETS: [number, number, number][] = [[60, 25, 15], [55, 25, 20], [50, 30
           <div class="dc-bar" role="img" [attr.aria-label]="'Proteína ' + res.macros.protein_pct + ' %, lípidos ' + res.macros.lipids_pct + ' %, hidratos ' + res.macros.carbs_pct + ' %'"><i class="b-p" [style.inline-size.%]="res.macros.protein_pct"></i><i class="b-l" [style.inline-size.%]="res.macros.lipids_pct"></i><i class="b-c" [style.inline-size.%]="res.macros.carbs_pct"></i></div>
           <table class="mini">
             <caption class="visually-hidden">Macronutrimentos de la meta</caption>
-            <thead><tr><th scope="col" class="small muted">Macro</th><th scope="col" class="small muted">%</th><th scope="col" class="small muted num">kcal</th><th scope="col" class="small muted num">Gramos</th></tr></thead>
+            <colgroup><col class="c-name" /><col class="c-in" /><col /><col /></colgroup>
+            <thead><tr><th scope="col" class="small muted">Macro</th><th scope="col" class="small muted">%</th><th scope="col" class="small muted">kcal</th><th scope="col" class="small muted">Gramos</th></tr></thead>
             <tbody>
-              <tr><th scope="row">HCO</th><td><input class="input dc-num-in" type="number" step="1" aria-label="Hidratos de carbono (%)" [value]="res.macros.carbs_pct" (change)="setPct('carbs_pct', $event)" /></td><td class="num">{{ rnd(res.macros.carbs_g * 4) }}</td><td class="num">{{ res.macros.carbs_g }} g</td></tr>
-              <tr><th scope="row">LIP</th><td><input class="input dc-num-in" type="number" step="1" aria-label="Lípidos (%)" [value]="res.macros.lipids_pct" (change)="setPct('lipids_pct', $event)" /></td><td class="num">{{ rnd(res.macros.lipids_g * 9) }}</td><td class="num">{{ res.macros.lipids_g }} g</td></tr>
-              <tr><th scope="row">PRO</th><td><input class="input dc-num-in" type="number" step="1" aria-label="Proteína (%)" [value]="res.macros.protein_pct" (change)="setPct('protein_pct', $event)" /></td><td class="num">{{ rnd(res.macros.protein_g * 4) }}</td><td class="num">{{ res.macros.protein_g }} g</td></tr>
+              <tr><th scope="row">HCO</th><td><input class="input dc-num-in" type="number" step="1" aria-label="Hidratos de carbono (%)" [value]="res.macros.carbs_pct" (change)="setPct('carbs_pct', $event)" /></td><td>{{ rnd(res.macros.carbs_g * 4) }}</td><td>{{ res.macros.carbs_g }} g</td></tr>
+              <tr><th scope="row">LIP</th><td><input class="input dc-num-in" type="number" step="1" aria-label="Lípidos (%)" [value]="res.macros.lipids_pct" (change)="setPct('lipids_pct', $event)" /></td><td>{{ rnd(res.macros.lipids_g * 9) }}</td><td>{{ res.macros.lipids_g }} g</td></tr>
+              <tr><th scope="row">PRO</th><td><input class="input dc-num-in" type="number" step="1" aria-label="Proteína (%)" [value]="res.macros.protein_pct" (change)="setPct('protein_pct', $event)" /></td><td>{{ rnd(res.macros.protein_g * 4) }}</td><td>{{ res.macros.protein_g }} g</td></tr>
             </tbody>
           </table>
           <p class="small" [class.error]="!!s.err('macros')" [attr.role]="s.err('macros') ? 'alert' : null">Suma: <strong>{{ macroSum() }} %</strong>@if (s.err('macros')) { · {{ s.err('macros') }} }</p>
 
           <h3 class="m-0 t-sm">Resumen de adecuación</h3>
-          <table class="mini">
+          <table class="mini adq-t">
             <caption class="visually-hidden">Meta contra suma de equivalentes</caption>
-            <thead><tr><th scope="col"></th><th scope="col" class="small muted num">kcal</th><th scope="col" class="small muted num">PRO</th><th scope="col" class="small muted num">LIP</th><th scope="col" class="small muted num">HCO</th></tr></thead>
+            <colgroup><col class="c-name" /><col /><col /><col class="c-in" /></colgroup>
+            <thead><tr><th scope="col" class="small muted"><span class="visually-hidden">Nutrimento</span></th><th scope="col" class="small muted">Meta</th><th scope="col" class="small muted">Suma</th><th scope="col" class="small muted">Adecuación</th></tr></thead>
             <tbody>
-              <tr><th scope="row">Meta</th><td class="num">{{ d.target.kcal }}</td><td class="num">{{ d.target.protein_g }} g</td><td class="num">{{ d.target.lipids_g }} g</td><td class="num">{{ d.target.carbs_g }} g</td></tr>
-              <tr><th scope="row">Suma</th><td class="num">{{ d.totals.kcal }}</td><td class="num">{{ d.totals.protein_g }} g</td><td class="num">{{ d.totals.lipids_g }} g</td><td class="num">{{ d.totals.carbs_g }} g</td></tr>
-              <tr><th scope="row">%</th>
-                @for (c of adq(); track c.k) { <td class="num"><b>@if (c.ok) { <app-icon name="check" [size]="14" /><span class="visually-hidden">Dentro del margen: </span> } @else { <app-icon name="alert" [size]="14" /><span class="visually-hidden">Fuera del margen: </span> }{{ c.pct }} %</b></td> }
-              </tr>
+              @for (r of adq(); track r.k) {
+                <tr><th scope="row">{{ r.label }}</th><td>{{ r.target }}{{ r.unit }}</td><td>{{ r.total }}{{ r.unit }}</td>
+                  <td><span class="pct">@if (r.ok) { <app-icon name="check" [size]="14" /><span class="visually-hidden">Dentro del margen: </span> } @else { <app-icon name="alert" [size]="14" /><span class="visually-hidden">Fuera del margen: </span> }{{ r.pct }} %</span></td></tr>
+              }
             </tbody>
           </table>
           <p class="small" [class.error]="absPct() > 5"><strong>Diferencia:</strong> {{ d.diff_kcal }} kcal ({{ d.diff_pct }} %)@if (absPct() <= 5) { · dentro de ±5 % } @else { · fuera de ±5 % }</p>
 
           <div class="row no-print">
-            <button tuiButton type="button" size="m" appearance="secondary" [disabled]="!hasFixed()" (click)="s.resetEq()"><app-icon name="zap" [size]="18" /> Automático</button>
             <button tuiButton type="button" size="m" appearance="secondary" (click)="clear()"><app-icon name="trash" [size]="18" /> Limpiar</button>
             <button type="button" class="icon-btn" aria-label="Configuración del Dietocálculo" title="Configuración" (click)="cfgOpen.set(true)"><app-icon name="sliders" [size]="20" /></button>
           </div>
@@ -150,13 +158,12 @@ export class DcDieto {
   protected readonly num = numVal;
   protected readonly opt = optVal;
 
-  protected readonly hasFixed = computed(() => Object.keys(this.s.inp().equivalents ?? {}).length > 0);
   protected readonly absPct = computed(() => Math.abs(this.s.r().dietosintetico.diff_pct));
   protected readonly kcalPct = computed(() => { const d = this.s.r().dietosintetico; return d.target.kcal > 0 ? Math.round((d.totals.kcal / d.target.kcal) * 100) : 0; });
   protected readonly adq = computed(() => {
     const d = this.s.r().dietosintetico;
-    return ([['kcal', d.totals.kcal, d.target.kcal], ['p', d.totals.protein_g, d.target.protein_g], ['l', d.totals.lipids_g, d.target.lipids_g], ['c', d.totals.carbs_g, d.target.carbs_g]] as [string, number, number][])
-      .map(([k, a, b]) => { const pct = this.pct(a, b); return { k, pct, ok: pct >= 95 && pct <= 105 }; });
+    return ([['kcal', 'kcal', '', d.totals.kcal, d.target.kcal], ['p', 'PRO', ' g', d.totals.protein_g, d.target.protein_g], ['l', 'LIP', ' g', d.totals.lipids_g, d.target.lipids_g], ['c', 'HCO', ' g', d.totals.carbs_g, d.target.carbs_g]] as [string, string, string, number, number][])
+      .map(([k, label, unit, total, target]) => { const pct = this.pct(total, target); return { k, label, unit, total, target, pct, ok: pct >= 95 && pct <= 105 }; });
   });
   protected readonly macroSum = computed(() => { const m = this.s.inp().macros; return Math.round((m.carbs_pct + m.lipids_pct + m.protein_pct) * 10) / 10; });
 
@@ -176,7 +183,7 @@ export class DcDieto {
     this.s.patch({ macros: { carbs_pct: m.carbs_pct || this.s.r().macros.carbs_pct, lipids_pct: m.lipids_pct || this.s.r().macros.lipids_pct, protein_pct: m.protein_pct || this.s.r().macros.protein_pct, [k]: numVal(e) } });
   }
   protected async clear(): Promise<void> {
-    if (!(await this.confirm.ask({ title: 'Limpiar el cuadro', message: 'Todos los equivalentes quedan en 0. Puedes volver al cálculo automático con «Automático».', confirmLabel: 'Limpiar', tone: 'danger' }))) return;
+    if (!(await this.confirm.ask({ title: 'Limpiar el cuadro', message: 'Todos los equivalentes quedan en 0.', confirmLabel: 'Limpiar', tone: 'danger' }))) return;
     this.s.clearEq();
   }
 
