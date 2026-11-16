@@ -1,4 +1,5 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
+import { ApiError } from '../../core/api/api-client';
 import { DbService } from '../../core/data/db.service';
 import { ConflictError, PlansService, newSlot } from '../../core/services/plans.service';
 import { ToastService } from '../../core/services/ui.services';
@@ -16,6 +17,9 @@ interface Snapshot {
 const PENDING_KEY = (id: string): string => `nutri-plan-pending-${id}`;
 const MAX_UNDO = 40;
 const DEBOUNCE_MS = 1200;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** Reintentos automáticos ante fallos del servidor o de la red (502, 503, 504): espera creciente. */
+const RETRY_MS = [4000, 10000, 20000];
 
 /**
  * Estado del editor de un plan (§9). Copia de trabajo local con:
@@ -37,6 +41,9 @@ export class PlanEditorStore {
   readonly lastSavedAt = signal<Date | null>(null);
   readonly remote = signal<MealPlan | null>(null);
   readonly recovered = signal(false);
+  /** Motivo del último fallo al guardar, en palabras de la persona (vacío si no hay). */
+  readonly saveError = signal('');
+  private retries = 0;
 
   private baseRevision = 0;
   private undo: Snapshot[] = [];
@@ -177,6 +184,32 @@ export class PlanEditorStore {
     }
   }
 
+  /** Platillos del plan cuyo id no es UUID (restos de la demostración): el servidor no puede guardarlos. */
+  readonly invalidItems = computed(() => {
+    if (!this.plans.apiMode) return [] as { id: string; name: string }[];
+    const out: { id: string; name: string }[] = [];
+    for (const d of this.days()) for (const sl of d.slots) for (const it of sl.items) if (!UUID_RE.test(it.dishId)) out.push({ id: it.id, name: this.data.dish(it.dishId)?.name ?? 'Platillo de ejemplo' });
+    return out;
+  });
+
+  /** Quita del plan los platillos que el servidor no reconoce y vuelve a guardar. */
+  removeInvalidItems(): void {
+    const bad = new Set(this.invalidItems().map((x) => x.id));
+    if (!bad.size) return;
+    this.mutate((draft) => { for (const d of draft.days) for (const sl of d.slots) sl.items = sl.items.filter((it) => !bad.has(it.id)); });
+    this.saveError.set('');
+    this.retries = 0;
+    void this.flush();
+  }
+
+  private describe(e: unknown): string {
+    if (e instanceof ApiError) {
+      const fields = Object.values(e.fields ?? {});
+      return fields.length ? `${e.message} ${fields.slice(0, 2).join(' · ')}` : e.message;
+    }
+    return e instanceof Error ? e.message : 'No se pudo guardar.';
+  }
+
   /** Guarda ahora. Devuelve true si el estado quedó persistido. */
   flush(): Promise<boolean> {
     clearTimeout(this.timer);
@@ -184,6 +217,12 @@ export class PlanEditorStore {
     if (!snap || this.saving) return Promise.resolve(this.saveState() === 'saved' || this.saveState() === 'idle');
     if (!this.data.isOnline()) {
       this.saveState.set('offline');
+      return Promise.resolve(false);
+    }
+    const bad = this.invalidItems();
+    if (bad.length) {
+      this.saveError.set(`${bad.length === 1 ? 'Un platillo' : bad.length + ' platillos'} del plan (${[...new Set(bad.map((b) => b.name))].slice(0, 3).join(', ')}) no existe${bad.length === 1 ? '' : 'n'} en el servidor: son de demostración. Quítalos para poder guardar.`);
+      this.saveState.set('error');
       return Promise.resolve(false);
     }
     this.saving = true;
@@ -194,6 +233,8 @@ export class PlanEditorStore {
         next: (saved) => {
           this.saving = false;
           this.baseRevision = saved.revision;
+          this.saveError.set('');
+          this.retries = 0;
           this.meta.set({ id: saved.id, patientId: saved.patientId, status: saved.status, publications: saved.publications, history: saved.history });
           this.lastSavedAt.set(new Date());
           // Si llegaron cambios mientras se guardaba, se vuelve a programar.
@@ -216,6 +257,10 @@ export class PlanEditorStore {
             this.saveState.set('conflict');
           } else {
             this.saveState.set(this.data.isOnline() ? 'error' : 'offline');
+            this.saveError.set(this.data.isOnline() ? this.describe(e) : '');
+            // Fallo del servidor o de la red: se reintenta solo unas veces; un error de validación (422) no se repite.
+            const transient = e instanceof ApiError && (e.status === 0 || e.status === 502 || e.status === 503 || e.status === 504);
+            if (transient && this.retries < RETRY_MS.length) this.schedule(RETRY_MS[this.retries++]);
           }
           resolve(false);
         },
@@ -224,6 +269,7 @@ export class PlanEditorStore {
   }
 
   retry(): void {
+    this.retries = 0;
     void this.flush();
   }
 
