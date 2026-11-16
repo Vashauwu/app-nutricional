@@ -8,9 +8,12 @@ import { isApiMode } from '../api/api-client';
 
 const KEY = 'nutri-demo-db';
 
-/** En modo API se conserva el catálogo y los platillos de ejemplo, pero ningún paciente simulado. */
-function withoutDemoPatients(db: Db): Db {
-  return { ...db, patients: [], plans: [], tracking: [], consentAcceptances: [], templates: db.templates.filter((t) => t.scope === 'global'), sessions: [], audit: [] };
+/**
+ * En modo API se conserva el catálogo de ejemplo, pero ningún paciente simulado ni platillo de demostración:
+ * sus ids no son UUID y un plan que los incluya es rechazado por el servidor (422 al guardar).
+ */
+function withoutDemoData(db: Db): Db {
+  return { ...db, dishes: [], patients: [], plans: [], tracking: [], consentAcceptances: [], templates: db.templates.filter((t) => t.scope === 'global'), sessions: [], audit: [] };
 }
 
 /**
@@ -66,7 +69,7 @@ export class DbService {
   private load(): Db {
     // Modo API: los datos clínicos viven en el servidor. Nunca se leen ni se guardan en el navegador (§4.2).
     if (isApiMode()) {
-      const d = withoutDemoPatients(buildSeed());
+      const d = withoutDemoData(buildSeed());
       // Mientras llega la configuración real del servidor no se muestran los datos de la demostración (marca, contacto, reglas):
       // los mismos valores neutros que el servidor usa por omisión.
       d.settings.brand = { businessName: 'Nutrición', tagline: '', primary: '#4E344C', secondary: '#DDD6F2', phone: '', email: '', address: '', credentials: '', licenseNumber: '' };
