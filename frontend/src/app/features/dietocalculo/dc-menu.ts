@@ -45,6 +45,8 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
     .list-pick { display: grid; gap: var(--space-2); max-block-size: 22rem; overflow: auto; margin: 0; padding: 0; list-style: none; }
     .list-pick button { inline-size: 100%; display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-block-size: var(--tap); padding: var(--space-2) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); color: inherit; font: inherit; text-align: start; cursor: pointer; }
     .list-pick button:hover { border-color: var(--brand-ink); }
+    .ph { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+    .ph-t { display: inline-flex; align-items: center; gap: var(--space-2); }
     .leg { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
     .dc-cap { display: flex; align-items: center; gap: .375rem; }
   `,
@@ -93,16 +95,18 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
       </section>
 
       <aside class="stack" aria-label="Resumen nutrimental">
-        <div class="dc-seg no-print" role="radiogroup" aria-label="Vista del resumen">
+        <div class="dc-seg fill no-print" role="radiogroup" aria-label="Vista del resumen">
           <button type="button" role="radio" [attr.aria-checked]="view() === 'nutr'" (click)="view.set('nutr')"><app-icon name="activity" [size]="16" /> Nutrimentos</button>
           <button type="button" role="radio" [attr.aria-checked]="view() === 'eq'" (click)="view.set('eq')"><app-icon name="pie" [size]="16" /> Equivalentes</button>
         </div>
-        <div class="dc-seg no-print" role="radiogroup" aria-label="Alcance">
-          <button type="button" role="radio" [attr.aria-checked]="scope() === 'slot'" (click)="scope.set('slot')">{{ cur().name }}</button>
-          <button type="button" role="radio" [attr.aria-checked]="scope() === 'total'" (click)="scope.set('total')">Total</button>
-        </div>
         @if (view() === 'nutr') {
-          <section class="panel stack" aria-label="Nutrimentos">
+          <section class="panel stack" aria-labelledby="h-nut">
+            <div class="ph"><h2 id="h-nut" class="m-0 u-h2-ui ph-t"><app-icon name="activity" [size]="20" /> Nutrimentos</h2>
+              <div class="dc-seg sm no-print" role="radiogroup" aria-label="Alcance">
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'slot'" (click)="scope.set('slot')">{{ cur().name }}</button>
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'total'" (click)="scope.set('total')">Total</button>
+              </div>
+            </div>
             <div class="dc-card">
               <div class="row row--between"><span class="dc-cap">Energía</span><b class="dc-num">{{ nut().kcal }} <small class="dc-sub">kcal</small></b></div>
               <div class="dc-bar" role="img" [attr.aria-label]="'Proteína ' + share(nut().p * 4) + ' %, lípidos ' + share(nut().l * 9) + ' %, hidratos ' + share(nut().c * 4) + ' %'"><i class="b-p" [style.inline-size.%]="share(nut().p * 4)"></i><i class="b-l" [style.inline-size.%]="share(nut().l * 9)"></i><i class="b-c" [style.inline-size.%]="share(nut().c * 4)"></i></div>
@@ -137,7 +141,13 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
             <p class="dc-sub m-0">Vitaminas, minerales e índice glucémico no están en el catálogo SMAE de ejemplo; aquí se muestran energía, macros y fibra.</p>
           </section>
         } @else {
-          <section class="panel stack" aria-label="Equivalentes servidos contra la meta">
+          <section class="panel stack" aria-labelledby="h-eqv">
+            <div class="ph"><h2 id="h-eqv" class="m-0 u-h2-ui ph-t"><app-icon name="pie" [size]="20" /> Equivalentes</h2>
+              <div class="dc-seg sm no-print" role="radiogroup" aria-label="Alcance">
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'slot'" (click)="scope.set('slot')">{{ cur().name }}</button>
+                <button type="button" role="radio" [attr.aria-checked]="scope() === 'total'" (click)="scope.set('total')">Total</button>
+              </div>
+            </div>
             @let t = eqTotal();
             <div class="dc-card">
               <div class="row row--between"><span class="dc-cap">Avance</span><b class="dc-num">{{ t.have }}<small class="dc-sub"> / {{ t.want }} eq</small></b></div>
@@ -147,7 +157,7 @@ const CATS: Record<string, string[]> = { desayuno: ['Desayuno'], colaci: ['Colac
             <h3 class="dc-cap"><app-icon name="layers" [size]="14" /> Grupos de alimentos</h3>
             <ul class="dc-rows">
               @for (p of eqProgress(); track p.code) {
-                <li><span [class.dc-sub]="p.state === 'none'"><b>{{ p.name }}</b></span>
+                <li><span class="mlab" [class.dc-sub]="p.state === 'none'"><i class="sdot" [class]="'sdot s-' + p.state"></i>{{ p.name }}</span>
                   <span class="val">
                     @if (p.state === 'over') { <span class="dc-sub">+{{ p.extra }}</span> }
                     <app-badge [tone]="p.tone" [icon]="p.state === 'done' ? 'check' : p.state === 'over' || p.state === 'extra' ? 'alert' : null">{{ p.state === 'extra' ? '+' + p.have + ' eq' : p.have + ' / ' + p.want }}</app-badge>
