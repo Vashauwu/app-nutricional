@@ -7,6 +7,7 @@ import { DbService } from '../../core/data/db.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { PlansService } from '../../core/services/plans.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { BRAND_PALETTES, BrandPalette } from '../../core/data/brand-palettes';
 import { ConfirmService, ToastService, contrastRatio, isHex } from '../../core/services/ui.services';
 import { ClinicalRule, ConsentType } from '../../shared/models/domain';
 import { FieldError, decimalValidator } from '../../shared/components/forms';
@@ -29,6 +30,19 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
   styles: `
     .preview { display: grid; gap: var(--space-3); padding: var(--space-5); border-radius: var(--radius-m); border: 1px solid var(--line); background: var(--nutri-marfil); }
     .pv-logo { inline-size: 3.5rem; block-size: 3.5rem; border-radius: .875rem; display: grid; place-items: center; font-family: var(--nutri-font-display); font-size: 1.75rem; object-fit: cover; }
+    .palette { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+    .palette legend { padding: 0; margin-block-end: var(--space-2); font-weight: 600; }
+    .pal { display: grid; gap: var(--space-3) var(--space-2); grid-template-columns: repeat(auto-fill, minmax(5rem, 1fr)); }
+    .sw { position: relative; display: grid; justify-items: center; gap: .375rem; cursor: pointer; text-align: center; }
+    .sw input { position: absolute; opacity: 0; inline-size: 1px; block-size: 1px; }
+    .sw .dot { display: grid; place-items: center; inline-size: 3rem; block-size: 3rem; border-radius: 50%; color: #fff; border: 2px solid var(--surface);
+      background: linear-gradient(135deg, var(--sw) 0 62%, var(--sw2) 62%); box-shadow: 0 0 0 1px var(--line); }
+    .sw .dot app-icon { opacity: 0; transition: opacity .12s; }
+    .sw input:checked + .dot { box-shadow: 0 0 0 3px var(--sw); }
+    .sw input:checked + .dot app-icon { opacity: 1; }
+    .sw input:focus-visible + .dot { outline: 3px solid var(--nutri-texto); outline-offset: 3px; }
+    .sw:hover .dot { box-shadow: 0 0 0 3px color-mix(in srgb, var(--sw) 55%, transparent); }
+    .sw .nm { font-size: .875rem; }
     .color { display: flex; gap: var(--space-2); align-items: center; } .color input[type='color'] { inline-size: 3rem; block-size: var(--tap); padding: 0; border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); }
     .layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 3fr) minmax(16rem, 2fr); align-items: start; } @media (max-width: 62rem) { .layout { grid-template-columns: minmax(0, 1fr); } }
     textarea.doc { min-block-size: 12rem; }
@@ -68,10 +82,20 @@ const ZONES = ['America/Mexico_City', 'America/Cancun', 'America/Monterrey', 'Am
               <div class="form-grid">
                 <div class="field"><label for="b-n">Nombre comercial</label><input id="b-n" class="input" formControlName="businessName" /><app-field-error [control]="brandForm.controls.businessName" /></div>
                 <div class="field"><label for="b-t">Lema</label><input id="b-t" class="input" formControlName="tagline" /></div>
-                <div class="field"><label for="b-p">Color principal</label><div class="color"><input type="color" aria-label="Elegir color principal" [value]="brandForm.controls.primary.value" (input)="brandForm.controls.primary.setValue($any($event.target).value)" /><input id="b-p" class="input" formControlName="primary" /></div>
-                  <app-field-error [control]="brandForm.controls.primary" [messages]="{ pattern: 'Usa un color hexadecimal, p. ej. #4E344C.' }" />
-                  @if (primaryContrast() < 4.5) { <p class="error" role="alert">Contraste bajo ({{ primaryContrast().toFixed(1) }}:1). Para botones y texto se requiere al menos 4.5:1; no se aplicará.</p> } @else { <span class="hint">Contraste {{ primaryContrast().toFixed(1) }}:1 · cumple WCAG AA.</span> }</div>
-                <div class="field"><label for="b-s">Color secundario (superficies)</label><div class="color"><input type="color" aria-label="Elegir color secundario" [value]="brandForm.controls.secondary.value" (input)="brandForm.controls.secondary.setValue($any($event.target).value)" /><input id="b-s" class="input" formControlName="secondary" /></div><app-field-error [control]="brandForm.controls.secondary" [messages]="{ pattern: 'Usa un color hexadecimal.' }" /></div>
+                <fieldset class="field palette u-col-full">
+                  <legend>Color de la marca</legend>
+                  <div class="pal" role="radiogroup" aria-label="Color de la marca">
+                    @for (p of palettes(); track p.id) {
+                      <label class="sw">
+                        <input type="radio" name="brand-palette" [value]="p.id" [checked]="selectedId() === p.id" (change)="pick(p)" />
+                        <span class="dot" [style.--sw]="p.primary" [style.--sw2]="p.secondary"><app-icon name="check" [size]="18" /></span>
+                        <span class="nm">{{ p.name }}</span>
+                      </label>
+                    }
+                  </div>
+                  @if (primaryContrast() < 4.5) { <p class="error" role="alert">Este color no tiene contraste suficiente ({{ primaryContrast().toFixed(1) }}:1); no se aplicará.</p> }
+                  @else { <span class="hint">{{ selectedName() }} · contraste {{ primaryContrast().toFixed(1) }}:1 · cumple WCAG AA. Se usa en botones, foco y el menú activo; el tono suave se usa en selecciones.</span> }
+                </fieldset>
                 <div class="field"><label for="b-ph">Teléfono</label><input id="b-ph" class="input" formControlName="phone" /></div>
                 <div class="field"><label for="b-em">Correo de contacto</label><input id="b-em" class="input" type="email" formControlName="email" /><app-field-error [control]="brandForm.controls.email" /></div>
               </div>
@@ -250,6 +274,8 @@ export class SettingsPage {
     const s = this.settings.get();
     this.brandForm.reset({ businessName: s.brand.businessName, tagline: s.brand.tagline, primary: s.brand.primary, secondary: s.brand.secondary, phone: s.brand.phone, email: s.brand.email, address: s.brand.address, credentials: s.brand.credentials, licenseNumber: s.brand.licenseNumber });
     this.primary.set(s.brand.primary);
+    this.secondary.set(s.brand.secondary);
+    this.saved.set({ primary: s.brand.primary, secondary: s.brand.secondary });
     this.logo.set(s.brand.logoDataUrl);
     this.photo.set(s.brand.photoDataUrl);
     this.regionForm.reset({ timezone: s.region.timezone, weekStart: s.region.weekStart });
@@ -270,6 +296,18 @@ export class SettingsPage {
     credentials: [this.s0.brand.credentials], licenseNumber: [this.s0.brand.licenseNumber],
   });
   private readonly primary = signal(this.s0.brand.primary);
+  private readonly secondary = signal(this.s0.brand.secondary);
+  /** Lo guardado: si no coincide con el paquete (marca anterior con color libre), se ofrece como «Actual» para no perderlo. */
+  private readonly saved = signal({ primary: this.s0.brand.primary, secondary: this.s0.brand.secondary });
+  protected readonly palettes = computed<BrandPalette[]>(() => {
+    const sv = this.saved();
+    const known = BRAND_PALETTES.some((p) => p.primary.toLowerCase() === sv.primary.toLowerCase());
+    const legacy: BrandPalette[] = !known && isHex(sv.primary) && isHex(sv.secondary) ? [{ id: 'actual', name: 'Actual', primary: sv.primary, secondary: sv.secondary }] : [];
+    return [...BRAND_PALETTES, ...legacy];
+  });
+  protected readonly selectedId = computed(() => this.palettes().find((p) => p.primary.toLowerCase() === this.primary().toLowerCase())?.id ?? '');
+  protected readonly selectedName = computed(() => this.palettes().find((p) => p.id === this.selectedId())?.name ?? '');
+  protected pick(p: BrandPalette): void { this.brandForm.patchValue({ primary: p.primary, secondary: p.secondary }); this.brandForm.markAsDirty(); }
   protected readonly logo = signal<string | undefined>(this.s0.brand.logoDataUrl);
   protected readonly photo = signal<string | undefined>(this.s0.brand.photoDataUrl);
   protected readonly imgError = signal('');
@@ -321,6 +359,7 @@ export class SettingsPage {
 
   constructor() {
     this.brandForm.controls.primary.valueChanges.subscribe((v) => this.primary.set(v));
+    this.brandForm.controls.secondary.valueChanges.subscribe((v) => this.secondary.set(v));
     // Modo API: la configuración vive en el servidor; los formularios se rellenan al llegar.
     this.settings.load().subscribe({ next: () => this.applyStore(), error: () => undefined });
   }

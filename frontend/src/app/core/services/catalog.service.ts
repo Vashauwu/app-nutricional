@@ -12,6 +12,8 @@ export interface FoodQuery {
   search: string;
   groupId: string;
   source: 'all' | 'smae' | 'custom';
+  /** Código de subgrupo (opcional): solo alimentos con esa equivalencia. */
+  subgroup?: string;
   limit: number;
 }
 
@@ -66,6 +68,7 @@ export class CatalogService {
         if (q.source === 'smae' && !f.official) return false;
         if (q.source === 'custom' && f.official) return false;
         if (subCodes && !(f.equivalence && subCodes.has(f.equivalence.subgroupCode))) return false;
+        if (q.subgroup && f.equivalence?.subgroupCode !== q.subgroup) return false;
         return !term || normalizeText(`${f.name} ${f.tags.join(' ')}`).includes(term);
       });
       return { items: matches.slice(0, q.limit), total: matches.length };

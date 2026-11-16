@@ -591,6 +591,13 @@ p {
 }
 
 // ---------- Listas, estado vacío, esqueleto ----------
+// El host debe ocupar todo el ancho: dentro de una lista flex se encogía y el estado vacío quedaba descentrado.
+app-empty {
+  display: block;
+  flex: 1 1 100%;
+  inline-size: 100%;
+}
+
 .empty {
   display: grid;
   justify-items: center;

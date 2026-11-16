@@ -12,7 +12,6 @@ import { CustomFood } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, SearchBox, Skeleton } from '../../shared/components/ui';
 import { FieldError, decimalValidator, positiveDecimalValidator } from '../../shared/components/forms';
 import { PageHeader } from '../../shared/components/page-header';
-import { Combobox, ComboOption } from '../../shared/components/combobox';
 import { Icon } from '../../shared/components/icon';
 import { Modal } from '../../shared/components/modal';
 import { Macros } from '../../shared/components/nutrition-bits';
@@ -25,15 +24,21 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
 
 @Component({
   selector: 'app-catalog',
-  imports: [Combobox, ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Modal, FieldError, Macros, PageHeader],
+  imports: [ReactiveFormsModule, TuiButton, Icon, Badge, EmptyState, LoadError, SearchBox, Skeleton, Modal, FieldError, Macros, PageHeader],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .gchips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
     .search-row { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding: var(--space-4) var(--space-5); }
     .search-row app-search { flex: 1 1 18rem; min-inline-size: 0; }
     .search-row .field { flex: 0 1 15rem; }
-    .gchips { display: flex; gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; padding: 0 var(--space-5) var(--space-4); }
-    .gchips .chip-toggle { flex: none; }
+    .gchips { display: flex; flex-wrap: nowrap; gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; padding: 0 var(--space-5) var(--space-4); scroll-snap-type: x proximity; scroll-padding-inline: var(--space-5);
+      mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
+    .gchips .chip-toggle { flex: none; scroll-snap-align: start; }
+    .gchips--sub { padding-block-start: 0; margin-block-start: calc(-1 * var(--space-2)); }
+    .gchips--sub { mask-image: none; flex-wrap: wrap; }
+    .cnt { margin-inline-start: .375rem; font-size: .8125rem; font-variant-numeric: tabular-nums; opacity: .8; }
+    .code { font-size: .75rem; font-weight: 600; opacity: .8; }
+    .chip-toggle--s { min-block-size: 2.25rem; }
     .decide { display: inline-flex; gap: var(--space-2); }
     .decide label { display: inline-flex; align-items: center; gap: .25rem; min-block-size: 2.25rem; padding: 0 .5rem; cursor: pointer; }
   `,
@@ -52,24 +57,29 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
           <section class="panel panel--flush" aria-label="Alimentos del catálogo">
             <div class="search-row">
               <app-search label="Buscar alimentos" placeholder="Buscar alimento o etiqueta" [value]="search()" (valueChange)="search.set($event); limit.set(step)" />
-              <app-combobox label="Origen" [hideLabel]="true" [allowAll]="true" allLabel="Oficiales y personalizados" placeholder="Oficiales y personalizados" [options]="sourceOptions" [value]="source() === 'all' ? '' : source()" (valueChange)="source.set($any($event) || 'all'); limit.set(step)" />
             </div>
             <div class="gchips" role="group" aria-label="Grupo de alimentos">
-              <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === ''" (click)="groupId.set(''); limit.set(step)">Todos</button>
-              @for (g of groups(); track g.id) { <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === g.id" (click)="groupId.set(g.id); limit.set(step)">{{ g.name }}</button> }
+              <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === ''" (click)="pickGroup('')">Todos <span class="cnt">{{ totalCount() }}</span></button>
+              @for (g of groups(); track g.id) { <button type="button" class="chip-toggle" [attr.aria-pressed]="groupId() === g.id" [attr.title]="g.name" (click)="pickGroup(g.id)">{{ short(g.name) }} <span class="cnt">{{ groupCount(g.id) }}</span></button> }
             </div>
+            @if (groupId() && groupSubs().length > 1) {
+              <div class="gchips gchips--sub" role="group" [attr.aria-label]="'Subgrupos de ' + groupLabel()">
+                <button type="button" class="chip-toggle chip-toggle--s" [attr.aria-pressed]="subgroup() === ''" (click)="pickSub('')">Todos los subgrupos</button>
+                @for (s of groupSubs(); track s.code) { <button type="button" class="chip-toggle chip-toggle--s" [attr.aria-pressed]="subgroup() === s.code" (click)="pickSub(s.code)"><span class="code">{{ s.code }}</span> {{ s.name }} <span class="cnt">{{ subCount(s.code) }}</span></button> }
+              </div>
+            }
             @if (foods(); as r) {
               @if (r.state === 'loading' && !prevFoods()) { <app-skeleton [count]="6" /> }
               @else if (r.state === 'error') { <app-load-error [message]="r.message" (retry)="retry.set(retry() + 1)" /> }
               @else if (view(); as v) {
                 @if (v.items.length) {
-                  <div class="table-wrap"><table class="table"><caption class="visually-hidden">Alimentos</caption><thead><tr><th scope="col">Alimento</th><th scope="col">Grupo / subgrupo</th><th scope="col" class="num">1 equivalente =</th><th scope="col" class="num">Por 100 g</th><th scope="col">Porciones caseras</th><th scope="col">Origen</th></tr></thead><tbody>
+                  <div class="table-wrap"><table class="table"><caption class="visually-hidden">Alimentos</caption><thead><tr><th scope="col">Alimento</th><th scope="col">Grupo / subgrupo</th><th scope="col" class="num">1 equivalente =</th><th scope="col" class="num">Por 100 g</th><th scope="col">Porciones caseras</th></tr></thead><tbody>
                     @for (f of v.items; track f.ref.id) {
                       <tr><td><strong>{{ f.name }}</strong></td><td>@if (f.equivalence) { {{ groupName(f.equivalence.subgroupCode) }} · <span class="small muted">{{ f.equivalence.subgroupCode }}</span> } @else { <span class="muted small">Sin equivalencia SMAE</span> }</td>
                         <td class="num">{{ f.equivalence ? c(f.equivalence.referenceGrams, 0) + ' g' : '—' }}</td>
                         <td class="num"><app-macros [n]="{ energy: f.profile.energy, protein: f.profile.protein, carbs: f.profile.carbs, lipids: f.profile.lipids, fiber: f.profile.fiber }" /></td>
                         <td class="small">@for (p of f.portions; track p.id) { {{ p.name }} ({{ c(p.gramsEquivalent, 0) }} g)@if (!$last) {, } } @empty { — }</td>
-                        <td>@if (f.official) { <app-badge tone="info">Catálogo</app-badge> } @else { <app-badge tone="warn" icon="alert">Personalizado</app-badge> }</td></tr>
+                        </tr>
                     }
                   </tbody></table></div>
                   <p class="small muted p-3-5" aria-live="polite">{{ v.items.length }} de {{ v.total }} alimentos</p>
@@ -192,7 +202,7 @@ export class Catalog {
   private readonly router = inject(Router);
 
   protected readonly tab = signal<Tab>('alimentos');
-  protected readonly tabs: { id: Tab; label: string }[] = [{ id: 'alimentos', label: 'Alimentos' }, { id: 'personalizados', label: 'Personalizados' }, { id: 'ediciones', label: 'Ediciones y recálculo' }];
+  protected readonly tabs: { id: Tab; label: string }[] = [{ id: 'alimentos', label: 'Catálogo SMAE' }, { id: 'personalizados', label: 'Mis alimentos' }, { id: 'ediciones', label: 'Ediciones y recálculo' }];
   protected readonly step = STEP;
   protected readonly source_ = SOURCE_LABEL;
   protected readonly sources = Object.entries(SOURCE_LABEL);
@@ -204,15 +214,34 @@ export class Catalog {
   protected readonly groups = this.data.activeGroups;
   protected readonly subgroups = this.data.activeSubgroups;
   protected readonly search = signal('');
-  protected readonly source = signal<'all' | 'smae' | 'custom'>('all');
-  protected readonly sourceOptions: ComboOption[] = [{ id: 'smae', label: 'Solo catálogo SMAE' }, { id: 'custom', label: 'Solo personalizados' }];
+  /** El catálogo solo lista lo oficial: lo propio vive en «Mis alimentos». */
+  protected readonly source = signal<'all' | 'smae' | 'custom'>('smae');
   protected readonly groupId = signal('');
+  protected readonly subgroup = signal('');
+
+  // ---------- Grupos y subgrupos con conteo ----------
+  private readonly officialFoods = computed(() => this.data.activeFoods().filter((f) => f.official));
+  private readonly countBySub = computed(() => {
+    const m = new Map<string, number>();
+    for (const f of this.officialFoods()) { const c = f.equivalence?.subgroupCode; if (c) m.set(c, (m.get(c) ?? 0) + 1); }
+    return m;
+  });
+  protected readonly totalCount = computed(() => this.officialFoods().length);
+  protected groupSubs = computed(() => this.subgroups().filter((s) => s.groupId === this.groupId()));
+  protected groupLabel = computed(() => this.groups().find((g) => g.id === this.groupId())?.name ?? '');
+  protected subCount = (code: string): number => this.countBySub().get(code) ?? 0;
+  protected groupCount = (gid: string): number => this.subgroups().filter((s) => s.groupId === gid).reduce((n, s) => n + this.subCount(s.code), 0);
+  /** Etiqueta corta de cada grupo para que quepan en una fila; el nombre completo va en `title`. */
+  private static readonly SHORT: Record<string, string> = { 'Cereales y tubérculos': 'Cereales', 'Alimentos de origen animal': 'Origen animal', 'Aceites y grasas': 'Grasas', 'Libres de energía': 'Libres' };
+  protected short = (name: string): string => Catalog.SHORT[name] ?? name;
+  protected pickGroup(id: string): void { this.groupId.set(id); this.subgroup.set(''); this.limit.set(this.step); }
+  protected pickSub(code: string): void { this.subgroup.set(code); this.limit.set(this.step); }
   protected readonly limit = signal(STEP);
   protected readonly retry = signal(0);
   protected readonly editions = computed(() => (this.data.version(), this.catalog.editions()));
   protected readonly customs = computed(() => this.data.db().customFoods);
 
-  private readonly query = computed(() => ({ q: { search: this.search(), groupId: this.groupId(), source: this.source(), limit: this.limit() }, v: this.data.version(), r: this.retry() }));
+  private readonly query = computed(() => ({ q: { search: this.search(), groupId: this.groupId(), source: this.source(), subgroup: this.subgroup() || undefined, limit: this.limit() }, v: this.data.version(), r: this.retry() }));
   protected readonly foods = toSignal(toObservable(this.query).pipe(debounceTime(200), switchMap(({ q }) => loadable(this.catalog.foods(q)))), { initialValue: { state: 'loading' } as Loadable<{ items: FoodView[]; total: number }> });
   private prev: { items: FoodView[]; total: number } | null = null;
   protected readonly prevFoods = () => this.prev;
