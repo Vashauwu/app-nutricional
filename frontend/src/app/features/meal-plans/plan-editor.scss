@@ -314,7 +314,18 @@
 }
 
 .lib-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.lib.closed {
   display: none;
+}
+
+// Biblioteca oculta: el calendario y el resumen aprovechan todo el ancho.
+.ed.lib-off {
+  grid-template-columns: minmax(0, 1fr) 20rem;
 }
 
 @media (max-width: 90rem) {
@@ -326,6 +337,15 @@
   // contenedor, así que si el resumen ocupara el ancho completo la biblioteca se encimaba sobre él al desplazarse.
   .lib {
     grid-row: 1 / span 2;
+  }
+
+  .ed.lib-off {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ed.lib-off .cal,
+  .ed.lib-off .sum {
+    grid-column: 1;
   }
 
   .cal,
@@ -354,14 +374,6 @@
   .lib {
     position: static;
     max-block-size: 28rem;
-  }
-
-  .lib.closed {
-    display: none;
-  }
-
-  .lib-toggle {
-    display: inline-flex;
   }
 
   .bar {

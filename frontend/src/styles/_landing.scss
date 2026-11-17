@@ -1,0 +1,117 @@
+// Página pública (landing). Prefijo lp-. Solo usa los tokens del sistema: marfil, ciruela y los pasteles con significado.
+.lp {
+  background: var(--nutri-marfil);
+  color: var(--nutri-texto);
+  min-block-size: 100dvh;
+}
+
+.lp-wrap {
+  inline-size: min(100% - 2rem, var(--page-max));
+  margin-inline: auto;
+}
+
+.lp-sec {
+  padding-block: clamp(3.5rem, 8vw, 6.5rem);
+  scroll-margin-block-start: 4.5rem;
+}
+
+.lp-sec--soft {
+  background: color-mix(in srgb, var(--brand-secondary, var(--nutri-lavanda)) 28%, var(--nutri-marfil));
+}
+
+.lp-h2 {
+  font-family: var(--nutri-font-ui);
+  font-weight: 600;
+  font-size: clamp(1.625rem, 1.2rem + 1.6vw, 2.5rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--nutri-texto-fuerte);
+  text-wrap: balance;
+  max-inline-size: 22ch;
+}
+
+.lp-lead {
+  font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.1875rem);
+  line-height: 1.6;
+  max-inline-size: 60ch;
+  margin: 0;
+}
+
+.lp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+// Botones de la landing: misma altura táctil y tinta de marca que la aplicación.
+.lp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-block-size: var(--tap, 2.75rem);
+  padding-inline: 1.5rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--brand-ink);
+  background: var(--brand-ink);
+  color: var(--surface, #fff);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+
+  &:hover {
+    background: color-mix(in srgb, var(--brand-ink) 86%, var(--nutri-marfil));
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &--ghost {
+    background: transparent;
+    color: var(--brand-ink);
+
+    &:hover {
+      background: color-mix(in srgb, var(--brand-secondary, var(--nutri-lavanda)) 55%, transparent);
+    }
+  }
+}
+
+.lp a:focus-visible,
+.lp button:focus-visible,
+.lp summary:focus-visible {
+  outline: 3px solid var(--brand-ink);
+  outline-offset: 3px;
+  border-radius: var(--radius-s);
+}
+
+.lp ::selection {
+  background: var(--brand-secondary, var(--nutri-lavanda));
+  color: var(--nutri-texto-fuerte);
+}
+
+.lp-sr {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+// Entrada del hero: el único momento de movimiento de la página.
+@media (prefers-reduced-motion: no-preference) {
+  .lp-rise {
+    animation: lp-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes lp-rise {
+    from {
+      opacity: 0;
+      transform: translateY(1.25rem);
+    }
+  }
+}
