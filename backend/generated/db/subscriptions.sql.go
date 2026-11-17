@@ -21,6 +21,39 @@ func (q *Queries) ActivateUser(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const applySubscription = `-- name: ApplySubscription :exec
+UPDATE subscriptions SET plan = $1, billing_period = $2, status = $3, trial_ends_at = $4, grace_until = $5,
+    current_period_end = $6, cancel_at_period_end = $7, pending_plan = $8, comp_reason = $9, updated_at = now()
+`
+
+type ApplySubscriptionParams struct {
+	Plan              string             `json:"plan"`
+	BillingPeriod     pgtype.Text        `json:"billing_period"`
+	Status            string             `json:"status"`
+	TrialEndsAt       pgtype.Timestamptz `json:"trial_ends_at"`
+	GraceUntil        pgtype.Timestamptz `json:"grace_until"`
+	CurrentPeriodEnd  pgtype.Timestamptz `json:"current_period_end"`
+	CancelAtPeriodEnd bool               `json:"cancel_at_period_end"`
+	PendingPlan       pgtype.Text        `json:"pending_plan"`
+	CompReason        pgtype.Text        `json:"comp_reason"`
+}
+
+// Una fila por consulta (RLS): fija el estado completo de la suscripción.
+func (q *Queries) ApplySubscription(ctx context.Context, arg ApplySubscriptionParams) error {
+	_, err := q.db.Exec(ctx, applySubscription,
+		arg.Plan,
+		arg.BillingPeriod,
+		arg.Status,
+		arg.TrialEndsAt,
+		arg.GraceUntil,
+		arg.CurrentPeriodEnd,
+		arg.CancelAtPeriodEnd,
+		arg.PendingPlan,
+		arg.CompReason,
+	)
+	return err
+}
+
 const countActivePatients = `-- name: CountActivePatients :one
 SELECT count(*)::bigint FROM patients WHERE deleted_at IS NULL AND status <> 'inactive'
 `
@@ -33,7 +66,7 @@ func (q *Queries) CountActivePatients(ctx context.Context) (int64, error) {
 }
 
 const getSubscription = `-- name: GetSubscription :one
-SELECT practice_id, plan, billing_period, status, current_period_end, created_at, updated_at FROM subscriptions
+SELECT practice_id, plan, billing_period, status, current_period_end, created_at, updated_at, trial_ends_at, grace_until, cancel_at_period_end, pending_plan, provider, provider_customer_id, provider_subscription_id, comp_reason FROM subscriptions
 `
 
 func (q *Queries) GetSubscription(ctx context.Context) (Subscription, error) {
@@ -47,6 +80,14 @@ func (q *Queries) GetSubscription(ctx context.Context) (Subscription, error) {
 		&i.CurrentPeriodEnd,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.TrialEndsAt,
+		&i.GraceUntil,
+		&i.CancelAtPeriodEnd,
+		&i.PendingPlan,
+		&i.Provider,
+		&i.ProviderCustomerID,
+		&i.ProviderSubscriptionID,
+		&i.CompReason,
 	)
 	return i, err
 }
@@ -62,16 +103,17 @@ func (q *Queries) PracticeStorageUsed(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
-const setSubscriptionPlan = `-- name: SetSubscriptionPlan :exec
-UPDATE subscriptions SET plan = $1, billing_period = $2, status = 'active', updated_at = now()
+const setSubscriptionProvider = `-- name: SetSubscriptionProvider :exec
+UPDATE subscriptions SET provider = $1, provider_customer_id = $2, provider_subscription_id = $3, updated_at = now()
 `
 
-type SetSubscriptionPlanParams struct {
-	Plan          string      `json:"plan"`
-	BillingPeriod pgtype.Text `json:"billing_period"`
+type SetSubscriptionProviderParams struct {
+	Provider               pgtype.Text `json:"provider"`
+	ProviderCustomerID     pgtype.Text `json:"provider_customer_id"`
+	ProviderSubscriptionID pgtype.Text `json:"provider_subscription_id"`
 }
 
-func (q *Queries) SetSubscriptionPlan(ctx context.Context, arg SetSubscriptionPlanParams) error {
-	_, err := q.db.Exec(ctx, setSubscriptionPlan, arg.Plan, arg.BillingPeriod)
+func (q *Queries) SetSubscriptionProvider(ctx context.Context, arg SetSubscriptionProviderParams) error {
+	_, err := q.db.Exec(ctx, setSubscriptionProvider, arg.Provider, arg.ProviderCustomerID, arg.ProviderSubscriptionID)
 	return err
 }

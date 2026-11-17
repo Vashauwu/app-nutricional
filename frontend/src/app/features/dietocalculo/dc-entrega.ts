@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, inject, input, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { BRAND_PALETTES } from '../../core/data/brand-palettes';
 import { AgendaService } from '../../core/services/agenda.service';
+import { Entitlements } from '../../core/services/entitlements.service';
 import { ToastService } from '../../core/services/ui.services';
 import { Icon } from '../../shared/components/icon';
 import { AppointmentMode } from '../../shared/models/domain';
@@ -27,7 +29,7 @@ const isoDay = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 
 /** Paso final de la consulta: indicaciones, suplementación, documento para el paciente, envío y próxima consulta. */
 @Component({
   selector: 'app-dc-entrega',
-  imports: [TuiButton, Icon, Handout],
+  imports: [RouterLink, TuiButton, Icon, Handout],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     :host { display: grid; gap: var(--space-5); align-content: start; min-inline-size: 0; }
@@ -106,14 +108,17 @@ const isoDay = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 
         <section class="panel stack" aria-labelledby="en-doc">
           <h2 id="en-doc" class="m-0">Documento para el paciente</h2>
           <div class="styles" role="radiogroup" aria-label="Estilo del documento">
-            @for (st of styles; track st.id) { <button type="button" role="radio" [attr.aria-checked]="pref().style === st.id" (click)="setStyle(st.id)"><b>{{ st.name }}</b><small>{{ st.hint }}</small></button> }
+            @for (st of styles; track st.id) { <button type="button" role="radio" [attr.aria-checked]="effStyle() === st.id" [disabled]="styleLocked(st.id)" [attr.aria-disabled]="styleLocked(st.id)" (click)="setStyle(st.id)"><b>{{ st.name }}</b><small>{{ styleLocked(st.id) ? 'Plan Estándar o Pro' : st.hint }}</small></button> }
           </div>
           <div class="field"><span id="acc-l" class="label">Color de acento</span>
             <div class="acc" role="radiogroup" aria-labelledby="acc-l">
-              @for (p of palettes; track p.id) { <button type="button" role="radio" [attr.aria-checked]="pref().accent === p.primary" [attr.aria-label]="p.name" [style.background]="p.primary" (click)="setAccent(p.primary)"></button> }
+              @for (p of palettes; track p.id) { <button type="button" role="radio" [attr.aria-checked]="effAccent() === p.primary" [attr.aria-label]="accentLocked(p.primary) ? p.name + ' (plan Estándar o Pro)' : p.name" [disabled]="accentLocked(p.primary)" [style.background]="p.primary" (click)="setAccent(p.primary)"></button> }
             </div>
           </div>
-          <div class="sheet" tabindex="0" role="region" aria-label="Vista previa del documento del paciente"><app-handout [res]="s.r()" [inp]="s.inp()" [brand]="brand()" [profile]="profile()" [patientName]="patientName()" [style]="pref().style" [accent]="pref().accent" /></div>
+          <div class="sheet" tabindex="0" role="region" aria-label="Vista previa del documento del paciente"><app-handout [res]="s.r()" [inp]="s.inp()" [brand]="brand()" [profile]="profile()" [patientName]="patientName()" [style]="effStyle()" [accent]="effAccent()" [platformMark]="perks().platformMark" /></div>
+          @if (!perks().allHandoutStyles || perks().platformMark) {
+            <p class="dc-sub m-0">Con el plan Gratuito el documento lleva la marca de la plataforma y el estilo clásico. <a routerLink="/facturacion">Ver planes</a></p>
+          }
           <div class="row">
             <button tuiButton type="button" size="m" (click)="pdf()"><app-icon name="download" [size]="18" /> Descargar PDF</button>
             <a tuiButton size="m" appearance="secondary" [class.disabled]="!waLink()" [attr.href]="waLink()" target="_blank" rel="noopener noreferrer"><app-icon name="message" [size]="18" /> WhatsApp</a>
@@ -132,6 +137,8 @@ export class DcEntrega {
   private readonly agenda = inject(AgendaService);
   private readonly toast = inject(ToastService);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly ent = inject(Entitlements);
+  protected readonly perks = this.ent.perks;
 
   readonly patientId = input('');
   readonly patientName = input('');
@@ -142,6 +149,12 @@ export class DcEntrega {
   protected readonly slotTimes = SLOTS;
   protected readonly today = isoDay(new Date());
   protected readonly pref = signal<Pref>(loadPref());
+  // Lo guardado por la persona se respeta, pero solo se aplica lo que su plan permite.
+  protected readonly effStyle = computed<HandoutStyle>(() => (this.perks().allHandoutStyles ? this.pref().style : 'clasico'));
+  protected readonly effAccent = computed(() => (this.perks().customAccent ? this.pref().accent : BRAND_PALETTES[0].primary));
+  protected styleLocked = (id: HandoutStyle): boolean => !this.perks().allHandoutStyles && id !== 'clasico';
+  protected accentLocked = (primary: string): boolean => !this.perks().customAccent && primary !== BRAND_PALETTES[0].primary;
+  constructor() { this.ent.load(); }
   protected readonly weeks = signal(4);
   protected readonly date = signal(this.dateIn(4));
   protected readonly time = signal('');

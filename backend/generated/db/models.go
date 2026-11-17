@@ -642,13 +642,21 @@ type SmaeRecalcDecision struct {
 }
 
 type Subscription struct {
-	PracticeID       uuid.UUID          `json:"practice_id"`
-	Plan             string             `json:"plan"`
-	BillingPeriod    pgtype.Text        `json:"billing_period"`
-	Status           string             `json:"status"`
-	CurrentPeriodEnd pgtype.Timestamptz `json:"current_period_end"`
-	CreatedAt        pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	PracticeID             uuid.UUID          `json:"practice_id"`
+	Plan                   string             `json:"plan"`
+	BillingPeriod          pgtype.Text        `json:"billing_period"`
+	Status                 string             `json:"status"`
+	CurrentPeriodEnd       pgtype.Timestamptz `json:"current_period_end"`
+	CreatedAt              pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt              pgtype.Timestamptz `json:"updated_at"`
+	TrialEndsAt            pgtype.Timestamptz `json:"trial_ends_at"`
+	GraceUntil             pgtype.Timestamptz `json:"grace_until"`
+	CancelAtPeriodEnd      bool               `json:"cancel_at_period_end"`
+	PendingPlan            pgtype.Text        `json:"pending_plan"`
+	Provider               pgtype.Text        `json:"provider"`
+	ProviderCustomerID     pgtype.Text        `json:"provider_customer_id"`
+	ProviderSubscriptionID pgtype.Text        `json:"provider_subscription_id"`
+	CompReason             pgtype.Text        `json:"comp_reason"`
 }
 
 type TrackingEntry struct {

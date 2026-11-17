@@ -53,6 +53,7 @@ const GOAL_TEXT: Record<DietInputs['goal'], string> = { maintain: 'Mantener tu p
     table { inline-size: 100%; border-collapse: collapse; font-size: .875rem; }
     th, td { text-align: start; padding: .5rem .625rem; border-block-end: 1px solid var(--line); vertical-align: top; }
     th { font-size: .75rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+    .mark { font-size: .6875rem; opacity: .8; }
     footer { margin-block-start: 2rem; padding-block-start: .75rem; border-block-start: 1px solid var(--line); font-size: .75rem; color: var(--muted); display: grid; gap: .25rem; }
     /* —— Estilos —— */
     .ho--clasico h1, .ho--clasico h2, .ho--clasico .energy .k { font-family: var(--nutri-font-display); }
@@ -125,6 +126,7 @@ const GOAL_TEXT: Record<DietInputs['goal'], string> = { maintain: 'Mantener tu p
       <footer>
         @if (contact()) { <span>{{ contact() }}</span> }
         <span>Estas porciones son una guía personalizada y no sustituyen la valoración de tu nutriólogo. Ante cualquier duda, consúltalo.</span>
+        @if (platformMark()) { <span class="mark">Hecho con Nutrición Integral</span> }
       </footer>
     </article>
   `,
@@ -137,6 +139,8 @@ export class Handout {
   readonly patientName = input('');
   readonly style = input<HandoutStyle>('clasico');
   readonly accent = input('#4e344c');
+  /** Plan Gratuito: el documento lleva la marca de la plataforma. */
+  readonly platformMark = input(false);
 
   protected readonly groups = GROUPS;
   protected readonly time = fmtTime;

@@ -35,6 +35,29 @@ solo debe anunciar lo que el sistema ya cumple o limita.
 
 Las consultas que existían antes de la migración `000014` quedan en **Pro**. Toda consulta nueva nace en **Gratuito**.
 
+## Ciclo de vida de la suscripción (M2)
+
+El plan que valida límites y funciones es el **efectivo**: se calcula al consultar (`plans.Resolve`), sin tareas
+programadas. Nunca se borra nada al bajar de plan; solo se bloquea **crear** por encima de los cupos del Gratuito.
+
+| Estado | Plan efectivo | Termina |
+|---|---|---|
+| `active` sin fecha de fin | El contratado (cuenta fundadora, cortesía) | No vence |
+| `active` con fin de periodo | El contratado | Pasa a Gratuito si no llega la renovación (48 h de margen) |
+| `trialing` | El contratado | A `trial_ends_at` pasa a Gratuito |
+| `past_due` (cobro fallido) | El contratado durante la gracia (7 días) | A `grace_until` pasa a Gratuito |
+| `canceled` | El contratado hasta el fin del periodo pagado | Después, Gratuito |
+| `expired` | Gratuito | — |
+
+Un estado sin su fecha (prueba sin fin, gracia sin fin) **no regala** el plan: se opera como Gratuito.
+
+**Funciones por plan** (`plans.Perks`; la pantalla las lee de `GET /billing`): el plan Gratuito agrega la marca de la
+plataforma al documento del paciente y limita el documento al estilo clásico con el color por omisión. El documento se
+arma en el navegador, así que esa regla la **refleja la interfaz**, no la fuerza el servidor.
+
+La pantalla de Facturación avisa de la prueba, el cobro fallido, la cancelación y el vencimiento, y alerta al 80 % y al
+100 % de pacientes y archivos (también cuando, tras bajar de plan, hay más pacientes que el cupo).
+
 ## Configuración por ambiente
 
 | Variable | Omisión | Uso |
@@ -68,6 +91,10 @@ Guion de la prueba:
 
 ```bash
 admin set-plan -email a@b.mx -plan pro -period annual   # cambia el plan de la consulta de esa cuenta
+admin set-plan -email a@b.mx -plan pro -status trialing -trial-days 14
+admin set-plan -email a@b.mx -plan standard -status past_due        # gracia de 7 días (-grace-days N)
+admin set-plan -email a@b.mx -plan standard -status canceled -until 2026-12-31
+admin set-plan -email a@b.mx -plan pro -comp 'cortesía'             # concedido sin cobro
 admin grant-platform-admin -email a@b.mx                # permite administrar el catálogo SMAE global
 ```
 
