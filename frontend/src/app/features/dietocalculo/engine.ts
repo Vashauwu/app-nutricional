@@ -15,6 +15,8 @@ export interface Macros { carbs_pct: number; lipids_pct: number; protein_pct: nu
 export interface PregnancyIn { weeks: number; pre_weight_kg?: number; multiple?: boolean }
 export interface Slot { name: string; pct: number; time?: string }
 export interface Skinfolds { triceps?: number; biceps?: number; subscapular?: number; suprailiac?: number; abdominal?: number; calf?: number }
+/** Suplementación que se imprime como tabla en el documento del paciente. */
+export interface Supplement { name: string; dose?: string; when?: string; how?: string }
 export interface MenuItem {
   id: string; kind: 'dish' | 'food'; ref_id?: string; name: string; qty?: string; qty_n: number;
   kcal: number; protein_g: number; carbs_g: number; lipids_g: number; fiber_g: number; eq?: Record<string, number>;
@@ -53,6 +55,9 @@ export interface DietInputs {
   slots?: Slot[];
   dist_override?: Record<string, number[]>;
   menu?: Record<string, MenuItem[]>;
+  /** Entrega al paciente: no intervienen en ningún cálculo. */
+  indications?: string;
+  supplements?: Supplement[];
 }
 
 export interface FatMethodRow { id: FatMethodId; name: string; tag: string; available: boolean; fat_pct?: number; requires?: string }
@@ -595,6 +600,12 @@ export function normalize(i: DietInputs): FieldErrors | null {
   if (!(i.weight_kg >= 20 && i.weight_kg <= 400)) e['weight_kg'] = 'el peso debe estar entre 20 y 400 kg';
   if (!(i.height_cm >= 100 && i.height_cm <= 250)) e['height_cm'] = 'la talla debe estar entre 100 y 250 cm';
   if ((i.body_fat_pct ?? 0) < 0 || (i.body_fat_pct ?? 0) > 70) e['body_fat_pct'] = 'el % de grasa debe estar entre 0 y 70';
+  if ([...(i.indications ?? '')].length > 1200) e['indications'] = 'las indicaciones admiten hasta 1200 caracteres';
+  if ((i.supplements?.length ?? 0) > 12) e['supplements'] = 'usa como máximo 12 suplementos';
+  (i.supplements ?? []).forEach((sp, n) => {
+    if (sp.name.trim() === '' || [...sp.name].length > 80) e[`supplements[${n}].name`] = 'el nombre es obligatorio (hasta 80 caracteres)';
+    if ([...(sp.dose ?? '')].length > 60 || [...(sp.when ?? '')].length > 80 || [...(sp.how ?? '')].length > 200) e[`supplements[${n}]`] = 'dosis hasta 60, momento hasta 80 y forma de tomarlo hasta 200 caracteres';
+  });
   if (i.pregnancy && (i.pregnancy.weeks < 1 || i.pregnancy.weeks > 42)) e['pregnancy.weeks'] = 'las semanas de gestación van de 1 a 42';
   if (i.pregnancy && i.sex === 'M') e['pregnancy'] = 'el embarazo solo aplica a pacientes de sexo femenino';
   if (i.lactation && i.lactation !== '0-6' && i.lactation !== '7-12') e['lactation'] = 'usa 0-6 o 7-12 meses';

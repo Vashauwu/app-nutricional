@@ -358,3 +358,21 @@ func TestGolden(t *testing.T) {
 		require.True(t, bytes.Equal(fe, got), "la copia del frontend difiere del golden del backend")
 	}
 }
+
+func TestDeliveryFieldsValidation(t *testing.T) {
+	in := base()
+	in.Indications = "Toma agua."
+	in.Supplements = []Supplement{{Name: "Vitamina D", Dose: "2000 UI", When: "Desayuno", How: "Con alimentos"}}
+	require.Empty(t, in.Normalize())
+
+	long := base()
+	long.Indications = string(bytes.Repeat([]byte("a"), 1201))
+	long.Supplements = []Supplement{{Name: " "}}
+	for range 12 {
+		long.Supplements = append(long.Supplements, Supplement{Name: "X"})
+	}
+	e := long.Normalize()
+	require.Contains(t, e, "indications")
+	require.Contains(t, e, "supplements")
+	require.Contains(t, e, "supplements[0].name")
+}

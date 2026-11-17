@@ -1069,3 +1069,12 @@ table.mini.adq-t td, table.mini.adq-t th { padding-block: 0.5rem; }
 .dc-range { inline-size: 100%; accent-color: var(--brand-ink); min-block-size: 1.75rem; }
 .dc-num-in { max-inline-size: 5.5rem; text-align: end; font-variant-numeric: tabular-nums; }
 @media print { .no-print { display: none !important; } }
+
+// Impresión del documento del paciente: el contenedor `.ho-print-root` solo existe mientras se imprime.
+.ho-print-root { display: none; }
+@page { margin: 12mm; }
+@media print {
+  html.printing-handout body > *:not(.ho-print-root) { display: none !important; }
+  html.printing-handout .ho-print-root { display: block !important; }
+  html.printing-handout .ho-print-root .ho { padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
