@@ -539,8 +539,38 @@ export interface ClinicalRule {
   enabled: boolean;
 }
 
+export type ProfessionalType = '' | 'nutritionist' | 'dietitian' | 'physician' | 'other';
+export type CareModality = 'in_person' | 'online' | 'both';
+export const PROFESSIONAL_TYPE_LABEL: Record<Exclude<ProfessionalType, ''>, string> = { nutritionist: 'Nutriólogo(a)', dietitian: 'Nutricionista dietista', physician: 'Médico(a) con especialidad en nutrición', other: 'Otro' };
+export const MODALITY_LABEL: Record<CareModality, string> = { in_person: 'Presencial', online: 'En línea', both: 'Ambas' };
+
+/** Lo que la nutrióloga cuenta de sí misma y de cómo atiende. La cédula y el logotipo viven en la marca. */
+export interface ProfessionalProfile {
+  fullName: string;
+  about: string;
+  professionalType: ProfessionalType;
+  specialty: string;
+  clinicName: string;
+  appointmentPhone: string;
+  modality: CareModality;
+  street: string;
+  colony: string;
+  postalCode: string;
+  city: string;
+  state: string;
+  showExactAddress: boolean;
+  /** Terminó (o no necesita) el inicio guiado de una cuenta nueva. */
+  onboardingDone: boolean;
+}
+
+export const emptyProfile = (): ProfessionalProfile => ({
+  fullName: '', about: '', professionalType: '', specialty: '', clinicName: '', appointmentPhone: '', modality: 'in_person',
+  street: '', colony: '', postalCode: '', city: '', state: '', showExactAddress: true, onboardingDone: true,
+});
+
 export interface Settings {
   brand: BrandSettings;
+  profile: ProfessionalProfile;
   region: { timezone: string; weekStart: 'mon' | 'sun' };
   storage: {
     defaultQuotaBytes: number;

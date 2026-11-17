@@ -8,8 +8,11 @@
 package dietocalculo
 
 import (
+	"fmt"
 	"math"
 	"sort"
+	"strings"
+	"unicode/utf8"
 )
 
 // ---------- Entradas ----------
@@ -46,6 +49,14 @@ type Skinfolds struct {
 
 // MenuItem es un platillo o alimento agregado a un tiempo de comida. Guarda una copia de sus aportes
 // para que la dieta no cambie si después se edita el platillo o el catálogo.
+// Supplement es una indicación de suplementación que se imprime como tabla en el documento del paciente.
+type Supplement struct {
+	Name string `json:"name"`
+	Dose string `json:"dose,omitempty"`
+	When string `json:"when,omitempty"`
+	How  string `json:"how,omitempty"`
+}
+
 type MenuItem struct {
 	ID       string             `json:"id"`
 	Kind     string             `json:"kind"` // dish | food
@@ -102,6 +113,9 @@ type Inputs struct {
 	DistOverride map[string][]float64 `json:"dist_override,omitempty"`
 	// Platillos y alimentos de la dieta, por nombre de tiempo de comida.
 	Menu map[string][]MenuItem `json:"menu,omitempty"`
+	// Entrega al paciente: lo que se le dice al despedirse y la suplementación. No intervienen en ningún cálculo.
+	Indications string       `json:"indications,omitempty"`
+	Supplements []Supplement `json:"supplements,omitempty"`
 }
 
 // ---------- Resultados ----------
@@ -1155,6 +1169,20 @@ func (in *Inputs) Normalize() FieldErrors {
 	}
 	if in.BodyFatPct < 0 || in.BodyFatPct > 70 {
 		e["body_fat_pct"] = "el % de grasa debe estar entre 0 y 70"
+	}
+	if utf8.RuneCountInString(in.Indications) > 1200 {
+		e["indications"] = "las indicaciones admiten hasta 1200 caracteres"
+	}
+	if len(in.Supplements) > 12 {
+		e["supplements"] = "usa como máximo 12 suplementos"
+	}
+	for i, sp := range in.Supplements {
+		if strings.TrimSpace(sp.Name) == "" || utf8.RuneCountInString(sp.Name) > 80 {
+			e[fmt.Sprintf("supplements[%d].name", i)] = "el nombre es obligatorio (hasta 80 caracteres)"
+		}
+		if utf8.RuneCountInString(sp.Dose) > 60 || utf8.RuneCountInString(sp.When) > 80 || utf8.RuneCountInString(sp.How) > 200 {
+			e[fmt.Sprintf("supplements[%d]", i)] = "dosis hasta 60, momento hasta 80 y forma de tomarlo hasta 200 caracteres"
+		}
 	}
 	if in.Pregnancy != nil && (in.Pregnancy.Weeks < 1 || in.Pregnancy.Weeks > 42) {
 		e["pregnancy.weeks"] = "las semanas de gestación van de 1 a 42"

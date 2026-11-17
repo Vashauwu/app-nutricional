@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Observable, map, of, switchMap, tap } from 'rxjs';
-import { BrandSettings, ClinicalRule, ConsentDocument, ConsentType, Settings } from '../../shared/models/domain';
+import { BrandSettings, CareModality, ClinicalRule, ConsentDocument, ConsentType, ProfessionalProfile, ProfessionalType, Settings } from '../../shared/models/domain';
 import { DbService } from '../data/db.service';
 import { API, ApiClient } from './api-client';
 
@@ -9,9 +9,14 @@ interface ApiBrand {
   business_name: string; tagline: string; primary: string; secondary: string; logo_file_id: string | null; photo_file_id: string | null; phone: string; email: string;
   address: string; credentials: string; license_number: string;
 }
+interface ApiProfile {
+  full_name: string; about: string; professional_type: ProfessionalType; specialty: string; clinic_name: string; appointment_phone: string; modality: CareModality;
+  street: string; colony: string; postal_code: string; city: string; state: string; show_exact_address: boolean; onboarding_done: boolean;
+}
 interface ApiRule { id: string; keyword: string; triggers: string[] | null; level: ClinicalRule['level']; message: string; enabled: boolean }
 interface ApiSettings {
   brand: ApiBrand;
+  profile: ApiProfile;
   region: { timezone: string; week_start: 'mon' | 'sun' };
   storage: { default_quota_bytes: number; max_image_bytes: number; max_pdf_bytes: number; warn_threshold_pct: number };
   alerts: { energy_tolerance_pct: string; macro_tolerance_pct: string; equivalent_tolerance: string; clinical_rules: ApiRule[] | null };
@@ -28,11 +33,21 @@ function mapBrand(b: ApiBrand): BrandSettings {
   };
 }
 
+const mapProfile = (p: ApiProfile): ProfessionalProfile => ({
+  fullName: p.full_name, about: p.about, professionalType: p.professional_type, specialty: p.specialty, clinicName: p.clinic_name, appointmentPhone: p.appointment_phone,
+  modality: p.modality, street: p.street, colony: p.colony, postalCode: p.postal_code, city: p.city, state: p.state, showExactAddress: p.show_exact_address, onboardingDone: p.onboarding_done,
+});
+const toApiProfile = (p: ProfessionalProfile): ApiProfile => ({
+  full_name: p.fullName, about: p.about, professional_type: p.professionalType, specialty: p.specialty, clinic_name: p.clinicName, appointment_phone: p.appointmentPhone,
+  modality: p.modality, street: p.street, colony: p.colony, postal_code: p.postalCode, city: p.city, state: p.state, show_exact_address: p.showExactAddress, onboarding_done: p.onboardingDone,
+});
+
 const mapRule = (r: ApiRule): ClinicalRule => ({ id: r.id, keyword: r.keyword, triggers: r.triggers ?? [], level: r.level, message: r.message, enabled: r.enabled });
 
 function mapAll(s: ApiSettings): Settings {
   return {
     brand: mapBrand(s.brand),
+    profile: mapProfile(s.profile),
     region: { timezone: s.region.timezone, weekStart: s.region.week_start },
     storage: { defaultQuotaBytes: s.storage.default_quota_bytes, maxImageBytes: s.storage.max_image_bytes, maxPdfBytes: s.storage.max_pdf_bytes, warnThresholdPct: s.storage.warn_threshold_pct },
     alerts: {
@@ -53,6 +68,10 @@ export class SettingsApi {
       tap((s) => this.data.mutate((d) => { d.settings = mapAll(s); })),
       map(() => void 0),
     );
+  }
+
+  saveProfile(p: ProfessionalProfile): Observable<void> {
+    return this.api.put<ApiProfile>('/settings/profile', toApiProfile(p)).pipe(tap((r) => this.data.mutate((d) => { d.settings.profile = mapProfile(r); })), map(() => void 0));
   }
 
   /** Marca visible para cualquier sesión (encabezados y datos de contacto). */

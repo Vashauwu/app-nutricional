@@ -18,21 +18,23 @@ import { downloadBlob, toCsv } from '../../shared/utils/format';
 import { DcCalc } from './dc-calc';
 import { DcDieto } from './dc-dieto';
 import { DcDist, fmtTime } from './dc-dist';
+import { DcEntrega } from './dc-entrega';
 import { DcMenu } from './dc-menu';
 import { DietoStore } from './dieto-store';
 import { DEFAULT_SLOTS, GROUPS, defaultInputs } from './engine';
 
-type TabId = 'calc' | 'dieto' | 'dist' | 'dieta';
+type TabId = 'calc' | 'dieto' | 'dist' | 'dieta' | 'entrega';
 const TABS: { id: TabId; label: string; icon: IconName }[] = [
   { id: 'calc', label: 'Cálculos', icon: 'calculator' },
   { id: 'dieto', label: 'Dietocálculo', icon: 'sliders' },
   { id: 'dist', label: 'Distribución', icon: 'layout' },
   { id: 'dieta', label: 'Dieta', icon: 'dish' },
+  { id: 'entrega', label: 'Entrega', icon: 'send' },
 ];
 
 @Component({
   selector: 'app-dietocalculo-editor',
-  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, Combobox, Modal, ActionMenu, DcCalc, DcDieto, DcDist, DcMenu],
+  imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, Combobox, Modal, ActionMenu, DcCalc, DcDieto, DcDist, DcMenu, DcEntrega],
   providers: [DietoStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
@@ -89,6 +91,7 @@ const TABS: { id: TabId; label: string; icon: IconName }[] = [
           @case ('dieto') { <app-dc-dieto /> }
           @case ('dist') { <app-dc-dist /> }
           @case ('dieta') { <app-dc-menu /> }
+          @case ('entrega') { <app-dc-entrega [patientId]="patientId()" [patientName]="patientName()" /> }
         }
       </div>
       <p class="small muted">Herramienta de apoyo profesional: las fórmulas son estimaciones publicadas (Mifflin-St Jeor, Harris-Benedict, Owen, FAO/OMS, Katch-McArdle, Durnin-Womersley, NOM-008, IOM) y no sustituyen el criterio clínico.</p>
