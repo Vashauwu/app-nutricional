@@ -21,6 +21,10 @@ type Targets struct {
 	Carbs       decimal.Decimal            `json:"carbohydrates_g"`
 	Lipids      decimal.Decimal            `json:"lipids_g"`
 	Equivalents map[string]decimal.Decimal `json:"equivalents"`
+	// Origen de los objetivos: el Dietocálculo del que se tomaron y la versión de ese cálculo (su updated_at) con la que se
+	// aplicaron. Se conservan aunque los objetivos se ajusten a mano; vacíos = objetivos propios o estimación base.
+	DietCalculationID *uuid.UUID `json:"diet_calculation_id"`
+	DietSyncedAt      *time.Time `json:"diet_synced_at"`
 }
 
 type Item struct {

@@ -253,25 +253,27 @@ type MealComment struct {
 }
 
 type MealPlan struct {
-	ID                uuid.UUID          `json:"id"`
-	PatientID         uuid.UUID          `json:"patient_id"`
-	Name              string             `json:"name"`
-	Status            string             `json:"status"`
-	StartDate         pgtype.Date        `json:"start_date"`
-	EndDate           pgtype.Date        `json:"end_date"`
-	Revision          int32              `json:"revision"`
-	TargetEnergy      decimal.Decimal    `json:"target_energy"`
-	TargetProtein     decimal.Decimal    `json:"target_protein"`
-	TargetCarbs       decimal.Decimal    `json:"target_carbs"`
-	TargetLipids      decimal.Decimal    `json:"target_lipids"`
-	TargetEquivalents []byte             `json:"target_equivalents"`
-	TargetsVersion    int32              `json:"targets_version"`
-	CreatedBy         uuid.UUID          `json:"created_by"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	UpdatedBy         uuid.UUID          `json:"updated_by"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
-	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
-	PracticeID        uuid.UUID          `json:"practice_id"`
+	ID                      uuid.UUID          `json:"id"`
+	PatientID               uuid.UUID          `json:"patient_id"`
+	Name                    string             `json:"name"`
+	Status                  string             `json:"status"`
+	StartDate               pgtype.Date        `json:"start_date"`
+	EndDate                 pgtype.Date        `json:"end_date"`
+	Revision                int32              `json:"revision"`
+	TargetEnergy            decimal.Decimal    `json:"target_energy"`
+	TargetProtein           decimal.Decimal    `json:"target_protein"`
+	TargetCarbs             decimal.Decimal    `json:"target_carbs"`
+	TargetLipids            decimal.Decimal    `json:"target_lipids"`
+	TargetEquivalents       []byte             `json:"target_equivalents"`
+	TargetsVersion          int32              `json:"targets_version"`
+	CreatedBy               uuid.UUID          `json:"created_by"`
+	CreatedAt               pgtype.Timestamptz `json:"created_at"`
+	UpdatedBy               uuid.UUID          `json:"updated_by"`
+	UpdatedAt               pgtype.Timestamptz `json:"updated_at"`
+	DeletedAt               pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID              uuid.UUID          `json:"practice_id"`
+	TargetDietCalculationID uuid.NullUUID      `json:"target_diet_calculation_id"`
+	TargetDietSyncedAt      pgtype.Timestamptz `json:"target_diet_synced_at"`
 }
 
 type MealPlanDay struct {

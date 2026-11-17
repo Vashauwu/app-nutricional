@@ -216,7 +216,7 @@ export class PlanCreate implements OnInit {
     const p = this.patients.get(v.patientId);
     const m = p ? latestMeasurement(p.measurements) : undefined;
     if (v.propose && diet) {
-      targets = planTargetsFromDiet(diet.result);
+      targets = planTargetsFromDiet(diet.result, 1, { id: diet.id, updatedAt: diet.updatedAt });
     } else if (v.propose && p && m) {
       const r = proposeTargets({ sex: p.profile.sex, age: ageFrom(p.profile.birthDate), weightKg: m.weightKg, heightCm: m.heightCm, goal: p.goal });
       const eq: Record<string, string> = r.equivalentsByCode;

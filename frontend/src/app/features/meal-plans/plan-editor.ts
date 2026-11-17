@@ -1,4 +1,4 @@
-import { firstValueFrom } from 'rxjs';
+import { catchError, firstValueFrom, of } from 'rxjs';
 import { CdkDrag, CdkDragDrop, CdkDragHandle, CdkDragPreview, CdkDropList, CdkDropListGroup } from '@angular/cdk/drag-drop';
 import { ChangeDetectionStrategy, Component, HostListener, OnInit, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -7,7 +7,7 @@ import { DbService } from '../../core/data/db.service';
 import { DishesService } from '../../core/services/dishes.service';
 import { PlansService } from '../../core/services/plans.service';
 import { DietCalc, DietocalculoService } from '../../core/services/dietocalculo.service';
-import { BASE_TARGETS_NOTICE, dietSummary, planTargetsFromDiet, sameTargets } from '../../core/nutrition/diet-targets';
+import { BASE_TARGETS_NOTICE, dietLinkState, dietSummary, planTargetsFromDiet } from '../../core/nutrition/diet-targets';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { HasUnsavedChanges } from '../../core/guards/unsaved.guard';
 import { Totals, compareEquivalents, compareMacros, dayTotals, distributeEquivalents, itemTotals, latestMeasurement, proposeTargets, slotTotals } from '../../core/nutrition/engine';
@@ -184,8 +184,12 @@ const SAVE_TEXT: Record<SaveState, string> = {
         <aside class="sum panel" aria-label="Resumen del día seleccionado" aria-live="polite">
           @if (selVM(); as sv) {
             <div class="panel-head"><h2 class="t-sm">{{ longDate(sv.day.date) }}</h2><span class="small muted">Resumen del día</span></div>
-            @if (dietCalc() === null) {
+            @if (dietLinked(); as d) {
+              <p class="small muted m-0" role="note">Objetivos del Dietocálculo «{{ d.name }}»@switch (linkState()) { @case ('manual') { · ajustados a mano } @case ('outdated') { · <strong>el Dietocálculo cambió</strong> } }.</p>
+            } @else if (dietCalc() === null) {
               <p class="small muted m-0" role="note">Objetivos <strong>base</strong>: este paciente no tiene Dietocálculo. Para mayor precisión usa el motor del Dietocálculo (<a routerLink="/dietocalculo/nuevo" [queryParams]="{ paciente: store.meta()?.patientId }">calcular</a>).</p>
+            } @else if (dietCalc(); as d) {
+              <p class="small muted m-0" role="note">Estos objetivos no vienen del Dietocálculo «{{ d.name }}» de este paciente. Puedes aplicarlos desde <strong>Objetivos</strong>.</p>
             }
             @for (m of selMacros(); track m.key) { <app-compare-row [m]="m" /> }
             <h3 class="sub-h">Equivalentes SMAE <span class="muted small">planeado / objetivo</span></h3>
@@ -274,16 +278,29 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
       <app-modal [(open)]="targetsOpen" title="Objetivos diarios" size="wide">
         <p class="small muted">Las propuestas son orientativas y siempre editables. Se guarda la versión de objetivos usada en cada plan (v{{ store.targets()?.version }}).</p>
-        @if (dietCalc(); as d) {
-          <div class="callout" [class.callout--ok]="sameAsDiet()" role="status">
-            <app-icon [name]="sameAsDiet() ? 'check-circle' : 'info'" />
+        @if (dietLinked(); as d) {
+          <div class="callout" [class.callout--ok]="linkState() === 'same'" [class.callout--warn]="linkState() === 'outdated'" role="status">
+            <app-icon [name]="linkState() === 'same' ? 'check-circle' : linkState() === 'outdated' ? 'alert-circle' : 'info'" />
             <div class="callout-body">
-              <p><strong>Dietocálculo del paciente: «{{ d.name }}»</strong></p>
-              <p class="small">{{ dietSummary(d) }}</p>
-              <p class="small">{{ sameAsDiet() ? 'Los objetivos de este plan coinciden con el Dietocálculo.' : 'Los objetivos de este plan son distintos a los del Dietocálculo.' }}</p>
+              <p><strong>Origen de los objetivos: Dietocálculo «{{ d.name }}»</strong></p>
+              <p class="small">Dietocálculo: {{ dietSummary(d) }}</p>
+              @switch (linkState()) {
+                @case ('same') { <p class="small">Los objetivos de este plan coinciden con el Dietocálculo.</p> }
+                @case ('manual') { <p class="small">Ajustaste los objetivos a mano. El origen se conserva y puedes volver a los del Dietocálculo cuando quieras.</p> }
+                @case ('outdated') { <p class="small">El Dietocálculo cambió desde que se aplicó a este plan. Actualiza los objetivos si quieres que reflejen el cálculo vigente.</p> }
+              }
             </div>
           </div>
-          <div class="row"><button tuiButton type="button" size="s" [appearance]="sameAsDiet() ? 'secondary' : 'primary'" (click)="useDiet(d)"><app-icon name="calculator" [size]="16" /> Usar los del Dietocálculo</button><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Estimar con las mediciones (base)</button></div>
+          <div class="row"><button tuiButton type="button" size="s" [appearance]="linkState() === 'same' ? 'secondary' : 'primary'" (click)="useDiet(d)"><app-icon name="calculator" [size]="16" /> {{ linkState() === 'outdated' ? 'Actualizar con el Dietocálculo' : 'Usar los del Dietocálculo' }}</button><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Estimar con las mediciones (base)</button></div>
+        } @else if (dietCalc(); as d) {
+          <div class="callout" role="note">
+            <app-icon name="info" />
+            <div class="callout-body">
+              <p><strong>Este paciente tiene un Dietocálculo: «{{ d.name }}»</strong></p>
+              <p class="small">{{ dietSummary(d) }}. Los objetivos de este plan no están vinculados a él.</p>
+            </div>
+          </div>
+          <div class="row"><button tuiButton type="button" size="s" appearance="primary" (click)="useDiet(d)"><app-icon name="calculator" [size]="16" /> Usar los del Dietocálculo</button><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Estimar con las mediciones (base)</button></div>
         } @else {
           @if (dietCalc() === null) {
             <div class="callout" role="note">
@@ -447,11 +464,16 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly dietCalc = signal<DietCalc | null | undefined>(undefined);
   protected readonly baseNotice = BASE_TARGETS_NOTICE;
   protected readonly dietSummary = (d: DietCalc): string => dietSummary(d.result);
-  protected readonly sameAsDiet = computed(() => {
-    const d = this.dietCalc();
+  /** Dietocálculo del que salieron los objetivos de ESTE plan (el vínculo guardado): `null` = sin vínculo o ya no existe. */
+  protected readonly dietLinked = signal<DietCalc | null>(null);
+  /** Relación de los objetivos con ese Dietocálculo (iguales, ajustados a mano o Dietocálculo modificado después). */
+  protected readonly linkState = computed(() => {
+    const d = this.dietLinked();
     const t = this.store.targets();
-    return !!d && !!t && sameTargets(t, planTargetsFromDiet(d.result));
+    return d && t ? dietLinkState(t, d) : null;
   });
+  /** Origen elegido en el diálogo: `undefined` = conservar el actual, `null` = quitarlo, valor = vincular a ese Dietocálculo. */
+  private readonly linkDraft = signal<{ id: string; syncedAt: string } | null | undefined>(undefined);
   protected readonly macroKeys = [{ key: 'energy', label: 'Energía (kcal)' }, { key: 'protein', label: 'Proteínas (g)' }, { key: 'carbs', label: 'Carbohidratos (g)' }, { key: 'lipids', label: 'Lípidos (g)' }];
 
   protected readonly planSvc = computed(() => (this.data.version(), this.plans.get(this.id())));
@@ -551,6 +573,13 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly eqCols = computed(() => Object.entries(this.eqDraft()).filter(([, v]) => Number(v) > 0).map(([k]) => k));
 
   constructor() {
+    effect(() => {
+      const linkId = this.store.targets()?.dietCalcId;
+      untracked(() => {
+        if (!linkId) { this.dietLinked.set(null); return; }
+        this.dietSvc.get(linkId).pipe(catchError(() => of(null))).subscribe((d) => this.dietLinked.set(d));
+      });
+    });
     effect(() => {
       const pid = this.store.meta()?.patientId;
       if (!pid) return;
@@ -759,6 +788,7 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
     this.tgDraft.set({ energy: t.energy, protein: t.protein, carbs: t.carbs, lipids: t.lipids });
     this.eqDraft.set({ ...t.equivalents });
     this.proposalNotes.set([]);
+    this.linkDraft.set(undefined);
     this.targetsOpen.set(true);
   }
 
@@ -769,6 +799,7 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
     const t = planTargetsFromDiet(d.result);
     this.tgDraft.set({ energy: t.energy, protein: t.protein, carbs: t.carbs, lipids: t.lipids });
     this.eqDraft.set(t.equivalents);
+    this.linkDraft.set({ id: d.id, syncedAt: d.updatedAt });
     this.proposalNotes.set([`Objetivos tomados del Dietocálculo «${d.name}» (${dietSummary(d.result)}). Guarda para aplicarlos al plan.`]);
   }
 
@@ -779,6 +810,7 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
     const r = proposeTargets({ sex: p.profile.sex, age: ageFrom(p.profile.birthDate), weightKg: m.weightKg, heightCm: m.heightCm, goal: p.goal });
     this.tgDraft.set({ energy: r.energy, protein: r.protein, carbs: r.carbs, lipids: r.lipids });
     this.eqDraft.set(r.equivalentsByCode);
+    this.linkDraft.set(null); // una estimación base sustituye los objetivos: ya no provienen del Dietocálculo
     this.proposalNotes.set([...r.rationale, `Objetivo registrado: ${GOAL_LABEL[p.goal]}. Es una propuesta orientativa: ajústala con tu criterio clínico.`]);
   }
 
@@ -787,7 +819,12 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
     const nums = ['energy', 'protein', 'carbs', 'lipids'];
     if (nums.some((k) => !/^\d+(\.\d+)?$/.test((g[k] ?? '').trim()))) { this.toast.error('Revisa que energía y macros sean números válidos.'); return; }
     const eq = Object.fromEntries(Object.entries(this.eqDraft()).filter(([, v]) => /^\d+(\.\d+)?$/.test(v) && Number(v) > 0));
-    this.store.setTargets({ energy: g['energy'].trim(), protein: g['protein'].trim(), carbs: g['carbs'].trim(), lipids: g['lipids'].trim(), equivalents: eq, version: this.store.targets()?.version ?? 1 });
+    // Ajustar a mano no cambia el origen: solo «Estimar (base)» lo quita y «Usar/Actualizar con el Dietocálculo» lo renueva.
+    const cur = this.store.targets();
+    const draft = this.linkDraft();
+    const dietCalcId = draft === undefined ? (cur?.dietCalcId ?? null) : (draft?.id ?? null);
+    const dietSyncedAt = draft === undefined ? (cur?.dietSyncedAt ?? null) : (draft?.syncedAt ?? null);
+    this.store.setTargets({ energy: g['energy'].trim(), protein: g['protein'].trim(), carbs: g['carbs'].trim(), lipids: g['lipids'].trim(), equivalents: eq, version: cur?.version ?? 1, dietCalcId, dietSyncedAt });
     this.targetsOpen.set(false);
     this.toast.ok('Objetivos actualizados (nueva versión de objetivos).');
   }

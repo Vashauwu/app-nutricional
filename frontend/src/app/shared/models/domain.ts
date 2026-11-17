@@ -424,6 +424,10 @@ export interface PlanTargets {
   lipids: DecimalStr;
   equivalents: EquivalentsMap;
   version: number;
+  /** Dietocálculo del que se tomaron los objetivos (se conserva aunque se ajusten a mano). */
+  dietCalcId?: string | null;
+  /** `updated_at` de ese Dietocálculo en el momento en que se aplicó: sirve para avisar si cambió después. */
+  dietSyncedAt?: string | null;
 }
 
 export interface PlanEvent {

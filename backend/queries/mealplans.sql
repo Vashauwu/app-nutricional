@@ -1,7 +1,8 @@
 -- ---------- Planes ----------
 -- name: InsertPlan :one
-INSERT INTO meal_plans (patient_id, name, start_date, end_date, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, created_by, updated_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
+INSERT INTO meal_plans (patient_id, name, start_date, end_date, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, created_by, updated_by,
+                        target_diet_calculation_id, target_diet_synced_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, $11, $12)
 RETURNING *;
 
 -- name: GetPlan :one
@@ -26,7 +27,8 @@ LIMIT sqlc.arg(page_limit)::int OFFSET sqlc.arg(page_offset)::int;
 -- Guardado con concurrencia optimista: solo actualiza si la revisión coincide.
 -- name: UpdatePlanDoc :one
 UPDATE meal_plans SET name = $3, start_date = $4, end_date = $5, target_energy = $6, target_protein = $7, target_carbs = $8, target_lipids = $9,
-    target_equivalents = $10, targets_version = $11, revision = revision + 1, updated_by = $12, updated_at = now()
+    target_equivalents = $10, targets_version = $11, revision = revision + 1, updated_by = $12, updated_at = now(),
+    target_diet_calculation_id = $13, target_diet_synced_at = $14
 WHERE id = $1 AND revision = $2 AND deleted_at IS NULL
 RETURNING *;
 

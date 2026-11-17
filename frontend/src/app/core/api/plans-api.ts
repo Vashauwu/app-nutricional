@@ -16,7 +16,7 @@ interface ApiItem {
 }
 interface ApiPlan {
   id: string; patient_id: string; patient_name?: string; name: string; status: PlanStatus; start_date: string; end_date: string; revision: number;
-  targets: { energy_kcal: string; protein_g: string; carbohydrates_g: string; lipids_g: string; equivalents: Record<string, string> | null };
+  targets: { energy_kcal: string; protein_g: string; carbohydrates_g: string; lipids_g: string; equivalents: Record<string, string> | null; diet_calculation_id?: string | null; diet_synced_at?: string | null };
   targets_version: number; updated_at: string; created_at: string;
   days: { date: string; notes: string; slots: { id: string; name: string; items: ApiItem[] | null }[] | null }[] | null;
 }
@@ -36,6 +36,7 @@ const dateOnly = (s: string): string => (s ?? '').slice(0, 10);
 
 const mapTargets = (t: ApiPlan['targets'], version: number): PlanTargets => ({
   energy: t.energy_kcal, protein: t.protein_g, carbs: t.carbohydrates_g, lipids: t.lipids_g, equivalents: t.equivalents ?? {}, version,
+  dietCalcId: t.diet_calculation_id ?? null, dietSyncedAt: t.diet_synced_at ?? null,
 });
 
 export const mapAlert = (a: ApiAlert): NutriAlert => ({
@@ -59,14 +60,15 @@ export function mapPlan(d: ApiPlan, prev?: MealPlan): MealPlan {
 
 export interface PlanBody {
   name: string;
-  targets: { energy_kcal: string; protein_g: string; carbohydrates_g: string; lipids_g: string; equivalents: Record<string, string> };
+  targets: { energy_kcal: string; protein_g: string; carbohydrates_g: string; lipids_g: string; equivalents: Record<string, string>; diet_calculation_id: string | null; diet_synced_at: string | null };
   days: { date: string; notes: string; slots: { id: string; name: string; items: { id: string; dish_id: string; dish_version: number; servings: string; instructions: string }[] }[] }[];
 }
 
 export function toBody(name: string, targets: PlanTargets, days: PlanDay[]): PlanBody {
   return {
     name,
-    targets: { energy_kcal: targets.energy, protein_g: targets.protein, carbohydrates_g: targets.carbs, lipids_g: targets.lipids, equivalents: targets.equivalents },
+    targets: { energy_kcal: targets.energy, protein_g: targets.protein, carbohydrates_g: targets.carbs, lipids_g: targets.lipids, equivalents: targets.equivalents,
+      diet_calculation_id: targets.dietCalcId ?? null, diet_synced_at: targets.dietSyncedAt ?? null },
     days: days.map((d) => ({
       date: d.date, notes: d.notes,
       slots: d.slots.map((s) => ({

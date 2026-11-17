@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5/pgtype"
 	"strings"
 	"time"
 
@@ -160,8 +161,18 @@ func (s *Service) Create(ctx context.Context, a Actor, in CreateInput) (PlanView
 	if errs := validate(&doc); len(errs) > 0 {
 		return PlanView{}, errs
 	}
+	dietID, dietAt, err := s.dietLink(ctx, q, in.PatientID, nil, targets)
+	if err != nil {
+		if in.Targets == nil { // lo heredado de otro plan que no aplica a este paciente simplemente no se copia
+			targets.DietCalculationID, targets.DietSyncedAt = nil, nil
+			dietID, dietAt, err = uuid.NullUUID{}, pgtype.Timestamptz{}, nil
+		} else {
+			return PlanView{}, err
+		}
+	}
 	p, err := q.InsertPlan(ctx, db.InsertPlanParams{PatientID: in.PatientID, Name: doc.Name, StartDate: pgDate(start), EndDate: pgDate(end),
-		TargetEnergy: targets.Energy, TargetProtein: targets.Protein, TargetCarbs: targets.Carbs, TargetLipids: targets.Lipids, TargetEquivalents: eqJSON(targets.Equivalents), CreatedBy: a.ID})
+		TargetEnergy: targets.Energy, TargetProtein: targets.Protein, TargetCarbs: targets.Carbs, TargetLipids: targets.Lipids, TargetEquivalents: eqJSON(targets.Equivalents), CreatedBy: a.ID,
+		TargetDietCalculationID: dietID, TargetDietSyncedAt: dietAt})
 	if err != nil {
 		return PlanView{}, err
 	}
@@ -205,10 +216,16 @@ func (s *Service) Save(ctx context.Context, a Actor, id uuid.UUID, expected int3
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.q.WithTx(tx)
+	curTargets := targetsOf(cur)
+	dietID, dietAt, err := s.dietLink(ctx, q, cur.PatientID, &curTargets, doc.Targets)
+	if err != nil {
+		return PlanView{}, err
+	}
 	p, err := q.UpdatePlanDoc(ctx, db.UpdatePlanDocParams{
 		ID: id, Revision: expected, Name: strings.TrimSpace(doc.Name), StartDate: pgDate(lo), EndDate: pgDate(hi),
 		TargetEnergy: doc.Targets.Energy, TargetProtein: doc.Targets.Protein, TargetCarbs: doc.Targets.Carbs, TargetLipids: doc.Targets.Lipids,
 		TargetEquivalents: eqJSON(doc.Targets.Equivalents), TargetsVersion: tv, UpdatedBy: a.ID,
+		TargetDietCalculationID: dietID, TargetDietSyncedAt: dietAt,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		_ = tx.Rollback(ctx)

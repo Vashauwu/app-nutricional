@@ -25,3 +25,7 @@ LIMIT sqlc.arg(row_limit);
 
 -- name: SoftDeleteDietCalculation :execrows
 UPDATE diet_calculations SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL;
+
+-- Para validar el vínculo de un plan con su Dietocálculo (el aislamiento por consulta lo impone la base).
+-- name: GetDietCalcLink :one
+SELECT patient_id, updated_at FROM diet_calculations WHERE id = $1 AND deleted_at IS NULL;
