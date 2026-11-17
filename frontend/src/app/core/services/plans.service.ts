@@ -302,15 +302,20 @@ export class PlansService {
     });
   }
 
-  softDelete(planId: string): Observable<void> {
-    return this.op(() => this.remote.remove(planId), () => this.softDeleteLocal(planId));
+  /** Elimina el plan de forma PERMANENTE: el plan, su historial, sus versiones publicadas y el seguimiento que el paciente registró en él. */
+  remove(planId: string): Observable<void> {
+    return this.op(
+      () => this.remote.remove(planId).pipe(tap(() => this.data.mutate((d) => { d.tracking = d.tracking.filter((t) => t.planId !== planId); }))),
+      () => this.removeLocal(planId),
+    );
   }
 
-  private softDeleteLocal(planId: string): void {
+  private removeLocal(planId: string): void {
     this.data.mutate((d) => {
       const p = d.plans.find((x) => x.id === planId);
-      if (p) p.deletedAt = new Date().toISOString();
-      this.data.audit(d, 'plan.delete', 'meal_plan', planId, `Eliminó (lógicamente) "${p?.name}"`);
+      d.plans = d.plans.filter((x) => x.id !== planId);
+      d.tracking = d.tracking.filter((t) => t.planId !== planId);
+      this.data.audit(d, 'plan.purge', 'meal_plan', planId, `Eliminó permanentemente "${p?.name}"`);
     });
   }
 
@@ -441,3 +446,11 @@ export class PlansService {
 }
 
 void throwError;
+
+/** Texto de la confirmación al eliminar un plan: el borrado es permanente y se avisa de todo lo que se lleva. */
+export const deletePlanConfirm = (name: string) => ({
+  title: 'Eliminar plan',
+  message: `El plan «${name}» se borrará de forma permanente, junto con su historial, sus versiones publicadas y el seguimiento que el paciente registró en él. Esta acción no se puede deshacer.`,
+  confirmLabel: 'Eliminar permanentemente',
+  tone: 'danger' as const,
+});

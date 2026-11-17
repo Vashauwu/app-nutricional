@@ -36,10 +36,11 @@ func (noMail) SendInvitation(context.Context, string, string) error    { return 
 func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 type env struct {
-	ctx  context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
-	pool *pgxpool.Pool
-	srv  *httptest.Server
-	auth *auth.Service
+	ctx   context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
+	pool  *pgxpool.Pool
+	srv   *httptest.Server
+	auth  *auth.Service
+	plans *mealplans.Service
 }
 
 func start(t *testing.T) *env {
@@ -77,7 +78,7 @@ func start(t *testing.T) *env {
 	require.NoError(t, err)
 	_, err = dsh.ActivateEdition(context.Background(), dishes.Actor{}, rep.Edition.ID)
 	require.NoError(t, err)
-	return &env{ctx: testsupport.NewPractice(t, pool), pool: pool, srv: srv, auth: as}
+	return &env{ctx: testsupport.NewPractice(t, pool), pool: pool, srv: srv, auth: as, plans: plans}
 }
 
 func (e *env) login(t *testing.T, email, role string) *testsupport.Client {
@@ -400,8 +401,6 @@ func TestMealPlansIntegration(t *testing.T) {
 		code, b = save(t, nutri, id, int(fin["revision"].(float64)), docOf(fin))
 		require.Equal(t, 409, code)
 		require.Equal(t, "plan_readonly", testsupport.ErrCode(b))
-		code, _ = nutri.Do("DELETE", "/api/v1/plans/"+id, nil)
-		require.Equal(t, 409, code, "solo se eliminan borradores")
 		code, _ = nutri.Do("POST", "/api/v1/plans/"+id+"/archive", nil)
 		require.Equal(t, 200, code)
 		code, r := nutri.Do("POST", "/api/v1/plans/"+id+"/restore", nil)
@@ -414,8 +413,8 @@ func TestMealPlansIntegration(t *testing.T) {
 		code, _ = nutri.Do("GET", "/api/v1/plans/"+dv["id"].(string), nil)
 		require.Equal(t, 404, code)
 		var kept int
-		require.NoError(t, e.pool.QueryRow(ctx, `SELECT count(*) FROM meal_plans WHERE id = $1 AND deleted_at IS NOT NULL`, dv["id"]).Scan(&kept))
-		require.Equal(t, 1, kept, "eliminación lógica")
+		require.NoError(t, e.pool.QueryRow(ctx, `SELECT count(*) FROM meal_plans WHERE id = $1`, dv["id"]).Scan(&kept))
+		require.Equal(t, 0, kept, "eliminación permanente: no queda ni la fila")
 	})
 
 	t.Run("al terminar el periodo el plan pasa a finalizado automáticamente", func(t *testing.T) {
@@ -605,7 +604,7 @@ func TestMealPlansIntegration(t *testing.T) {
 			seen[a] = true
 			require.NotContains(t, m, "@demo.mx")
 		}
-		for _, want := range []string{"plan.create", "plan.save", "plan.publish", "plan.substitution", "plan.finalize", "plan.delete", "template.create"} {
+		for _, want := range []string{"plan.create", "plan.save", "plan.publish", "plan.substitution", "plan.finalize", "plan.purge", "template.create"} {
 			require.True(t, seen[want], want)
 		}
 	})

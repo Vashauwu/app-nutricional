@@ -56,7 +56,16 @@ type Service struct {
 	log      *slog.Logger
 	loc      *time.Location
 	now      func() time.Time
+	files    FileRemover
 }
+
+// FileRemover quita archivos privados del almacenamiento (el seguimiento con fotografías de un plan que se borra).
+type FileRemover interface {
+	RemovePrivateObjects(ctx context.Context, keys []string)
+}
+
+// SetFiles activa el borrado de los archivos de seguimiento al eliminar un plan (sin él solo se borran los registros).
+func (s *Service) SetFiles(f FileRemover) { s.files = f }
 
 func NewService(pool *pgxpool.Pool, patients Patients, tz string, log *slog.Logger) *Service {
 	loc, err := time.LoadLocation(tz)

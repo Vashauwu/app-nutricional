@@ -315,6 +315,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 		} else {
 			storageSvc := storage.NewService(pool, store, settingsSvc, patientsSvc, cfg.S3PrivateBucket, cfg.S3PublicBucket, logger)
 			storageSvc.SetLimits(planSvc)
+			plansSvc.SetFiles(storageSvc)
 			images = storageSvc
 			storage.NewController(storageSvc, authSvc, func(c *gin.Context, userID uuid.UUID) (uuid.UUID, error) {
 				p, err := patientsSvc.ForUser(c.Request.Context(), userID)

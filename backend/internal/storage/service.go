@@ -253,6 +253,16 @@ func (s *Service) checkQuota(ctx context.Context, owner *uuid.UUID, add int64) e
 	return nil
 }
 
+// RemovePrivateObjects borra del almacenamiento archivos privados ya eliminados de la base (p. ej. las fotografías de
+// seguimiento de un plan que se borró). Es de mejor esfuerzo: un fallo solo deja un objeto huérfano, ya inaccesible.
+func (s *Service) RemovePrivateObjects(ctx context.Context, keys []string) {
+	for _, k := range keys {
+		if err := s.store.Delete(ctx, s.private, k); err != nil {
+			s.log.WarnContext(ctx, "storage_purge_failed", slog.String("key", k), slog.Any("error", err))
+		}
+	}
+}
+
 // UploadImage procesa y guarda una imagen. Fotografías clínicas y de seguimiento son SIEMPRE privadas (§18.3).
 func (s *Service) UploadImage(ctx context.Context, a Actor, kind string, owner *uuid.UUID, data []byte) (FileView, error) {
 	visibility := "public"

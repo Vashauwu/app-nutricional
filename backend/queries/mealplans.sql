@@ -193,3 +193,17 @@ INSERT INTO meal_slot_items (id, slot_id, position, dish_id, dish_version, servi
 
 -- name: GetDishForPlan :one
 SELECT id, name, status, current_version FROM dishes WHERE id = $1 AND deleted_at IS NULL;
+
+-- ---------- Borrado permanente ----------
+-- name: GetPlanAnyState :one
+SELECT * FROM meal_plans WHERE id = $1;
+
+-- Archivos de seguimiento (siempre privados) del plan, para quitarlos también del almacenamiento.
+-- name: ListPlanTrackingFileKeys :many
+SELECT f.storage_key, f.thumb_key FROM tracking_entries e
+JOIN tracking_photos ph ON ph.entry_id = e.id
+JOIN file_objects f ON f.id = ph.file_object_id
+WHERE e.plan_id = $1;
+
+-- name: PurgeMealPlan :one
+SELECT purge_meal_plan($1)::jsonb AS result;

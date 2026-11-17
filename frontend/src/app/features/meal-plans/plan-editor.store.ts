@@ -168,6 +168,13 @@ export class PlanEditorStore {
     this.timer = setTimeout(() => void this.flush(), ms);
   }
 
+  /** Deja de guardar y olvida lo pendiente (el plan se eliminó: no hay nada que conservar ni conciliar). */
+  abandon(): void {
+    clearTimeout(this.timer);
+    this.clearPending();
+    this.saveState.set('idle');
+  }
+
   private persistPending(): void {
     try {
       localStorage.setItem(PENDING_KEY(this.planId), JSON.stringify({ base: this.baseRevision, snap: this.working() }));

@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5/pgtype"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
@@ -372,23 +373,46 @@ func (s *Service) Transition(ctx context.Context, a Actor, id uuid.UUID, action,
 	return s.view(ctx, p)
 }
 
-// Delete elimina de forma lógica solo borradores; lo publicado se finaliza o archiva (§17.2).
+// Delete elimina un plan de forma PERMANENTE, en cualquier estado: el plan, su historial, sus versiones publicadas y el
+// seguimiento que el paciente registró en él (con comentarios y fotografías). No se puede deshacer. Queda constancia en la
+// auditoría, que no guarda el contenido del plan.
 func (s *Service) Delete(ctx context.Context, a Actor, id uuid.UUID) error {
-	cur, err := s.q.GetPlan(ctx, id)
+	cur, err := s.q.GetPlanAnyState(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return ErrNotFound
 	}
 	if err != nil {
 		return err
 	}
-	if cur.Status != "draft" {
-		return ErrBadTransition
-	}
-	if err := s.q.SoftDeletePlan(ctx, db.SoftDeletePlanParams{ID: id, UpdatedBy: a.ID}); err != nil {
+	keys, err := s.q.ListPlanTrackingFileKeys(ctx, id)
+	if err != nil {
 		return err
 	}
-	_ = s.q.InsertPlanEvent(ctx, db.InsertPlanEventParams{PlanID: id, Actor: uuid.NullUUID{UUID: a.ID, Valid: true}, Type: "deleted", Summary: "Eliminado (lógicamente)"})
-	s.rec(ctx, a, "plan.delete", id, nil)
+	raw, err := s.q.PurgeMealPlan(ctx, id)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "P0002" {
+		return ErrNotFound
+	}
+	if err != nil {
+		return err
+	}
+	var res struct {
+		TrackingEntries int `json:"tracking_entries"`
+		Files           int `json:"files"`
+	}
+	_ = json.Unmarshal(raw, &res)
+	// Los archivos del almacenamiento se quitan después de confirmar el borrado; si falla, solo queda un objeto huérfano ya inaccesible.
+	if s.files != nil && len(keys) > 0 {
+		var all []string
+		for _, k := range keys {
+			all = append(all, k.StorageKey)
+			if k.ThumbKey.Valid {
+				all = append(all, k.ThumbKey.String)
+			}
+		}
+		s.files.RemovePrivateObjects(ctx, all)
+	}
+	s.rec(ctx, a, "plan.purge", id, map[string]any{"status": cur.Status, "tracking_entries": res.TrackingEntries, "files": res.Files})
 	return nil
 }
 
