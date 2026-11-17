@@ -64,6 +64,8 @@ type Querier interface {
 	GetAppointment(ctx context.Context, id uuid.UUID) (Appointment, error)
 	GetCalendarFeed(ctx context.Context, userID uuid.UUID) (CalendarFeed, error)
 	GetCustomFood(ctx context.Context, id uuid.UUID) (CustomFood, error)
+	// Para validar el vínculo de un plan con su Dietocálculo (el aislamiento por consulta lo impone la base).
+	GetDietCalcLink(ctx context.Context, id uuid.UUID) (GetDietCalcLinkRow, error)
 	GetDietCalculation(ctx context.Context, id uuid.UUID) (GetDietCalculationRow, error)
 	GetDish(ctx context.Context, id uuid.UUID) (Dish, error)
 	GetDishForPlan(ctx context.Context, id uuid.UUID) (GetDishForPlanRow, error)

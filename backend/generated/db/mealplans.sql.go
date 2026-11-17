@@ -14,7 +14,7 @@ import (
 )
 
 const bumpPlanRevision = `-- name: BumpPlanRevision :one
-UPDATE meal_plans SET revision = revision + 1, updated_by = $2, updated_at = now() WHERE id = $1 RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
+UPDATE meal_plans SET revision = revision + 1, updated_by = $2, updated_at = now() WHERE id = $1 RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at
 `
 
 type BumpPlanRevisionParams struct {
@@ -45,12 +45,14 @@ func (q *Queries) BumpPlanRevision(ctx context.Context, arg BumpPlanRevisionPara
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
 	)
 	return i, err
 }
 
 const currentPublishedPlan = `-- name: CurrentPublishedPlan :one
-SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id FROM meal_plans
+SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at FROM meal_plans
 WHERE patient_id = $1 AND status = 'published' AND deleted_at IS NULL
 ORDER BY (start_date <= $2 AND end_date >= $2) DESC, start_date DESC
 LIMIT 1
@@ -86,6 +88,8 @@ func (q *Queries) CurrentPublishedPlan(ctx context.Context, arg CurrentPublished
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
 	)
 	return i, err
 }
@@ -212,7 +216,7 @@ func (q *Queries) GetItemForSubstitution(ctx context.Context, arg GetItemForSubs
 }
 
 const getPlan = `-- name: GetPlan :one
-SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id FROM meal_plans WHERE id = $1 AND deleted_at IS NULL
+SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at FROM meal_plans WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error) {
@@ -238,6 +242,8 @@ func (q *Queries) GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error) {
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
 	)
 	return i, err
 }
@@ -315,22 +321,25 @@ func (q *Queries) InsertItem(ctx context.Context, arg InsertItemParams) error {
 }
 
 const insertPlan = `-- name: InsertPlan :one
-INSERT INTO meal_plans (patient_id, name, start_date, end_date, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, created_by, updated_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
-RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
+INSERT INTO meal_plans (patient_id, name, start_date, end_date, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, created_by, updated_by,
+                        target_diet_calculation_id, target_diet_synced_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, $11, $12)
+RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at
 `
 
 type InsertPlanParams struct {
-	PatientID         uuid.UUID       `json:"patient_id"`
-	Name              string          `json:"name"`
-	StartDate         pgtype.Date     `json:"start_date"`
-	EndDate           pgtype.Date     `json:"end_date"`
-	TargetEnergy      decimal.Decimal `json:"target_energy"`
-	TargetProtein     decimal.Decimal `json:"target_protein"`
-	TargetCarbs       decimal.Decimal `json:"target_carbs"`
-	TargetLipids      decimal.Decimal `json:"target_lipids"`
-	TargetEquivalents []byte          `json:"target_equivalents"`
-	CreatedBy         uuid.UUID       `json:"created_by"`
+	PatientID               uuid.UUID          `json:"patient_id"`
+	Name                    string             `json:"name"`
+	StartDate               pgtype.Date        `json:"start_date"`
+	EndDate                 pgtype.Date        `json:"end_date"`
+	TargetEnergy            decimal.Decimal    `json:"target_energy"`
+	TargetProtein           decimal.Decimal    `json:"target_protein"`
+	TargetCarbs             decimal.Decimal    `json:"target_carbs"`
+	TargetLipids            decimal.Decimal    `json:"target_lipids"`
+	TargetEquivalents       []byte             `json:"target_equivalents"`
+	CreatedBy               uuid.UUID          `json:"created_by"`
+	TargetDietCalculationID uuid.NullUUID      `json:"target_diet_calculation_id"`
+	TargetDietSyncedAt      pgtype.Timestamptz `json:"target_diet_synced_at"`
 }
 
 // ---------- Planes ----------
@@ -346,6 +355,8 @@ func (q *Queries) InsertPlan(ctx context.Context, arg InsertPlanParams) (MealPla
 		arg.TargetLipids,
 		arg.TargetEquivalents,
 		arg.CreatedBy,
+		arg.TargetDietCalculationID,
+		arg.TargetDietSyncedAt,
 	)
 	var i MealPlan
 	err := row.Scan(
@@ -368,6 +379,8 @@ func (q *Queries) InsertPlan(ctx context.Context, arg InsertPlanParams) (MealPla
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
 	)
 	return i, err
 }
@@ -988,7 +1001,7 @@ func (q *Queries) RemoveSlotsNotIn(ctx context.Context, arg RemoveSlotsNotInPara
 const setPlanStatus = `-- name: SetPlanStatus :one
 UPDATE meal_plans SET status = $2, revision = revision + 1, updated_by = $3, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
+RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at
 `
 
 type SetPlanStatusParams struct {
@@ -1020,6 +1033,8 @@ func (q *Queries) SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (M
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
 	)
 	return i, err
 }
@@ -1090,24 +1105,27 @@ func (q *Queries) TouchPlanEvent(ctx context.Context, id uuid.UUID) error {
 
 const updatePlanDoc = `-- name: UpdatePlanDoc :one
 UPDATE meal_plans SET name = $3, start_date = $4, end_date = $5, target_energy = $6, target_protein = $7, target_carbs = $8, target_lipids = $9,
-    target_equivalents = $10, targets_version = $11, revision = revision + 1, updated_by = $12, updated_at = now()
+    target_equivalents = $10, targets_version = $11, revision = revision + 1, updated_by = $12, updated_at = now(),
+    target_diet_calculation_id = $13, target_diet_synced_at = $14
 WHERE id = $1 AND revision = $2 AND deleted_at IS NULL
-RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
+RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at
 `
 
 type UpdatePlanDocParams struct {
-	ID                uuid.UUID       `json:"id"`
-	Revision          int32           `json:"revision"`
-	Name              string          `json:"name"`
-	StartDate         pgtype.Date     `json:"start_date"`
-	EndDate           pgtype.Date     `json:"end_date"`
-	TargetEnergy      decimal.Decimal `json:"target_energy"`
-	TargetProtein     decimal.Decimal `json:"target_protein"`
-	TargetCarbs       decimal.Decimal `json:"target_carbs"`
-	TargetLipids      decimal.Decimal `json:"target_lipids"`
-	TargetEquivalents []byte          `json:"target_equivalents"`
-	TargetsVersion    int32           `json:"targets_version"`
-	UpdatedBy         uuid.UUID       `json:"updated_by"`
+	ID                      uuid.UUID          `json:"id"`
+	Revision                int32              `json:"revision"`
+	Name                    string             `json:"name"`
+	StartDate               pgtype.Date        `json:"start_date"`
+	EndDate                 pgtype.Date        `json:"end_date"`
+	TargetEnergy            decimal.Decimal    `json:"target_energy"`
+	TargetProtein           decimal.Decimal    `json:"target_protein"`
+	TargetCarbs             decimal.Decimal    `json:"target_carbs"`
+	TargetLipids            decimal.Decimal    `json:"target_lipids"`
+	TargetEquivalents       []byte             `json:"target_equivalents"`
+	TargetsVersion          int32              `json:"targets_version"`
+	UpdatedBy               uuid.UUID          `json:"updated_by"`
+	TargetDietCalculationID uuid.NullUUID      `json:"target_diet_calculation_id"`
+	TargetDietSyncedAt      pgtype.Timestamptz `json:"target_diet_synced_at"`
 }
 
 // Guardado con concurrencia optimista: solo actualiza si la revisión coincide.
@@ -1125,6 +1143,8 @@ func (q *Queries) UpdatePlanDoc(ctx context.Context, arg UpdatePlanDocParams) (M
 		arg.TargetEquivalents,
 		arg.TargetsVersion,
 		arg.UpdatedBy,
+		arg.TargetDietCalculationID,
+		arg.TargetDietSyncedAt,
 	)
 	var i MealPlan
 	err := row.Scan(
@@ -1147,6 +1167,8 @@ func (q *Queries) UpdatePlanDoc(ctx context.Context, arg UpdatePlanDocParams) (M
 		&i.UpdatedAt,
 		&i.DeletedAt,
 		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
 	)
 	return i, err
 }

@@ -1,12 +1,15 @@
 import { ChangeDetectionStrategy, Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { catchError, forkJoin, of } from 'rxjs';
 import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { PatientsService } from '../../core/services/patients.service';
 import { PlansService, emptyTargets } from '../../core/services/plans.service';
 import { ToastService } from '../../core/services/ui.services';
 import { latestMeasurement, proposeTargets } from '../../core/nutrition/engine';
+import { BASE_TARGETS_NOTICE, dietSummary, planTargetsFromDiet } from '../../core/nutrition/diet-targets';
+import { DietCalc, DietocalculoService } from '../../core/services/dietocalculo.service';
 import { PlanTargets } from '../../shared/models/domain';
 import { FieldError } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
@@ -77,7 +80,28 @@ const dateOrder = (g: AbstractControl): ValidationErrors | null => {
           <div class="field"><label for="np-c">Plan a duplicar</label><select id="np-c" class="select" formControlName="copyId"><option value="">Selecciona…</option>@for (p of copyOptions(); track p.id) { <option [value]="p.id">{{ p.name }} — {{ name(p.patientId) }}</option> }</select><app-field-error [control]="form.controls.copyId" /></div>
         }
 
-        <label class="check"><input type="checkbox" formControlName="propose" /><span>Proponer objetivos diarios con las mediciones del paciente <span class="muted small">(orientativo, podrás ajustarlos)</span></span></label>
+        <label class="check"><input type="checkbox" formControlName="propose" /><span>Tomar los objetivos diarios del Dietocálculo del paciente <span class="muted small">(si no tiene, se estiman con sus mediciones; podrás ajustarlos)</span></span></label>
+
+        @if (form.controls.propose.value && form.controls.patientId.value) {
+          @if (diet(); as d) {
+            <div class="callout callout--ok" role="status">
+              <app-icon name="check-circle" />
+              <div class="callout-body">
+                <p><strong>Se usarán los objetivos del Dietocálculo «{{ d.name }}»</strong></p>
+                <p class="small">{{ summary(d) }}. Incluye el reparto de equivalentes por día.</p>
+              </div>
+            </div>
+          } @else if (diet() === null) {
+            <div class="callout" role="note">
+              <app-icon name="info" />
+              <div class="callout-body">
+                <p><strong>Este paciente aún no tiene un Dietocálculo.</strong></p>
+                <p class="small">{{ baseNotice }}</p>
+                <p class="small"><a routerLink="/dietocalculo/nuevo" [queryParams]="{ paciente: form.controls.patientId.value }">Calcular con el Dietocálculo</a></p>
+              </div>
+            </div>
+          }
+        }
 
         <div class="form-actions"><a tuiButton appearance="secondary" size="m" routerLink="/planes">Cancelar</a><button tuiButton type="submit" size="m">Crear y abrir editor</button></div>
       </form>
@@ -91,6 +115,13 @@ export class PlanCreate implements OnInit {
   private readonly data = inject(DbService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
+  private readonly dietSvc = inject(DietocalculoService);
+
+  /** Dietocálculo más reciente del paciente elegido: `undefined` = cargando o sin paciente, `null` = no tiene. */
+  protected readonly diet = signal<DietCalc | null | undefined>(undefined);
+  protected readonly baseNotice = BASE_TARGETS_NOTICE;
+  protected readonly summary = (d: DietCalc): string => dietSummary(d.result);
+  private lastPatient = '';
 
   readonly paciente = input<string>();
   readonly plantilla = input<string>();
@@ -129,6 +160,11 @@ export class PlanCreate implements OnInit {
     this.form.valueChanges.subscribe(() => {
       const v = this.form.getRawValue();
       this.vals.set(v);
+      if (v.patientId !== this.lastPatient) {
+        this.lastPatient = v.patientId;
+        this.diet.set(undefined);
+        if (v.patientId) this.dietSvc.latestForPatient(v.patientId).subscribe((d) => { if (this.lastPatient === v.patientId) this.diet.set(d); });
+      }
       this.form.controls.templateId.setValidators(v.source === 'template' ? Validators.required : null);
       this.form.controls.copyId.setValidators(v.source === 'copy' ? Validators.required : null);
       this.form.controls.templateId.updateValueAndValidity({ emitEvent: false });
@@ -169,21 +205,24 @@ export class PlanCreate implements OnInit {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
     const v = this.form.getRawValue();
-    // Modo API: se necesitan las mediciones del paciente para proponer objetivos.
-    this.patients.load(v.patientId).subscribe({ next: () => this.create(v), error: () => this.create(v) });
+    // Modo API: se necesitan el Dietocálculo y las mediciones del paciente para fijar los objetivos.
+    forkJoin({ _: this.patients.load(v.patientId).pipe(catchError(() => of(null))), diet: this.dietSvc.latestForPatient(v.patientId) })
+      .subscribe(({ diet }) => this.create(v, diet));
   }
 
-  private create(v: ReturnType<typeof this.form.getRawValue>): void {
+  private create(v: ReturnType<typeof this.form.getRawValue>, diet: DietCalc | null): void {
     const end = v.mode === 'custom' ? v.end : addDays(v.start, (v.mode === 'week' ? 7 : Number(v.weeks) * 7) - 1);
     let targets: PlanTargets | undefined;
     const p = this.patients.get(v.patientId);
     const m = p ? latestMeasurement(p.measurements) : undefined;
-    if (v.propose && p && m) {
+    if (v.propose && diet) {
+      targets = planTargetsFromDiet(diet.result, 1, { id: diet.id, updatedAt: diet.updatedAt });
+    } else if (v.propose && p && m) {
       const r = proposeTargets({ sex: p.profile.sex, age: ageFrom(p.profile.birthDate), weightKg: m.weightKg, heightCm: m.heightCm, goal: p.goal });
       const eq: Record<string, string> = r.equivalentsByCode;
       targets = { energy: r.energy, protein: r.protein, carbs: r.carbs, lipids: r.lipids, equivalents: eq, version: 1 };
     } else if (v.propose && !m) {
-      this.toast.info('El paciente no tiene mediciones: se usaron objetivos base editables.');
+      this.toast.info('El paciente no tiene Dietocálculo ni mediciones: se usaron objetivos base editables.');
       targets = emptyTargets();
     }
     this.plans.create({

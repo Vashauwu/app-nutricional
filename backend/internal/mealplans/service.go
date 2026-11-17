@@ -268,7 +268,43 @@ func (s *Service) writeDoc(ctx context.Context, q *db.Queries, planID uuid.UUID,
 }
 
 func targetsOf(p db.MealPlan) Targets {
-	return Targets{Energy: p.TargetEnergy, Protein: p.TargetProtein, Carbs: p.TargetCarbs, Lipids: p.TargetLipids, Equivalents: parseEq(p.TargetEquivalents)}
+	t := Targets{Energy: p.TargetEnergy, Protein: p.TargetProtein, Carbs: p.TargetCarbs, Lipids: p.TargetLipids, Equivalents: parseEq(p.TargetEquivalents)}
+	if p.TargetDietCalculationID.Valid {
+		id := p.TargetDietCalculationID.UUID
+		t.DietCalculationID = &id
+		if p.TargetDietSyncedAt.Valid {
+			at := p.TargetDietSyncedAt.Time
+			t.DietSyncedAt = &at
+		}
+	}
+	return t
+}
+
+// dietLink prepara el vínculo con el Dietocálculo para guardarlo. Solo se valida cuando cambia respecto de lo ya guardado
+// (un Dietocálculo eliminado después no debe impedir seguir guardando el plan). El vínculo debe ser de la misma consulta
+// (lo impone la base) y del mismo paciente. La versión aplicada nunca puede ser posterior a la real.
+func (s *Service) dietLink(ctx context.Context, q *db.Queries, patient uuid.UUID, cur *Targets, t Targets) (uuid.NullUUID, pgtype.Timestamptz, error) {
+	if t.DietCalculationID == nil {
+		return uuid.NullUUID{}, pgtype.Timestamptz{}, nil
+	}
+	id := *t.DietCalculationID
+	// Sin cambios respecto de lo guardado: se conserva tal cual (no se revalida).
+	if cur != nil && cur.DietCalculationID != nil && *cur.DietCalculationID == id && (t.DietSyncedAt == nil || (cur.DietSyncedAt != nil && t.DietSyncedAt.Equal(*cur.DietSyncedAt))) {
+		var at pgtype.Timestamptz
+		if cur.DietSyncedAt != nil {
+			at = pgtype.Timestamptz{Time: *cur.DietSyncedAt, Valid: true}
+		}
+		return uuid.NullUUID{UUID: id, Valid: true}, at, nil
+	}
+	d, err := q.GetDietCalcLink(ctx, id)
+	if err != nil || !d.PatientID.Valid || d.PatientID.UUID != patient {
+		return uuid.NullUUID{}, pgtype.Timestamptz{}, ValidationError{"targets.diet_calculation_id": "ese Dietocálculo no existe o no es de este paciente"}
+	}
+	at := d.UpdatedAt
+	if t.DietSyncedAt != nil && !t.DietSyncedAt.After(d.UpdatedAt.Time) {
+		at = pgtype.Timestamptz{Time: *t.DietSyncedAt, Valid: true}
+	}
+	return uuid.NullUUID{UUID: id, Valid: true}, at, nil
 }
 
 // docOf reconstruye el documento (sin enriquecer) tal como está en la base.

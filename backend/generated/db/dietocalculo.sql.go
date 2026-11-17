@@ -12,6 +12,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getDietCalcLink = `-- name: GetDietCalcLink :one
+SELECT patient_id, updated_at FROM diet_calculations WHERE id = $1 AND deleted_at IS NULL
+`
+
+type GetDietCalcLinkRow struct {
+	PatientID uuid.NullUUID      `json:"patient_id"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+// Para validar el vínculo de un plan con su Dietocálculo (el aislamiento por consulta lo impone la base).
+func (q *Queries) GetDietCalcLink(ctx context.Context, id uuid.UUID) (GetDietCalcLinkRow, error) {
+	row := q.db.QueryRow(ctx, getDietCalcLink, id)
+	var i GetDietCalcLinkRow
+	err := row.Scan(&i.PatientID, &i.UpdatedAt)
+	return i, err
+}
+
 const getDietCalculation = `-- name: GetDietCalculation :one
 SELECT d.id, d.name, d.patient_id, d.inputs, d.result, d.engine_version, d.kcal, d.created_by, d.created_at, d.updated_at, d.deleted_at, d.practice_id, COALESCE(p.first_name || ' ' || p.last_name, '')::text AS patient_name
 FROM diet_calculations d LEFT JOIN patients p ON p.id = d.patient_id
