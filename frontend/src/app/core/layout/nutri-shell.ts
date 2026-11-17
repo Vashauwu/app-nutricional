@@ -118,6 +118,7 @@ export class NutriShell {
   private readonly toReview = computed(() => this.data.db().tracking.filter((t) => t.needsReview).length);
 
   protected readonly userMenu = computed<MenuItem[]>(() => [
+    { label: 'Mi perfil profesional', icon: 'user', run: () => void this.router.navigateByUrl('/perfil') },
     { label: 'Tablas cómodas', icon: 'list', checked: this.theme.density() === 'comfortable', run: () => this.theme.setDensity('comfortable') },
     { label: 'Tablas compactas', icon: 'list', checked: this.theme.density() === 'compact', run: () => this.theme.setDensity('compact') },
     { label: 'Salir', icon: 'log-out', separator: true, run: () => this.logout() },
@@ -151,7 +152,8 @@ export class NutriShell {
     // Modo API: catálogo y platillos (resumen) disponibles para selectores y planes. En modo simulado no hace nada.
     this.catalog.hydrate().subscribe({ error: () => undefined });
     this.dishes.loadAll().subscribe({ error: () => undefined });
-    this.settings.load().subscribe({ error: () => undefined });
+    // Una cuenta nueva empieza por el inicio guiado (el servidor dice si ya lo hizo).
+    this.settings.load().subscribe({ error: () => undefined, complete: () => { if (!this.data.db().settings.profile.onboardingDone) void this.router.navigateByUrl('/bienvenida'); } });
     this.focusMode.set(this.isEditor(this.router.url));
     // Al navegar se devuelve el foco al contenido (lectores de pantalla y teclado).
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)).subscribe((e) => {

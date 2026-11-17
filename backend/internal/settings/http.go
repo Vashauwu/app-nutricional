@@ -46,6 +46,7 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g := v1.Group("/settings", auth.Authenticate(ct.auth), auth.RequirePermission("settings:manage"), auth.CSRF())
 	g.GET("", ct.get)
 	g.PUT("/brand", ct.putBrand)
+	g.PUT("/profile", ct.putProfile)
 	g.PUT("/region", ct.putRegion)
 	g.PUT("/storage", ct.putStorage)
 	g.PUT("/alerts", ct.putAlerts)
@@ -95,6 +96,19 @@ func (ct *Controller) putBrand(c *gin.Context) {
 		return
 	}
 	out, err := ct.svc.UpdateBrand(c.Request.Context(), actor(c), in)
+	if err != nil {
+		ct.fail(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, out)
+}
+
+func (ct *Controller) putProfile(c *gin.Context) {
+	in, ok := bind[Profile](c, ct)
+	if !ok {
+		return
+	}
+	out, err := ct.svc.UpdateProfile(c.Request.Context(), actor(c), in)
 	if err != nil {
 		ct.fail(c, err)
 		return

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { BrandSettings } from '../../shared/models/domain';
+import { BrandSettings, ProfessionalProfile } from '../../shared/models/domain';
 import { DietInputs, DietResult, GROUPS } from './engine';
 import { fmtTime } from './dc-dist';
 
@@ -79,7 +79,7 @@ const GOAL_TEXT: Record<DietInputs['goal'], string> = { maintain: 'Mantener tu p
       <header>
         <div class="brand">
           @if (brand().logoDataUrl) { <img [src]="brand().logoDataUrl" alt="" /> } @else { <img src="icons/icon-96x96.png" alt="" /> }
-          <div><b>{{ brand().businessName }}</b><span>{{ brand().credentials }}@if (brand().licenseNumber) { · Cédula {{ brand().licenseNumber }} }</span></div>
+          <div><b>{{ brand().businessName }}</b><span>{{ byline() }}</span></div>
         </div>
         <div class="meta">{{ today() }}</div>
       </header>
@@ -133,6 +133,7 @@ export class Handout {
   readonly res = input.required<DietResult>();
   readonly inp = input.required<DietInputs>();
   readonly brand = input.required<BrandSettings>();
+  readonly profile = input<ProfessionalProfile | null>(null);
   readonly patientName = input('');
   readonly style = input<HandoutStyle>('clasico');
   readonly accent = input('#4e344c');
@@ -146,7 +147,18 @@ export class Handout {
     const i = this.inp();
     return `Plan de alimentación · ${Math.round(i.age)} años · ${i.weight_kg} kg · ${i.height_cm} cm`;
   });
-  protected readonly contact = computed(() => [this.brand().phone, this.brand().email, this.brand().address].filter(Boolean).join(' · '));
+  protected readonly byline = computed(() => {
+    const p = this.profile();
+    const b = this.brand();
+    return [p?.fullName, p?.specialty || b.credentials, b.licenseNumber && `Cédula ${b.licenseNumber.replace(/^Cédula\s*/i, '')}`].filter(Boolean).join(' · ');
+  });
+  protected readonly contact = computed(() => {
+    const p = this.profile();
+    const b = this.brand();
+    const zone = p ? [p.colony, p.city, p.state].filter(Boolean).join(', ') : '';
+    const where = p && p.modality === 'online' ? 'Consulta en línea' : p && (p.street || zone) ? (p.showExactAddress ? [p.street, p.colony, [p.postalCode, p.city].filter(Boolean).join(' '), p.state].filter(Boolean).join(', ') : zone) : b.address;
+    return [p?.appointmentPhone || b.phone, b.email, where].filter(Boolean).join(' · ');
+  });
 
   protected menu(slot: string): string {
     return (this.inp().menu?.[slot] ?? []).map((x) => `${x.name} (${x.qty_n} ${x.qty ?? 'porción'})`).join(' · ');

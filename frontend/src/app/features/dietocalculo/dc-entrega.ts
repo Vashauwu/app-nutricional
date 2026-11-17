@@ -113,7 +113,7 @@ const isoDay = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 
               @for (p of palettes; track p.id) { <button type="button" role="radio" [attr.aria-checked]="pref().accent === p.primary" [attr.aria-label]="p.name" [style.background]="p.primary" (click)="setAccent(p.primary)"></button> }
             </div>
           </div>
-          <div class="sheet" tabindex="0" role="region" aria-label="Vista previa del documento del paciente"><app-handout [res]="s.r()" [inp]="s.inp()" [brand]="brand()" [patientName]="patientName()" [style]="pref().style" [accent]="pref().accent" /></div>
+          <div class="sheet" tabindex="0" role="region" aria-label="Vista previa del documento del paciente"><app-handout [res]="s.r()" [inp]="s.inp()" [brand]="brand()" [profile]="profile()" [patientName]="patientName()" [style]="pref().style" [accent]="pref().accent" /></div>
           <div class="row">
             <button tuiButton type="button" size="m" (click)="pdf()"><app-icon name="download" [size]="18" /> Descargar PDF</button>
             <a tuiButton size="m" appearance="secondary" [class.disabled]="!waLink()" [attr.href]="waLink()" target="_blank" rel="noopener noreferrer"><app-icon name="message" [size]="18" /> WhatsApp</a>
@@ -150,6 +150,7 @@ export class DcEntrega {
   protected readonly booked = signal('');
 
   protected readonly brand = computed(() => this.data.db().settings.brand);
+  protected readonly profile = computed(() => this.data.db().settings.profile);
   protected readonly sups = computed<Supplement[]>(() => this.s.inp().supplements ?? []);
   private readonly phone = computed(() => {
     const raw = this.data.db().patients.find((p) => p.id === this.patientId())?.profile.phone ?? '';

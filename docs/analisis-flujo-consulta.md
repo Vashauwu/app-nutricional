@@ -14,8 +14,9 @@ lo que ya tenemos y decide qué se construye, qué se pospone y qué no se copia
 | Pantalla / función de la referencia | Estado nuestro | Decisión |
 |---|---|---|
 | **Perfil:** nombre, cédula, teléfono, clínica | Tenemos (Configuración → Marca: nombre comercial, credenciales, cédula, teléfono, correo, dirección) | — |
-| Perfil: «sobre ti», especialidad, tipo de profesional | Falta | Fase B |
-| Perfil: dónde atiende (presencial/en línea/ambas), dirección estructurada, mapa, ocultar dirección exacta | Falta | Fase B |
+| Perfil: «sobre ti», especialidad, tipo de profesional, clínica, teléfono de citas, cédula | **Nuevo:** página «Mi perfil profesional» con avance de completitud | Hecho |
+| Perfil: dónde atiende (presencial/en línea/ambas), dirección estructurada, ocultar dirección exacta | **Nuevo** (sin mapa: se muestra cómo la leerá el paciente) | Hecho |
+| **Inicio guiado de cuenta nueva** (2 pasos, barra de avance, vista previa del documento con tu marca) | **Nuevo:** `/bienvenida`, solo para cuentas sin marca ni perfil; se puede omitir | Hecho |
 | Logotipo y color de marca | Tenemos (logotipo + paquete de 10 colores con variante oscura) | — |
 | **Estilos del PDF** con color de acento | **Nuevo (esta entrega):** 4 estilos propios + 10 acentos, con vista previa en vivo | Hecho |
 | Tarjeta digital pública del profesional | Falta | Fase B (requiere página pública por profesional; ver `docs/interno/crm-landing.md`) |
@@ -55,7 +56,7 @@ Pestaña **Entrega** en el Dietocálculo (`dc-entrega.ts`) y documento imprimibl
 
 ## Hoja de ruta (cada fase se libera sola)
 - **A. Generador de menú explicable:** 7 días a partir del reparto por tiempo, platillos activos, alergias/gustos del expediente, variedad y complejidad; muestra por qué eligió cada platillo; la nutrióloga ajusta antes de entregar.
-- **B. Perfil profesional ampliado:** «sobre ti», especialidad, modalidad, dirección estructurada y su visibilidad; base para una tarjeta pública.
+- **B. Tarjeta pública** del profesional (el perfil ya existe; falta la página pública, que requiere definir su alcance).
 - **C. Consulta guiada:** asistente de cinco pasos que une alta/selección de paciente, antropometría, cálculo, menú y entrega, con «Finalizar consulta».
 - **D. Expediente ampliado:** estilo de vida, salud intestinal (escala de Bristol), heredofamiliares y contacto de emergencia (migración + pantallas + pruebas).
 - **E. Antropometría:** Jackson-Pollock 4 y guía ilustrada de medición.
@@ -65,3 +66,10 @@ Pestaña **Entrega** en el Dietocálculo (`dc-entrega.ts`) y documento imprimibl
 - WhatsApp y correo **no adjuntan** el PDF: se descarga y se adjunta a mano. Adjuntarlo automáticamente exigiría un servicio de mensajería (WhatsApp Business API) o correo desde el servidor; se evaluará aparte.
 - Las preferencias del documento (estilo y acento) viven en el navegador, no en la cuenta.
 - El documento no incluye aún tablas de platillos con receta; solo nombre y cantidad.
+
+## Perfil profesional e inicio guiado (segunda entrega)
+- **Mi perfil profesional** (`/perfil`, menú de la cuenta): nombre, «sobre ti» (250), especialidad, clínica, tipo de profesional, teléfono de citas, cédula, modalidad de atención, dirección (calle, colonia, CP, ciudad, estado) y «mostrar dirección exacta». Barra de completitud con lo que falta. La cédula se guarda en la marca (la usa el PDF).
+- **Backend:** sección `profile` de la configuración (`PUT /api/v1/settings/profile`, migración `000012` que amplía las claves permitidas). Valida longitudes, tipo, modalidad, CP de 5 dígitos, estado y teléfono. Pruebas de integración incluidas.
+- **Inicio guiado** (`/bienvenida`): paso 1 «Tu cuenta profesional» y paso 2 «Tu marca» (nombre del consultorio, logotipo y color), con barra de avance accesible y vista previa en vivo del documento (datos ficticios). «Completar después» lo omite. Una cuenta que ya tenía marca guardada **no** lo ve (se da por iniciada); una cuenta nueva sí, al entrar.
+- El documento del paciente usa ahora el nombre, la especialidad, el teléfono de citas y la dirección del perfil (respeta «mostrar dirección exacta»).
+- **No incluido** (a propósito): «Modo guiado/clínico» (no existe un modo guiado real), tarjeta digital, citas desde el portal y recordatorios por correo (necesitan infraestructura y un modelo comercial aún sin definir), y la pestaña «Cuenta» (el cambio de contraseña ya existe por el flujo de recuperación).

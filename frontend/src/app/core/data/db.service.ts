@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { Observable, Subject, delay, of } from 'rxjs';
-import { Db, Dish, DishVersion, Id, Patient, SmaeFood } from '../../shared/models/domain';
+import { Db, Dish, DishVersion, Id, Patient, SmaeFood, emptyProfile } from '../../shared/models/domain';
 import { FoodView, fromCustom, fromSmae } from '../nutrition/engine';
 import { DB_SCHEMA, buildSeed } from './seed';
 import { uid } from '../../shared/utils/format';
@@ -74,13 +74,14 @@ export class DbService {
       // los mismos valores neutros que el servidor usa por omisión.
       d.settings.brand = { businessName: 'Nutrición', tagline: '', primary: '#4E344C', secondary: '#DDD6F2', phone: '', email: '', address: '', credentials: '', licenseNumber: '' };
       d.settings.alerts.clinicalRules = [];
+      d.settings.profile = emptyProfile();
       return d;
     }
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Db;
-        if (parsed.schema === DB_SCHEMA) return parsed;
+        if (parsed.schema === DB_SCHEMA) { parsed.settings.profile ??= { ...emptyProfile() }; return parsed; }
       }
     } catch {
       /* almacenamiento no disponible: se usa el seed en memoria */

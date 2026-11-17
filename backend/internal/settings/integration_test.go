@@ -65,6 +65,33 @@ func TestSettingsIntegration(t *testing.T) {
 		require.NotEmpty(t, b["alerts"].(map[string]any)["clinical_rules"])
 	})
 
+	t.Run("perfil profesional: una cuenta nueva ve el inicio guiado, se valida y se conserva", func(t *testing.T) {
+		code, b := nutri.Do("GET", "/api/v1/settings", nil)
+		require.Equal(t, 200, code)
+		prof := b["profile"].(map[string]any)
+		require.Equal(t, false, prof["onboarding_done"], "cuenta nueva: sin marca ni perfil guardados")
+		require.Equal(t, "in_person", prof["modality"])
+
+		bad := map[string]any{"full_name": "Lic. Prueba", "modality": "otra", "postal_code": "123", "state": "Narnia", "professional_type": "mago", "about": string(make([]byte, 0))}
+		code, e := nutri.Do("PUT", "/api/v1/settings/profile", bad)
+		require.Equal(t, 422, code, fmt.Sprint(e))
+		f := e["error"].(map[string]any)["fields"].(map[string]any)
+		for _, k := range []string{"modality", "postal_code", "state", "professional_type"} {
+			require.Contains(t, f, k)
+		}
+
+		good := map[string]any{"full_name": "Lic. Prueba", "about": "Atiendo adultos con diabetes.", "professional_type": "nutritionist", "specialty": "Nutrición clínica", "clinic_name": "Clínica Sol",
+			"appointment_phone": "55 1234 5678", "modality": "both", "street": "Av. Reforma 222", "colony": "Juárez", "postal_code": "06600", "city": "Cuauhtémoc", "state": "Ciudad de México", "show_exact_address": false, "onboarding_done": true}
+		code, out := nutri.Do("PUT", "/api/v1/settings/profile", good)
+		require.Equal(t, 200, code, fmt.Sprint(out))
+		code, b = nutri.Do("GET", "/api/v1/settings", nil)
+		require.Equal(t, 200, code)
+		prof = b["profile"].(map[string]any)
+		require.Equal(t, true, prof["onboarding_done"])
+		require.Equal(t, "Clínica Sol", prof["clinic_name"])
+		require.Equal(t, false, prof["show_exact_address"])
+	})
+
 	t.Run("marca: valida colores con contraste WCAG y la marca pública no expone contacto", func(t *testing.T) {
 		good := map[string]any{"business_name": "Nutrición Integral", "tagline": "Lema", "primary": "#2c5a78", "secondary": "#ddd6f2", "phone": "55 1", "email": "c@x.mx", "address": "Calle 1", "credentials": "Lic.", "license_number": "123"}
 		code, b := nutri.Do("PUT", "/api/v1/settings/brand", good)

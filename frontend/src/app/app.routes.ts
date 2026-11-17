@@ -16,6 +16,8 @@ export const routes: Routes = [
   { path: 'terminos', title: 'Términos de uso', data: { doc: 'terminos' }, loadComponent: () => import('./features/legal/legal').then((m) => m.Legal) },
   { path: 'restablecer/:token', title: 'Nueva contraseña', loadComponent: () => import('./features/auth/recovery').then((m) => m.ResetPassword) },
 
+  { path: 'bienvenida', title: 'Bienvenida', canActivate: [roleGuard('nutritionist')], loadComponent: () => import('./features/onboarding/onboarding').then((m) => m.Onboarding) },
+
   {
     path: 'paciente',
     canActivate: [roleGuard('patient')],
@@ -60,6 +62,7 @@ export const routes: Routes = [
       { path: 'planes/:id', title: 'Editor de plan', canDeactivate: [unsavedChangesGuard], loadComponent: () => import('./features/meal-plans/plan-editor').then((m) => m.PlanEditor) },
       { path: 'seguimiento', title: 'Seguimiento', loadComponent: () => import('./features/tracking/tracking-feed').then((m) => m.TrackingFeed) },
       { path: 'reportes', title: 'Reportes', loadComponent: () => import('./features/reports/reports').then((m) => m.Reports) },
+      { path: 'perfil', title: 'Mi perfil profesional', canDeactivate: [unsavedChangesGuard], loadComponent: () => import('./features/profile/profile').then((m) => m.ProfilePage) },
       { path: 'configuracion', title: 'Configuración', loadComponent: () => import('./features/settings/settings').then((m) => m.SettingsPage) },
     ],
   },

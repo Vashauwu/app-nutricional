@@ -16,6 +16,7 @@ import {
   Settings,
   TrackingEntry,
   User,
+  emptyProfile,
 } from '../../shared/models/domain';
 import { addDays, startOfWeek, todayIso, uid } from '../../shared/utils/format';
 import { div } from '../../shared/utils/decimal';
@@ -423,6 +424,7 @@ function buildSettings(): Settings {
       primary: '#4E344C', secondary: '#DDD6F2', phone: '55 5555 0100', email: 'contacto@nutricion-integral.example',
       address: 'Av. Ejemplo 123, Col. Centro, CDMX', credentials: 'Licenciada en Nutrición · Esp. en Nutrición Clínica', licenseNumber: 'Cédula 1234567 (ejemplo)',
     },
+    profile: { ...emptyProfile(), fullName: 'Lic. Valeria Montes', professionalType: 'nutritionist', specialty: 'Nutrición clínica', clinicName: 'Nutrición Integral', modality: 'both' },
     region: { timezone: 'America/Mexico_City', weekStart: 'mon' },
     storage: { defaultQuotaBytes: 50 * 1024 * 1024, maxImageBytes: 10 * 1024 * 1024, maxPdfBytes: 15 * 1024 * 1024, warnThresholdPct: 80 },
     alerts: {

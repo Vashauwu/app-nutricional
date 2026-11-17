@@ -3,7 +3,7 @@ import { Observable, forkJoin, of } from 'rxjs';
 import { ApiClient } from '../api/api-client';
 import { SettingsApi } from '../api/settings-api';
 import { DbService } from '../data/db.service';
-import { BrandSettings, ClinicalRule, ConsentDocument, ConsentType, Settings } from '../../shared/models/domain';
+import { BrandSettings, ClinicalRule, ConsentDocument, ConsentType, ProfessionalProfile, Settings } from '../../shared/models/domain';
 import { uid } from '../../shared/utils/format';
 
 @Injectable({ providedIn: 'root' })
@@ -41,6 +41,13 @@ export class SettingsService {
       d.settings.brand = brand;
       this.data.audit(d, 'settings.brand', 'settings', 'brand', 'Actualizó la identidad visual');
     });
+  }
+
+  saveProfile(profile: ProfessionalProfile): Observable<void> {
+    return this.op(() => this.remote.saveProfile(profile), () => this.data.mutate((d) => {
+      d.settings.profile = profile;
+      this.data.audit(d, 'settings.profile', 'settings', 'profile', 'Actualizó su perfil profesional');
+    }));
   }
 
   saveRegion(region: Settings['region']): Observable<void> {

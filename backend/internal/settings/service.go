@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -46,6 +47,36 @@ type Brand struct {
 	LicenseNumber string     `json:"license_number"`
 }
 
+// Profile es lo que la nutrióloga cuenta de sí misma y de cómo atiende. La cédula, el teléfono comercial y el
+// logotipo viven en Brand; aquí solo lo que no estaba.
+type Profile struct {
+	FullName         string `json:"full_name"`
+	About            string `json:"about"`
+	ProfessionalType string `json:"professional_type"`
+	Specialty        string `json:"specialty"`
+	ClinicName       string `json:"clinic_name"`
+	AppointmentPhone string `json:"appointment_phone"`
+	Modality         string `json:"modality"` // in_person | online | both
+	Street           string `json:"street"`
+	Colony           string `json:"colony"`
+	PostalCode       string `json:"postal_code"`
+	City             string `json:"city"`
+	State            string `json:"state"`
+	ShowExactAddress bool   `json:"show_exact_address"`
+	// OnboardingDone: terminó (o no necesita) el inicio guiado de una cuenta nueva.
+	OnboardingDone bool `json:"onboarding_done"`
+}
+
+var professionalTypes = map[string]bool{"": true, "nutritionist": true, "dietitian": true, "physician": true, "other": true}
+
+var mxStates = map[string]bool{
+	"": true, "Aguascalientes": true, "Baja California": true, "Baja California Sur": true, "Campeche": true, "Chiapas": true, "Chihuahua": true,
+	"Ciudad de México": true, "Coahuila": true, "Colima": true, "Durango": true, "Estado de México": true, "Guanajuato": true, "Guerrero": true,
+	"Hidalgo": true, "Jalisco": true, "Michoacán": true, "Morelos": true, "Nayarit": true, "Nuevo León": true, "Oaxaca": true, "Puebla": true,
+	"Querétaro": true, "Quintana Roo": true, "San Luis Potosí": true, "Sinaloa": true, "Sonora": true, "Tabasco": true, "Tamaulipas": true,
+	"Tlaxcala": true, "Veracruz": true, "Yucatán": true, "Zacatecas": true,
+}
+
 type Region struct {
 	Timezone  string `json:"timezone"`
 	WeekStart string `json:"week_start"` // mon | sun
@@ -76,6 +107,7 @@ type Alerts struct {
 
 type All struct {
 	Brand   Brand   `json:"brand"`
+	Profile Profile `json:"profile"`
 	Region  Region  `json:"region"`
 	Storage Storage `json:"storage"`
 	Alerts  Alerts  `json:"alerts"`
@@ -87,6 +119,7 @@ const MB = 1024 * 1024
 func Defaults() All {
 	return All{
 		Brand:   Brand{BusinessName: "Nutrición", Tagline: "", Primary: "#4E344C", Secondary: "#DDD6F2"},
+		Profile: Profile{Modality: "in_person", ShowExactAddress: true},
 		Region:  Region{Timezone: "America/Mexico_City", WeekStart: "mon"},
 		Storage: Storage{DefaultQuotaBytes: 50 * MB, MaxImageBytes: 10 * MB, MaxPdfBytes: 15 * MB, WarnThresholdPct: 80},
 		Alerts: Alerts{
@@ -138,6 +171,9 @@ func (s *Service) Get(ctx context.Context) (All, error) {
 	if out.Brand, err = load(ctx, s.q, "brand", d.Brand); err != nil {
 		return d, err
 	}
+	if out.Profile, err = s.profile(ctx, d.Profile); err != nil {
+		return d, err
+	}
 	if out.Region, err = load(ctx, s.q, "region", d.Region); err != nil {
 		return d, err
 	}
@@ -149,6 +185,25 @@ func (s *Service) Get(ctx context.Context) (All, error) {
 		out.Alerts.ClinicalRules = []Rule{}
 	}
 	return out, err
+}
+
+// profile lee el perfil. Una cuenta que ya tenía marca guardada antes de existir el inicio guiado se da por
+// iniciada (no se la obliga a repetirlo); una cuenta nueva (sin marca ni perfil) lo ve la primera vez.
+func (s *Service) profile(ctx context.Context, def Profile) (Profile, error) {
+	_, perr := s.q.GetSetting(ctx, "profile")
+	if perr != nil && !errors.Is(perr, pgx.ErrNoRows) {
+		return def, perr
+	}
+	p, err := load(ctx, s.q, "profile", def)
+	if err != nil {
+		return def, err
+	}
+	if errors.Is(perr, pgx.ErrNoRows) {
+		if _, berr := s.q.GetSetting(ctx, "brand"); berr == nil {
+			p.OnboardingDone = true
+		}
+	}
+	return p, nil
 }
 
 func (s *Service) Storage(ctx context.Context) (Storage, error) {
@@ -187,6 +242,8 @@ func (s *Service) save(ctx context.Context, a Actor, key string, v any) error {
 }
 
 // ---------- Contraste WCAG (§19.3, §20.1) ----------
+var postalRe = regexp.MustCompile(`^[0-9]{5}$`)
+var phoneRe = regexp.MustCompile(`^[0-9 +()\-]{7,20}$`)
 var hexRe = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
 func luminance(hex string) float64 {
@@ -242,6 +299,41 @@ func (s *Service) UpdateBrand(ctx context.Context, a Actor, b Brand) (Brand, err
 		return Brand{}, errs
 	}
 	return b, s.save(ctx, a, "brand", b)
+}
+
+func (s *Service) UpdateProfile(ctx context.Context, a Actor, p Profile) (Profile, error) {
+	errs := ValidationError{}
+	limits := map[string]struct {
+		v string
+		n int
+	}{
+		"full_name": {p.FullName, 100}, "about": {p.About, 250}, "specialty": {p.Specialty, 80}, "clinic_name": {p.ClinicName, 80},
+		"appointment_phone": {p.AppointmentPhone, 20}, "street": {p.Street, 120}, "colony": {p.Colony, 80}, "city": {p.City, 80},
+	}
+	for k, l := range limits {
+		if utf8.RuneCountInString(l.v) > l.n {
+			errs[k] = "máximo " + strconv.Itoa(l.n) + " caracteres"
+		}
+	}
+	if !professionalTypes[p.ProfessionalType] {
+		errs["professional_type"] = "tipo de profesional no válido"
+	}
+	if p.Modality != "in_person" && p.Modality != "online" && p.Modality != "both" {
+		errs["modality"] = "elige presencial, en línea o ambas"
+	}
+	if p.PostalCode != "" && !postalRe.MatchString(p.PostalCode) {
+		errs["postal_code"] = "el código postal tiene 5 dígitos"
+	}
+	if !mxStates[p.State] {
+		errs["state"] = "estado no válido"
+	}
+	if p.AppointmentPhone != "" && !phoneRe.MatchString(p.AppointmentPhone) {
+		errs["appointment_phone"] = "usa solo dígitos, espacios, guiones y +"
+	}
+	if len(errs) > 0 {
+		return Profile{}, errs
+	}
+	return p, s.save(ctx, a, "profile", p)
 }
 
 func (s *Service) UpdateRegion(ctx context.Context, a Actor, r Region) (Region, error) {
