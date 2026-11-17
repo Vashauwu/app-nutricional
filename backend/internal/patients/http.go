@@ -16,6 +16,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/generated/db"
 	"github.com/nutri/app-nutricional/backend/internal/auth"
 	"github.com/nutri/app-nutricional/backend/internal/middleware"
+	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/shared"
 )
 
@@ -45,6 +46,9 @@ func actor(c *gin.Context) Actor {
 }
 
 func fail(c *gin.Context, log *slog.Logger, err error) {
+	if plans.StatusOf(c, err) {
+		return
+	}
 	var ve ValidationError
 	switch {
 	case errors.As(err, &ve):

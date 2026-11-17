@@ -639,6 +639,16 @@ type SmaeRecalcDecision struct {
 	PracticeID  uuid.UUID   `json:"practice_id"`
 }
 
+type Subscription struct {
+	PracticeID       uuid.UUID          `json:"practice_id"`
+	Plan             string             `json:"plan"`
+	BillingPeriod    pgtype.Text        `json:"billing_period"`
+	Status           string             `json:"status"`
+	CurrentPeriodEnd pgtype.Timestamptz `json:"current_period_end"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
 type TrackingEntry struct {
 	ID             uuid.UUID          `json:"id"`
 	PatientID      uuid.UUID          `json:"patient_id"`

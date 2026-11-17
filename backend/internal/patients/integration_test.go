@@ -47,6 +47,7 @@ func (m *mailer) setDeliver(v bool) {
 }
 
 func (m *mailer) SendPasswordReset(context.Context, string, string) error { return nil }
+func (m *mailer) SendVerification(context.Context, string, string) error  { return nil }
 func (m *mailer) SendPasswordChanged(context.Context, string) error       { return nil }
 func (m *mailer) SendInvitation(_ context.Context, _ string, link string) error {
 	m.mu.Lock()

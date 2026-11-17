@@ -13,6 +13,7 @@ import (
 
 type Querier interface {
 	ActivatePatientByUser(ctx context.Context, userID uuid.NullUUID) error
+	ActivateUser(ctx context.Context, id uuid.UUID) error
 	AssignCustomEquivalence(ctx context.Context, arg AssignCustomEquivalenceParams) error
 	AssignRoleByCode(ctx context.Context, arg AssignRoleByCodeParams) error
 	BumpPlanRevision(ctx context.Context, arg BumpPlanRevisionParams) (MealPlan, error)
@@ -23,6 +24,7 @@ type Querier interface {
 	ComplianceCounts(ctx context.Context, arg ComplianceCountsParams) (ComplianceCountsRow, error)
 	// Consume el token de un solo uso de forma atómica; devuelve el usuario si era válido.
 	ConsumeResetToken(ctx context.Context, tokenHash []byte) (uuid.UUID, error)
+	CountActivePatients(ctx context.Context) (int64, error)
 	CountAppointmentOverlap(ctx context.Context, arg CountAppointmentOverlapParams) (int64, error)
 	CountEntryPhotos(ctx context.Context, entryID uuid.UUID) (int32, error)
 	// Pendientes de revisión (para el dashboard).
@@ -88,6 +90,7 @@ type Querier interface {
 	GetSessionByRefreshHash(ctx context.Context, refreshTokenHash []byte) (UserSession, error)
 	GetSetting(ctx context.Context, key string) (AppSetting, error)
 	GetSnapshot(ctx context.Context, dishVersionID uuid.UUID) (DishNutritionSnapshot, error)
+	GetSubscription(ctx context.Context) (Subscription, error)
 	GetTemplate(ctx context.Context, id uuid.UUID) (MealPlanTemplate, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -218,6 +221,7 @@ type Querier interface {
 	PlansEndingSoon(ctx context.Context, arg PlansEndingSoonParams) ([]PlansEndingSoonRow, error)
 	// Cuántos planes no archivados usan un platillo (para avisar antes de desactivarlo).
 	PlansUsingDish(ctx context.Context, dishID uuid.UUID) (int64, error)
+	PracticeStorageUsed(ctx context.Context) (int64, error)
 	RemoveDaysNotIn(ctx context.Context, arg RemoveDaysNotInParams) error
 	RemoveItem(ctx context.Context, id uuid.UUID) error
 	RemoveItemsNotIn(ctx context.Context, arg RemoveItemsNotInParams) error
@@ -239,6 +243,7 @@ type Querier interface {
 	// Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
 	SetPatientInvited(ctx context.Context, id uuid.UUID) error
 	SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (MealPlan, error)
+	SetSubscriptionPlan(ctx context.Context, arg SetSubscriptionPlanParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	SlotPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]SlotPlanIDsRow, error)
 	SoftDeleteDietCalculation(ctx context.Context, id uuid.UUID) (int64, error)

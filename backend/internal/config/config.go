@@ -2,6 +2,7 @@
 package config
 
 import (
+	"errors"
 	"net/url"
 	"time"
 
@@ -48,6 +49,14 @@ type Config struct {
 	SMTPFrom     string `envconfig:"SMTP_FROM"`
 	SMTPFromName string `envconfig:"SMTP_FROM_NAME" default:"Nutrición"`
 
+	// Registro abierto de nutriólogas (plan gratuito). Apagado por omisión: se activa por ambiente.
+	SignupEnabled bool `envconfig:"SIGNUP_ENABLED" default:"false"`
+	// Exige confirmar el correo antes de activar la cuenta. Solo puede apagarse en desarrollo o en staging (ambiente con
+	// cuentas de ejemplo), para probar el registro cuando el correo aún no entrega a cualquier destinatario.
+	SignupRequireEmailVerification bool `envconfig:"SIGNUP_REQUIRE_EMAIL_VERIFICATION" default:"true"`
+	// AllowDemoAccounts marca un ambiente de pruebas (staging): nunca se activa en producción real.
+	AllowDemoAccounts bool `envconfig:"ALLOW_DEMO_ACCOUNTS" default:"false"`
+
 	SignedURLTTL time.Duration `envconfig:"SIGNED_URL_TTL" default:"5m"`
 
 	// Pool de conexiones a PostgreSQL. Un tope explícito evita agotar max_connections del servidor.
@@ -74,11 +83,24 @@ type Config struct {
 
 func Load() (Config, error) {
 	var c Config
-	err := envconfig.Process("", &c)
-	return c, err
+	if err := envconfig.Process("", &c); err != nil {
+		return c, err
+	}
+	return c, c.Validate()
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
+
+// ErrSignupUnverified: en producción no se permite abrir cuentas sin confirmar el correo.
+var ErrSignupUnverified = errors.New("SIGNUP_REQUIRE_EMAIL_VERIFICATION=false solo se permite en desarrollo o en un ambiente de pruebas (ALLOW_DEMO_ACCOUNTS=true)")
+
+// Validate revisa combinaciones inseguras de configuración.
+func (c Config) Validate() error {
+	if c.IsProduction() && !c.AllowDemoAccounts && c.SignupEnabled && !c.SignupRequireEmailVerification {
+		return ErrSignupUnverified
+	}
+	return nil
+}
 
 // RuntimeDatabaseURL es la conexión con la que corre la API.
 func (c Config) RuntimeDatabaseURL() string {

@@ -52,7 +52,16 @@ type Service struct {
 	audit      audit.Recorder
 	log        *slog.Logger
 	now        func() time.Time
+	limits     Limits
 }
+
+// Limits valida lo que incluye el plan de la consulta (opcional: sin él no hay tope).
+type Limits interface {
+	CanAddPatient(ctx context.Context) error
+}
+
+// SetLimits activa la validación de límites del plan al crear pacientes.
+func (s *Service) SetLimits(l Limits) { s.limits = l }
 
 func NewService(pool *pgxpool.Pool, inviter Inviter, log *slog.Logger) *Service {
 	q := db.New(pool)
@@ -96,6 +105,11 @@ func pgDate(t time.Time) pgtype.Date { return pgtype.Date{Time: t, Valid: true} 
 func normEmail(e string) string { return strings.ToLower(strings.TrimSpace(e)) }
 
 func (s *Service) Create(ctx context.Context, a Actor, in CreateInput) (db.Patient, error) {
+	if s.limits != nil {
+		if err := s.limits.CanAddPatient(ctx); err != nil {
+			return db.Patient{}, err
+		}
+	}
 	if !isAdult(in.BirthDate, s.now()) {
 		return db.Patient{}, ErrNotAdult
 	}

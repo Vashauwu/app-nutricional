@@ -14,6 +14,8 @@ export const routes: Routes = [
   { path: 'recuperar', title: 'Recuperar contraseña', canActivate: [guestGuard], loadComponent: () => import('./features/auth/recovery').then((m) => m.ForgotPassword) },
   { path: 'privacidad', title: 'Aviso de privacidad', data: { doc: 'privacidad' }, loadComponent: () => import('./features/legal/legal').then((m) => m.Legal) },
   { path: 'terminos', title: 'Términos de uso', data: { doc: 'terminos' }, loadComponent: () => import('./features/legal/legal').then((m) => m.Legal) },
+  { path: 'registro', title: 'Crear cuenta gratuita', canActivate: [guestGuard], loadComponent: () => import('./features/auth/signup').then((m) => m.Signup) },
+  { path: 'verificar/:token', title: 'Confirmar correo', loadComponent: () => import('./features/auth/signup').then((m) => m.VerifyEmail) },
   { path: 'restablecer/:token', title: 'Nueva contraseña', loadComponent: () => import('./features/auth/recovery').then((m) => m.ResetPassword) },
 
   { path: 'bienvenida', title: 'Bienvenida', canActivate: [roleGuard('nutritionist')], loadComponent: () => import('./features/onboarding/onboarding').then((m) => m.Onboarding) },
@@ -63,6 +65,7 @@ export const routes: Routes = [
       { path: 'seguimiento', title: 'Seguimiento', loadComponent: () => import('./features/tracking/tracking-feed').then((m) => m.TrackingFeed) },
       { path: 'reportes', title: 'Reportes', loadComponent: () => import('./features/reports/reports').then((m) => m.Reports) },
       { path: 'perfil', title: 'Mi perfil profesional', canDeactivate: [unsavedChangesGuard], loadComponent: () => import('./features/profile/profile').then((m) => m.ProfilePage) },
+      { path: 'facturacion', title: 'Facturación', loadComponent: () => import('./features/billing/billing').then((m) => m.BillingPage) },
       { path: 'configuracion', title: 'Configuración', loadComponent: () => import('./features/settings/settings').then((m) => m.SettingsPage) },
     ],
   },

@@ -32,6 +32,7 @@ type noMail struct{}
 func (noMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (noMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 func TestAlertsIntegration(t *testing.T) {
 	pool := testsupport.NewPool(t)
@@ -68,6 +69,7 @@ func TestAlertsIntegration(t *testing.T) {
 	require.NoError(t, err)
 	_, err = as.CreateUser(ctx, "nutri@demo.mx", "Lic.", "nutritionist", "demo1234")
 	require.NoError(t, err)
+	testsupport.GrantPlatformAdmin(t, pool, "nutri@demo.mx")
 	nutri := testsupport.NewClient(t, srv.URL)
 	nutri.Login("nutri@demo.mx", "demo1234")
 

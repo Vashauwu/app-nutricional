@@ -36,7 +36,15 @@ import (
 type captureMailer struct {
 	mu      sync.Mutex
 	links   []string
+	verify  []string
 	changed int
+}
+
+func (m *captureMailer) SendVerification(_ context.Context, _ string, link string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.verify = append(m.verify, link)
+	return nil
 }
 
 func (m *captureMailer) SendPasswordReset(_ context.Context, _ string, link string) error {

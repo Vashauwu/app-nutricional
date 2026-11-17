@@ -31,6 +31,7 @@ type noMail struct{}
 func (noMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (noMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 type env struct {
 	ctx  context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
@@ -66,6 +67,7 @@ func start(t *testing.T) *env {
 func (e *env) staff(t *testing.T, email string) *testsupport.Client {
 	_, err := e.auth.CreateUser(e.ctx, email, "Lic. Prueba", "nutritionist", "demo1234")
 	require.NoError(t, err)
+	testsupport.GrantPlatformAdmin(t, e.pool, email)
 	c := testsupport.NewClient(t, e.srv.URL)
 	c.Login(email, "demo1234")
 	return c

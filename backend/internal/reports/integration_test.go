@@ -31,6 +31,7 @@ type noMail struct{}
 func (noMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (noMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 func TestTableSafety(t *testing.T) {
 	tb := reports.Table{Name: "T", Headers: []string{"a", "b", "c", "d"}, Rows: [][]string{{"=1+1", "-5.2", "@cmd", "+SUM(A1)"}, {"normal", "-texto", "ñandú", ""}}}

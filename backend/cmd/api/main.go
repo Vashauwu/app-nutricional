@@ -35,6 +35,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/migrate"
 	"github.com/nutri/app-nutricional/backend/internal/nutrition_engine/calculator"
 	"github.com/nutri/app-nutricional/backend/internal/patients"
+	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/reports"
 	"github.com/nutri/app-nutricional/backend/internal/settings"
 	"github.com/nutri/app-nutricional/backend/internal/shared"
@@ -266,7 +267,10 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 	authSvc := auth.NewService(pool, cfg, mailer, logger)
 	authSvc.SetAsyncMail(true)
 	auth.NewController(authSvc, cfg).Register(v1)
+	planSvc := plans.NewService(pool)
+	plans.NewController(planSvc, authSvc, logger).Register(v1)
 	patientsSvc := patients.NewService(pool, authSvc, logger)
+	patientsSvc.SetLimits(planSvc)
 	patients.NewController(patientsSvc, authSvc, logger).Register(v1)
 	smaeSvc := smae.NewService(pool, logger)
 	smae.NewController(smaeSvc, authSvc, logger).Register(v1)
@@ -306,6 +310,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 			logger.Error("storage_unavailable", slog.Any("error", err))
 		} else {
 			storageSvc := storage.NewService(pool, store, settingsSvc, patientsSvc, cfg.S3PrivateBucket, cfg.S3PublicBucket, logger)
+			storageSvc.SetLimits(planSvc)
 			images = storageSvc
 			storage.NewController(storageSvc, authSvc, func(c *gin.Context, userID uuid.UUID) (uuid.UUID, error) {
 				p, err := patientsSvc.ForUser(c.Request.Context(), userID)

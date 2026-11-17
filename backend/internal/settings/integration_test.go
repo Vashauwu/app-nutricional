@@ -26,6 +26,7 @@ type noMail struct{}
 func (noMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (noMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 func TestContrastMatchesWCAG(t *testing.T) {
 	require.InDelta(t, 21.0, settings.Contrast("#000000", "#FFFFFF"), 0.01)

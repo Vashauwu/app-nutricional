@@ -11,6 +11,8 @@ type Mailer interface {
 	SendPasswordReset(ctx context.Context, to, link string) error
 	SendPasswordChanged(ctx context.Context, to string) error
 	SendInvitation(ctx context.Context, to, link string) error
+	// SendVerification confirma el correo de quien se registró por su cuenta.
+	SendVerification(ctx context.Context, to, link string) error
 }
 
 // Delivers indica si el mailer entrega correos de verdad (el de registro no).
@@ -38,6 +40,15 @@ func (m LogMailer) SendPasswordChanged(ctx context.Context, _ string) error {
 
 func (m LogMailer) SendInvitation(ctx context.Context, to, link string) error {
 	attrs := []any{slog.String("event", "patient_invitation_email")}
+	if m.ExposeLinks {
+		attrs = append(attrs, slog.String("to", to), slog.String("link", link))
+	}
+	m.Log.InfoContext(ctx, "mail_stub", attrs...)
+	return nil
+}
+
+func (m LogMailer) SendVerification(ctx context.Context, to, link string) error {
+	attrs := []any{slog.String("event", "signup_verification_email")}
 	if m.ExposeLinks {
 		attrs = append(attrs, slog.String("to", to), slog.String("link", link))
 	}

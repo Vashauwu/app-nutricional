@@ -66,6 +66,13 @@ func (m *SMTPMailer) SendInvitation(ctx context.Context, to, link string) error 
 		"El enlace vence en 7 días y solo funciona una vez. Al entrar por primera vez elegirás tu contraseña.")
 }
 
+func (m *SMTPMailer) SendVerification(ctx context.Context, to, link string) error {
+	return m.queue(ctx, "verification", to, "Confirma tu correo para activar tu cuenta",
+		"Recibimos tu registro en la plataforma. Confirma tu correo para activar tu cuenta gratuita y empezar a configurar tu consulta.",
+		"Confirmar mi correo", link,
+		"El enlace vence en 24 horas y solo funciona una vez. Si no fuiste tú, ignora este mensaje: no se activará nada.")
+}
+
 func (m *SMTPMailer) SendPasswordChanged(ctx context.Context, to string) error {
 	return m.queue(ctx, "password_changed", to, "Tu contraseña se cambió",
 		"Te avisamos que la contraseña de tu cuenta se cambió hace un momento.",

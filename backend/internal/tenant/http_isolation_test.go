@@ -34,6 +34,7 @@ type noMail struct{}
 func (noMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (noMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 const tz = "America/Mexico_City"
 
@@ -83,6 +84,7 @@ func TestTwoPracticesCannotSeeEachOther(t *testing.T) {
 	require.NoError(t, err)
 	_, err = as.CreateUser(bg, "b@demo.mx", "Lic. B", "nutritionist", "demo1234")
 	require.NoError(t, err)
+	testsupport.GrantPlatformAdmin(t, pool, "a@demo.mx")
 	A, B := testsupport.NewClient(t, srv.URL), testsupport.NewClient(t, srv.URL)
 	A.Login("a@demo.mx", "demo1234")
 	B.Login("b@demo.mx", "demo1234")
