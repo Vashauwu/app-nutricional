@@ -54,6 +54,8 @@ type Config struct {
 	// Exige confirmar el correo antes de activar la cuenta. Solo puede apagarse en desarrollo o en staging (ambiente con
 	// cuentas de ejemplo), para probar el registro cuando el correo aún no entrega a cualquier destinatario.
 	SignupRequireEmailVerification bool `envconfig:"SIGNUP_REQUIRE_EMAIL_VERIFICATION" default:"true"`
+	// ID de cliente de Google (público) para «Continuar con Google». Sin él, el botón no existe.
+	GoogleClientID string `envconfig:"GOOGLE_CLIENT_ID"`
 	// AllowDemoAccounts marca un ambiente de pruebas (staging): nunca se activa en producción real.
 	AllowDemoAccounts bool `envconfig:"ALLOW_DEMO_ACCOUNTS" default:"false"`
 

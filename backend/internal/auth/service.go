@@ -70,6 +70,7 @@ type Service struct {
 	now     func() time.Time
 	// Si es true, los correos que no condicionan la respuesta (recuperación y aviso de cambio) salen en segundo plano.
 	asyncMail bool
+	google    IDTokenVerifier
 }
 
 // SetAsyncMail envía en segundo plano el correo de recuperación y el aviso de cambio de contraseña.
@@ -187,7 +188,11 @@ func (s *Service) Login(ctx context.Context, email, password string, m Meta) (*T
 		return nil, ErrInvalidCredentials
 	}
 	s.limiter.Reset(key)
+	return s.startSession(ctx, u, m)
+}
 
+// startSession abre una sesión para una cuenta ya autenticada (contraseña o Google) y emite los tokens.
+func (s *Service) startSession(ctx context.Context, u db.User, m Meta) (*Tokens, error) {
 	raw, hash, err := NewOpaqueToken()
 	if err != nil {
 		return nil, err

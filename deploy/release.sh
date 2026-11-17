@@ -24,6 +24,10 @@ setvar() { # setvar CLAVE VALOR
 # Contraseña del rol de la API (aislamiento entre consultas). Si el ambiente es anterior a esa función, se genera aquí una vez.
 [ -n "$(get APP_DB_PASSWORD)" ] || setvar APP_DB_PASSWORD "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)"
 
+# Configuración pública que llega desde las variables del ambiente en GitHub (vacío = no cambia lo que ya tenga el .env).
+[ -z "${SIGNUP_ENABLED:-}" ] || setvar SIGNUP_ENABLED "$SIGNUP_ENABLED"
+[ -z "${GOOGLE_CLIENT_ID:-}" ] || setvar GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
+
 # Staging es el ambiente de pruebas: registro abierto y sin confirmar el correo (su remitente de pruebas no entrega a
 # cualquier destinatario). Solo se escribe lo que falte: un valor puesto a mano en el .env se respeta. Nunca en producción.
 if [ "$ENV" = staging ]; then

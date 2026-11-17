@@ -82,6 +82,8 @@ jobs:
           registry-token: ${{ secrets.GITHUB_TOKEN }}
           registry-user: ${{ github.actor }}
           site-url: ${{ vars.SITE_URL }}
+          signup-enabled: ${{ vars.SIGNUP_ENABLED }}
+          google-client-id: ${{ vars.GOOGLE_CLIENT_ID }}
 
   # El ambiente `production` debe tener «Required reviewers»: el flujo se detiene aquí hasta que apruebes en GitHub.
   produccion:
@@ -112,3 +114,5 @@ jobs:
           registry-token: ${{ secrets.GITHUB_TOKEN }}
           registry-user: ${{ github.actor }}
           site-url: ${{ vars.SITE_URL }}
+          signup-enabled: ${{ vars.SIGNUP_ENABLED }}
+          google-client-id: ${{ vars.GOOGLE_CLIENT_ID }}

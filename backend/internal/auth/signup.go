@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
@@ -37,10 +38,16 @@ type SignupInput struct {
 type SignupOptions struct {
 	Enabled             bool `json:"enabled"`
 	RequireVerification bool `json:"require_verification"`
+	// GoogleClientID (público) activa el botón «Continuar con Google»; vacío = no hay botón.
+	GoogleClientID string `json:"google_client_id,omitempty"`
 }
 
 func (s *Service) SignupOptions() SignupOptions {
-	return SignupOptions{Enabled: s.cfg.SignupEnabled, RequireVerification: s.cfg.SignupRequireEmailVerification}
+	o := SignupOptions{Enabled: s.cfg.SignupEnabled, RequireVerification: s.cfg.SignupRequireEmailVerification}
+	if s.google != nil {
+		o.GoogleClientID = s.cfg.GoogleClientID
+	}
+	return o
 }
 
 // Signup abre una consulta nueva con plan gratuito. Con verificación de correo la cuenta queda pendiente hasta confirmar
@@ -162,4 +169,75 @@ func contains(list []string, v string) bool {
 		}
 	}
 	return false
+}
+
+// SetGoogleVerifier activa «Continuar con Google» (y lo reemplaza en las pruebas).
+func (s *Service) SetGoogleVerifier(v IDTokenVerifier) { s.google = v }
+
+// GoogleSignIn ingresa con una cuenta de Google. Si la cuenta de la plataforma existe (y es de nutrióloga) abre sesión;
+// si no, y el registro está abierto y la persona aceptó los términos, abre una consulta nueva con plan gratuito. Google ya
+// verificó el correo, así que no hay confirmación aparte (también activa una cuenta que seguía pendiente de confirmar).
+func (s *Service) GoogleSignIn(ctx context.Context, credential string, acceptTerms bool, m Meta) (*Tokens, bool, error) {
+	if s.google == nil {
+		return nil, false, ErrGoogleDisabled
+	}
+	claims, err := s.google.Verify(ctx, credential)
+	if err != nil {
+		s.audit(ctx, uuid.NullUUID{}, "auth.google_failed", "user", uuid.NullUUID{}, m, nil)
+		return nil, false, ErrGoogleToken
+	}
+	e, err := normalizeEmail(claims.Email)
+	if err != nil {
+		return nil, false, ErrGoogleToken
+	}
+	created := false
+	u, err := s.q.GetUserByEmail(ctx, e)
+	switch {
+	case err == nil:
+		roles, err := s.q.ListRoleCodesForUser(ctx, u.ID)
+		if err != nil {
+			return nil, false, err
+		}
+		if u.Status == "disabled" || !contains(roles, "nutritionist") {
+			s.audit(tenant.With(ctx, u.PracticeID), nu(u.ID), "auth.google_failed", "user", nu(u.ID), m, nil)
+			return nil, false, ErrGoogleNotAllowed
+		}
+		ctx = tenant.With(ctx, u.PracticeID)
+		if u.Status == "invited" { // registro por correo sin confirmar: Google ya probó que el correo es de la persona
+			if err := s.q.ActivateUser(ctx, u.ID); err != nil {
+				return nil, false, err
+			}
+			u.Status = "active"
+		}
+	case errors.Is(err, pgx.ErrNoRows):
+		if !s.cfg.SignupEnabled {
+			return nil, false, ErrSignupClosed
+		}
+		if !acceptTerms {
+			return nil, false, ErrTermsRequired
+		}
+		name := strings.TrimSpace(claims.Name)
+		if name == "" {
+			name = e
+		}
+		// Contraseña aleatoria e inutilizable: la cuenta entra por Google o, si lo desea, por «Olvidé mi contraseña».
+		raw, _, err := NewOpaqueToken()
+		if err != nil {
+			return nil, false, err
+		}
+		id, err := s.createUser(ctx, e, truncate(name, 120), "nutritionist", "Gg1"+raw, "active")
+		if err != nil {
+			return nil, false, err
+		}
+		if u, err = s.q.GetUserByID(ctx, id); err != nil {
+			return nil, false, err
+		}
+		ctx = tenant.With(ctx, u.PracticeID)
+		created = true
+		s.audit(ctx, nu(u.ID), "auth.signup", "user", nu(u.ID), m, map[string]any{"method": "google", "terms_accepted": true})
+	default:
+		return nil, false, err
+	}
+	t, err := s.startSession(ctx, u, m)
+	return t, created, err
 }

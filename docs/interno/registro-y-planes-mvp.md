@@ -93,3 +93,32 @@ admin grant-platform-admin -email a@b.mx                # permite administrar el
 - **Bajar de plan**: no hay regla aún para una consulta que excede los límites del plan destino.
 - **Página pública**: los botones aún llevan a «Ingresar»; falta el llamado a «Crear cuenta».
 - Aprobar precios y límites.
+
+## «Continuar con Google» (nutriólogas)
+
+Botón oficial de Google Identity Services en `/ingresar` y `/registro`. Si la cuenta de Google ya tiene cuenta en la
+plataforma, entra; si no, y el registro está abierto, abre una consulta gratuita. Google ya verificó el correo, así que no
+hay confirmación aparte.
+
+**Cómo funciona y qué valida el servidor** (`POST /api/v1/auth/google`): firma del ID token con las llaves públicas de
+Google, emisor, audiencia (nuestro ID de cliente), vigencia y `email_verified`. Nada del navegador se toma por bueno.
+- Solo cuentas de **nutrióloga**: una cuenta de paciente o deshabilitada no entra por Google.
+- Cuenta nueva: exige aceptar términos y aviso. En `/registro` el aviso está junto al botón y pulsarlo es la aceptación;
+  en `/ingresar` no (si no hay cuenta, se manda a `/registro`).
+- Un registro por correo que seguía sin confirmar se activa al entrar con Google (prueba que el correo es suyo).
+- La cuenta nueva tiene una contraseña aleatoria inutilizable; si después la quiere, usa «Olvidé mi contraseña».
+- El botón solo existe si hay `GOOGLE_CLIENT_ID`; el frontend lo pregunta a `GET /api/v1/auth/options`.
+
+### Configurarlo (una sola vez)
+1. En Google Cloud Console → **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de OAuth**, tipo
+   **Aplicación web**. (Si pide pantalla de consentimiento: tipo Externo, nombre de la app, correo de soporte y los
+   enlaces de privacidad y términos; con solo `email` y `profile` no requiere verificación de Google.)
+2. En **Orígenes de JavaScript autorizados** agrega `https://staging.nutrintegral.mx` y `https://app.nutrintegral.mx`
+   (y `http://localhost:4200` para desarrollo). No se necesitan URI de redireccionamiento.
+3. Copia el **ID de cliente** (termina en `.apps.googleusercontent.com`; es público, no es un secreto).
+4. En GitHub → **Settings → Environments → staging → Environment variables** crea `GOOGLE_CLIENT_ID` con ese valor.
+   Haz lo mismo en `production` cuando quieras abrirlo ahí. El siguiente despliegue lo escribe en el `.env` del servidor.
+
+### Abrir o cerrar el registro por ambiente
+La misma pantalla de variables de GitHub: `SIGNUP_ENABLED` = `true` o `false` en cada ambiente (vacío no cambia nada).
+En producción el registro sigue **apagado** hasta que pongas `true`; staging lo trae encendido por omisión.

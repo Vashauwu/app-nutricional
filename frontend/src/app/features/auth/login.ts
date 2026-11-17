@@ -3,43 +3,54 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
-import { AuthService } from '../../core/auth/auth.service';
+import { AuthError, AuthService } from '../../core/auth/auth.service';
 import { DbService } from '../../core/data/db.service';
 import { showDemoAccounts } from '../../core/api/api-client';
 import { SettingsService } from '../../core/services/settings.service';
 import { FieldError } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
+import { GoogleButton } from '../../shared/components/google-button';
 import { ThemeToggle } from '../../shared/components/theme-toggle';
+import { AuthArt } from './auth-art';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle],
+  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle, GoogleButton, AuthArt],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.scss',
   template: `
     <div class="auth">
       <section class="hero" aria-label="Presentación">
         <span class="mark">
-          @if (brand().logoDataUrl) { <img class="logo" [src]="brand().logoDataUrl" alt="" /> } @else { <img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> }
+          @if (brand().logoDataUrl) { <img class="logo" [src]="brand().logoDataUrl" alt="" /> } @else { <img class="logo" src="icons/icon-96x96.png" alt="" width="40" height="40" /> }
           {{ brand().businessName }}
         </span>
-        <div>
+        <div class="lead">
           <h1>Tu plan, claro y a tu ritmo.</h1>
-          <p>{{ brand().tagline }}</p>
+          <p class="sub">{{ brand().tagline }}</p>
         </div>
-        <p class="small m-0">Plataforma de gestión nutricional</p>
+        <app-auth-art />
+        <p class="foot">Plataforma de gestión nutricional</p>
       </section>
 
       <main class="panel-wrap" id="contenido">
         <div class="u-corner-tr"><app-theme-toggle /></div>
-        <div class="card">
-          <div>
-            <h2>Iniciar sesión</h2>
-            <p class="muted">Usa el correo con el que tu nutrióloga te registró.</p>
-          </div>
+        <div class="form-box">
+          @if (signup()?.enabled) {
+            <nav class="switch" aria-label="Ingresar o crear cuenta">
+              <a routerLink="/ingresar" aria-current="page">Ingresar</a>
+              <a routerLink="/registro">Crear cuenta</a>
+            </nav>
+          }
+          <h2>Ingresar</h2>
 
           @if (error()) {
             <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body">{{ error() }}</div></div>
+          }
+
+          @if (signup()?.googleClientId; as gid) {
+            <app-google-button [clientId]="gid" text="signin_with" (credential)="google($event)" />
+            <p class="or"><span>o con tu correo</span></p>
           }
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="stack" novalidate>
@@ -61,9 +72,6 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
             <button tuiButton type="submit" size="l" [disabled]="loading()">{{ loading() ? 'Ingresando…' : 'Ingresar' }}</button>
             <a routerLink="/recuperar" class="small">¿Olvidaste tu contraseña?</a>
           </form>
-          @if (signup()?.enabled) {
-            <p class="small m-0">¿Eres nutrióloga o nutriólogo? <a routerLink="/registro"><strong>Crea tu cuenta gratis</strong></a></p>
-          }
 
           @if (demo) {
           <div class="demo" role="group" aria-label="Cuentas de demostración">
@@ -75,7 +83,7 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
             </div>
           </div>
           }
-          <p class="small muted legal"><a routerLink="/privacidad">Aviso de privacidad</a> · <a routerLink="/terminos">Términos de uso</a></p>
+          <p class="fine"><a routerLink="/privacidad">Aviso de privacidad</a> · <a routerLink="/terminos">Términos de uso</a></p>
         </div>
       </main>
     </div>
@@ -113,15 +121,34 @@ export class Login {
     this.error.set('');
     const { email, password } = this.form.getRawValue();
     this.auth.login(email, password).subscribe({
-      next: (user) => {
-        const back = this.route.snapshot.queryParamMap.get('volver');
-        const safe = back && back.startsWith('/') && !back.startsWith('//') ? back : null;
-        void this.router.navigateByUrl(safe && (user.role === 'patient') === safe.startsWith('/paciente') ? safe : user.role === 'patient' ? '/paciente' : '/');
-      },
+      next: (user) => this.enter(user.role),
       error: (e: unknown) => {
         this.loading.set(false);
         this.error.set(e instanceof Error ? e.message : 'No se pudo iniciar sesión.');
         this.form.controls.password.reset('');
+      },
+    });
+  }
+
+  private enter(role: string): void {
+    const back = this.route.snapshot.queryParamMap.get('volver');
+    const safe = back && back.startsWith('/') && !back.startsWith('//') ? back : null;
+    void this.router.navigateByUrl(safe && (role === 'patient') === safe.startsWith('/paciente') ? safe : role === 'patient' ? '/paciente' : '/');
+  }
+
+  protected google(credential: string): void {
+    this.loading.set(true);
+    this.error.set('');
+    // Sin aceptar términos aquí: si la cuenta no existe, se pasa a Registro, donde se acepta de forma explícita.
+    this.auth.googleLogin(credential, false).subscribe({
+      next: (user) => this.enter(user.role),
+      error: (e: unknown) => {
+        this.loading.set(false);
+        if (e instanceof AuthError && e.code === 'terms_required') {
+          void this.router.navigate(['/registro'], { queryParams: { google: '1' } });
+          return;
+        }
+        this.error.set(e instanceof Error ? e.message : 'No se pudo ingresar con Google.');
       },
     });
   }

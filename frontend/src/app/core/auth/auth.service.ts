@@ -19,7 +19,10 @@ function describeClient(): { device: string; browser: string } {
   return { device, browser };
 }
 
-export class AuthError extends Error {}
+export class AuthError extends Error {
+  /** Código de la API (p. ej. `terms_required`), cuando existe. */
+  code = '';
+}
 
 // ---- Formas de la API (ver backend/internal/auth y patients) ----
 interface ApiIdentity { id: string; email: string; name: string; role: Role; permissions: string[] }
@@ -287,11 +290,26 @@ export class AuthService {
 
   /** En modo API la validez la decide el servidor al enviar la nueva contraseña. */
   /** ¿Hay registro abierto? Solo existe en modo API (el servidor decide por ambiente). */
-  signupOptions(): Observable<{ enabled: boolean; requireVerification: boolean }> {
-    if (!this.apiMode) return of({ enabled: false, requireVerification: true });
-    return this.api.get<{ enabled: boolean; require_verification: boolean }>('/auth/options').pipe(
-      map((o) => ({ enabled: o.enabled, requireVerification: o.require_verification })),
-      catchError(() => of({ enabled: false, requireVerification: true })),
+  signupOptions(): Observable<{ enabled: boolean; requireVerification: boolean; googleClientId: string }> {
+    if (!this.apiMode) return of({ enabled: false, requireVerification: true, googleClientId: '' });
+    return this.api.get<{ enabled: boolean; require_verification: boolean; google_client_id?: string }>('/auth/options').pipe(
+      map((o) => ({ enabled: o.enabled, requireVerification: o.require_verification, googleClientId: o.google_client_id ?? '' })),
+      catchError(() => of({ enabled: false, requireVerification: true, googleClientId: '' })),
+    );
+  }
+
+  /**
+   * «Continuar con Google»: ingresa con la cuenta de Google. Si aún no hay cuenta y `acceptTerms` es true, abre una
+   * consulta gratuita. Sin cuenta y sin aceptar términos el servidor responde con el código `terms_required`.
+   */
+  googleLogin(credential: string, acceptTerms: boolean): Observable<User> {
+    return this.api.post<{ user: ApiIdentity }>('/auth/google', { credential, accept_terms: acceptTerms }).pipe(
+      switchMap((r) => this.afterAuth(r.user)),
+      catchError((e: unknown) => {
+        const err = new AuthError(e instanceof ApiError ? e.message : 'No se pudo ingresar con Google.');
+        if (e instanceof ApiError) err.code = e.code;
+        return throwError(() => err);
+      }),
     );
   }
 

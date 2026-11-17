@@ -46,6 +46,7 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g.POST("/password/reset", middleware.RateLimit(20, 15*time.Minute), ct.reset)
 	g.GET("/options", ct.options)
 	g.POST("/signup", middleware.RateLimit(10, time.Hour), ct.signup)
+	g.POST("/google", middleware.RateLimit(30, 15*time.Minute), ct.google)
 	g.POST("/verify", middleware.RateLimit(30, 15*time.Minute), ct.verify)
 	g.POST("/refresh", CSRF(), ct.refresh)
 	g.POST("/logout", CSRF(), ct.logout)
@@ -372,5 +373,39 @@ func (ct *Controller) verify(c *gin.Context) {
 		shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo confirmar el correo.")
 	default:
 		c.Status(http.StatusNoContent)
+	}
+}
+
+type googleReq struct {
+	Credential  string `json:"credential"`
+	AcceptTerms bool   `json:"accept_terms"`
+}
+
+func (ct *Controller) google(c *gin.Context) {
+	var in googleReq
+	if err := c.ShouldBindJSON(&in); err != nil || in.Credential == "" {
+		shared.AbortWithError(c, http.StatusBadRequest, "invalid_request", "No se recibió la cuenta de Google.")
+		return
+	}
+	t, created, err := ct.svc.GoogleSignIn(c.Request.Context(), in.Credential, in.AcceptTerms, meta(c))
+	switch {
+	case errors.Is(err, ErrGoogleDisabled):
+		shared.AbortWithError(c, http.StatusNotFound, "google_disabled", ErrGoogleDisabled.Error()+".")
+	case errors.Is(err, ErrGoogleToken):
+		shared.AbortWithError(c, http.StatusUnauthorized, "google_invalid", ErrGoogleToken.Error()+". Inténtalo de nuevo.")
+	case errors.Is(err, ErrGoogleNotAllowed):
+		shared.AbortWithError(c, http.StatusForbidden, "google_not_allowed", ErrGoogleNotAllowed.Error()+".")
+	case errors.Is(err, ErrSignupClosed):
+		shared.AbortWithError(c, http.StatusForbidden, "signup_closed", "No hay una cuenta con ese correo y el registro no está disponible por ahora.")
+	case errors.Is(err, ErrTermsRequired):
+		shared.AbortWithError(c, http.StatusConflict, "terms_required", "Aún no tienes cuenta. Acepta los términos y el aviso de privacidad para crearla con Google.")
+	case err != nil:
+		shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo ingresar con Google.")
+	default:
+		if err := ct.writeTokens(c, t); err != nil {
+			shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo ingresar con Google.")
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"user": t.Identity, "access_expires_at": t.AccessExp, "created": created})
 	}
 }
