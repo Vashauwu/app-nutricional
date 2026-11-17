@@ -24,6 +24,14 @@ setvar() { # setvar CLAVE VALOR
 # Contraseña del rol de la API (aislamiento entre consultas). Si el ambiente es anterior a esa función, se genera aquí una vez.
 [ -n "$(get APP_DB_PASSWORD)" ] || setvar APP_DB_PASSWORD "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)"
 
+# Staging es el ambiente de pruebas: registro abierto y sin confirmar el correo (su remitente de pruebas no entrega a
+# cualquier destinatario). Solo se escribe lo que falte: un valor puesto a mano en el .env se respeta. Nunca en producción.
+if [ "$ENV" = staging ]; then
+  [ -n "$(get ALLOW_DEMO_ACCOUNTS)" ] || setvar ALLOW_DEMO_ACCOUNTS true
+  [ -n "$(get SIGNUP_ENABLED)" ] || setvar SIGNUP_ENABLED true
+  [ -n "$(get SIGNUP_REQUIRE_EMAIL_VERIFICATION)" ] || setvar SIGNUP_REQUIRE_EMAIL_VERIFICATION false
+fi
+
 # Sin liberaciones previas por CD, el ambiente corre las imágenes compiladas en el servidor (local/…:dev).
 PREV_TAG="$(get IMAGE_TAG)"; PREV_TAG="${PREV_TAG:-dev}"
 PREV_REPO="$(get IMAGE_REPO)"; PREV_REPO="${PREV_REPO:-local}"

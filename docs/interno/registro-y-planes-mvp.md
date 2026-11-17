@@ -46,20 +46,13 @@ La pantalla pregunta al servidor (`GET /api/v1/auth/options`): no hay bandera ap
 
 ## Probarlo en staging
 
-En el VPS, edita `/opt/nutri/staging/deploy/.env.staging`:
+No hay que tocar el servidor: al liberar en staging, `release.sh` escribe en `.env.staging` (solo si faltan)
+`SIGNUP_ENABLED=true`, `SIGNUP_REQUIRE_EMAIL_VERIFICATION=false` y `ALLOW_DEMO_ACCOUNTS=true`. Producción no se toca: ahí el
+registro sigue apagado hasta activarlo a mano.
 
-```
-SIGNUP_ENABLED=true
-```
-
-y reinicia el ambiente (`./dc.sh staging up -d`).
-
-**Sobre el correo.** Staging envía con el remitente de pruebas de Resend, que **solo entrega al correo de la cuenta de
-Resend**. Dos caminos:
-
-- Te registras con ese mismo correo: recibes el enlace y pruebas el flujo completo, con confirmación.
-- Quieres probar con cualquier Gmail antes de verificar un dominio: agrega `SIGNUP_REQUIRE_EMAIL_VERIFICATION=false`
-  (staging ya tiene `ALLOW_DEMO_ACCOUNTS=true`). La cuenta entra directo, sin correo. Quítalo al terminar.
+**Por qué sin confirmación en staging.** Su remitente de pruebas de Resend **solo entrega al correo de la cuenta de
+Resend**, así que un Gmail cualquiera no recibiría el enlace. Sin confirmación la cuenta entra directo. Para probar el
+flujo con correo, pon `SIGNUP_REQUIRE_EMAIL_VERIFICATION=true` en `.env.staging` y regístrate con el correo de Resend.
 
 Guion de la prueba:
 
