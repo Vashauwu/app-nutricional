@@ -265,6 +265,10 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 		logger.Warn("mail_disabled", slog.String("reason", "SMTP_HOST no configurado: los enlaces solo se escriben en el registro"))
 	}
 	authSvc := auth.NewService(pool, cfg, mailer, logger)
+	if cfg.GoogleClientID != "" {
+		authSvc.SetGoogleVerifier(auth.NewGoogleVerifier(cfg.GoogleClientID))
+		logger.Info("google_signin_enabled")
+	}
 	authSvc.SetAsyncMail(true)
 	auth.NewController(authSvc, cfg).Register(v1)
 	planSvc := plans.NewService(pool)

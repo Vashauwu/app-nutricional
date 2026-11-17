@@ -7,28 +7,31 @@ import { ApiError } from '../../core/api/api-client';
 import { AuthService } from '../../core/auth/auth.service';
 import { FieldError, strongPassword } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
+import { GoogleButton } from '../../shared/components/google-button';
 import { ThemeToggle } from '../../shared/components/theme-toggle';
+import { AuthArt } from './auth-art';
 
 /** Registro de una nutrióloga: abre su propia consulta con el plan gratuito. */
 @Component({
   selector: 'app-signup',
-  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle],
+  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle, GoogleButton, AuthArt],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.scss',
   template: `
     <div class="auth">
       <section class="hero" aria-label="Presentación">
-        <span class="mark"><img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> Nutrición Integral</span>
-        <div>
+        <span class="mark"><img class="logo" src="icons/icon-96x96.png" alt="" width="40" height="40" /> Nutrición Integral</span>
+        <div class="lead">
           <h1>Empieza gratis, a tu ritmo.</h1>
-          <p>Expediente, Dietocálculo, planes semanales y agenda en un solo lugar. Sin tarjeta para empezar.</p>
+          <p class="sub">Expediente, Dietocálculo, planes semanales y agenda en un solo lugar. Sin tarjeta para empezar.</p>
         </div>
-        <p class="small m-0">Plan gratuito: hasta 15 pacientes activos.</p>
+        <app-auth-art />
+        <p class="foot">Plan gratuito: hasta 15 pacientes activos.</p>
       </section>
 
       <main class="panel-wrap" id="contenido">
         <div class="u-corner-tr"><app-theme-toggle /></div>
-        <div class="card">
+        <div class="form-box">
           @if (options() === undefined) {
             <p class="muted" role="status">Cargando…</p>
           } @else if (!options()!.enabled) {
@@ -48,12 +51,20 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
             </div>
             <a tuiButton appearance="secondary" size="m" routerLink="/ingresar">Ya confirmé: ingresar</a>
           } @else {
-            <div>
-              <h2>Crear cuenta gratuita</h2>
-              <p class="muted">Abre tu consulta en la plataforma. Después podrás completar tu perfil profesional.</p>
-            </div>
+            <nav class="switch" aria-label="Ingresar o crear cuenta">
+              <a routerLink="/ingresar">Ingresar</a>
+              <a routerLink="/registro" aria-current="page">Crear cuenta</a>
+            </nav>
+            <h2>Crear cuenta gratuita</h2>
             @if (error()) {
               <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body">{{ error() }}</div></div>
+            } @else if (fromGoogle) {
+              <div class="callout callout--info" role="status"><app-icon name="info" /><div class="callout-body">Aún no tienes cuenta con ese correo de Google. Continúa con Google para crearla gratis.</div></div>
+            }
+            @if (options()!.googleClientId; as gid) {
+              <app-google-button [clientId]="gid" text="signup_with" (credential)="google($event)" />
+              <p class="fine">Al continuar con Google aceptas los <a routerLink="/terminos" target="_blank">términos de uso</a> y el <a routerLink="/privacidad" target="_blank">aviso de privacidad</a>.</p>
+              <p class="or"><span>o con tu correo</span></p>
             }
             <form [formGroup]="form" (ngSubmit)="submit()" class="stack" novalidate>
               <div class="field">
@@ -90,7 +101,6 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
                 }
               </div>
               <button tuiButton type="submit" size="l" [disabled]="loading()">{{ loading() ? 'Creando cuenta…' : 'Crear cuenta gratis' }}</button>
-              <a routerLink="/ingresar" class="small">Ya tengo cuenta</a>
             </form>
           }
         </div>
@@ -102,6 +112,8 @@ export class Signup {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  /** Llegó desde «Continuar con Google» en el ingreso sin tener cuenta. */
+  protected readonly fromGoogle = inject(ActivatedRoute).snapshot.queryParamMap.get('google') === '1';
   protected readonly options = toSignal(this.auth.signupOptions());
   protected readonly show = signal(false);
   protected readonly loading = signal(false);
@@ -115,6 +127,15 @@ export class Signup {
     password: ['', [Validators.required, strongPassword]],
     terms: [false, [Validators.requiredTrue]],
   });
+
+  /** Crea la cuenta con Google: pulsar el botón junto al aviso de términos es la aceptación. */
+  protected google(credential: string): void {
+    this.error.set('');
+    this.auth.googleLogin(credential, true).subscribe({
+      next: () => void this.router.navigateByUrl('/'),
+      error: (e: unknown) => this.error.set(e instanceof Error ? e.message : 'No se pudo continuar con Google.'),
+    });
+  }
 
   protected submit(): void {
     this.form.markAllAsTouched();
