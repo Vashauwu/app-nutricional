@@ -1,10 +1,15 @@
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
+import { AuthService } from './core/auth/auth.service';
 import { consentGuard, guestGuard, roleGuard } from './core/guards/auth.guards';
 import { unsavedChangesGuard } from './core/guards/unsaved.guard';
 
 // Feature-based + lazy loading (§21.5). Los guards mejoran la experiencia;
 // la autorización real es del backend (§2.2).
 export const routes: Routes = [
+  // Página pública: quien aún no inició sesión la ve en «/»; /inicio siempre la muestra (también con sesión).
+  { path: '', pathMatch: 'full', title: 'Nutrición Integral · Gestión nutricional', canMatch: [() => !inject(AuthService).isAuthenticated()], loadComponent: () => import('./features/landing/landing').then((m) => m.Landing) },
+  { path: 'inicio', title: 'Nutrición Integral · Gestión nutricional', loadComponent: () => import('./features/landing/landing').then((m) => m.Landing) },
   { path: 'ingresar', title: 'Ingresar', canActivate: [guestGuard], loadComponent: () => import('./features/auth/login').then((m) => m.Login) },
   { path: 'recuperar', title: 'Recuperar contraseña', canActivate: [guestGuard], loadComponent: () => import('./features/auth/recovery').then((m) => m.ForgotPassword) },
   { path: 'privacidad', title: 'Aviso de privacidad', data: { doc: 'privacidad' }, loadComponent: () => import('./features/legal/legal').then((m) => m.Legal) },

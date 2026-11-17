@@ -107,8 +107,8 @@ const SAVE_TEXT: Record<SaveState, string> = {
         <div class="callout callout--ok banner" role="status"><app-icon name="eye" /><div class="callout-body">Plan publicado: los cambios se reflejan de inmediato en la vista de la paciente y quedan en el historial.</div></div>
       }
 
-      <div class="ed" cdkDropListGroup>
-        <aside class="lib panel" [class.closed]="!libOpen()" aria-label="Biblioteca de platillos">
+      <div class="ed" [class.lib-off]="!libOpen()" cdkDropListGroup>
+        <aside id="lib-panel" class="lib panel" [class.closed]="!libOpen()" aria-label="Biblioteca de platillos">
           <h2 class="panel-head t-sm">Biblioteca</h2>
           <div class="field"><label class="visually-hidden" for="lib-s">Buscar platillo</label><div class="input-affix"><app-icon name="search" [size]="18" /><input id="lib-s" class="input" type="search" placeholder="Buscar platillo…" [value]="libSearch()" (input)="libSearch.set($any($event.target).value)" /></div></div>
           <app-combobox label="Categoría" [hideLabel]="true" [allowAll]="true" allLabel="Todas las categorías" placeholder="Todas las categorías" [options]="categoryOptions()" [value]="libCat()" (valueChange)="libCat.set($event)" />
@@ -128,7 +128,7 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
         <section class="cal" aria-label="Calendario del plan">
           <div class="week-nav">
-            <button type="button" class="chip-toggle lib-toggle" [attr.aria-pressed]="libOpen()" (click)="libOpen.set(!libOpen())"><app-icon name="dish" [size]="16" /> Biblioteca</button>
+            <button type="button" class="chip-toggle lib-toggle" aria-controls="lib-panel" [attr.aria-expanded]="libOpen()" [attr.aria-label]="libOpen() ? 'Ocultar la biblioteca de platillos' : 'Mostrar la biblioteca de platillos'" (click)="libOpen.set(!libOpen())"><app-icon name="dish" [size]="16" /> Biblioteca <app-icon [name]="libOpen() ? 'chevron-left' : 'chevron-right'" [size]="14" /></button>
             <button tuiButton type="button" size="s" appearance="secondary" [disabled]="!hasPrev()" (click)="shiftWeek(-1)"><app-icon name="chevron-left" [size]="16" /> Anterior</button>
             <strong aria-live="polite">{{ rangeLabel() }}</strong>
             <button tuiButton type="button" size="s" appearance="secondary" [disabled]="!hasNext()" (click)="shiftWeek(1)">Siguiente <app-icon name="chevron-right" [size]="16" /></button>
