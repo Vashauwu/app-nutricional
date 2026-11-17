@@ -44,6 +44,9 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g.POST("/login", middleware.RateLimit(30, 15*time.Minute), ct.login)
 	g.POST("/password/forgot", middleware.RateLimit(10, 15*time.Minute), ct.forgot)
 	g.POST("/password/reset", middleware.RateLimit(20, 15*time.Minute), ct.reset)
+	g.GET("/options", ct.options)
+	g.POST("/signup", middleware.RateLimit(10, time.Hour), ct.signup)
+	g.POST("/verify", middleware.RateLimit(30, 15*time.Minute), ct.verify)
 	g.POST("/refresh", CSRF(), ct.refresh)
 	g.POST("/logout", CSRF(), ct.logout)
 
@@ -103,6 +106,9 @@ func (ct *Controller) login(c *gin.Context) {
 		return
 	case errors.Is(err, ErrInvalidCredentials):
 		shared.AbortWithError(c, http.StatusUnauthorized, "invalid_credentials", ErrInvalidCredentials.Error())
+		return
+	case errors.Is(err, ErrNotVerified):
+		shared.AbortWithError(c, http.StatusForbidden, "email_not_verified", "Confirma tu correo: te enviamos un enlace para activar tu cuenta. Si no lo encuentras, regístrate de nuevo con el mismo correo para recibir otro.")
 		return
 	case err != nil:
 		shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo iniciar sesión.")
@@ -315,5 +321,56 @@ func CSRF() gin.HandlerFunc {
 			return
 		}
 		c.Next()
+	}
+}
+
+// ---------- Registro ----------
+func (ct *Controller) options(c *gin.Context) { c.JSON(http.StatusOK, ct.svc.SignupOptions()) }
+
+type signupReq struct {
+	Name        string `json:"name"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	AcceptTerms bool   `json:"accept_terms"`
+}
+
+func (ct *Controller) signup(c *gin.Context) {
+	var in signupReq
+	if err := c.ShouldBindJSON(&in); err != nil {
+		shared.AbortWithError(c, http.StatusBadRequest, "invalid_request", "Completa tus datos.")
+		return
+	}
+	verified, err := ct.svc.Signup(c.Request.Context(), SignupInput{Name: in.Name, Email: in.Email, Password: in.Password, AcceptTerms: in.AcceptTerms}, meta(c))
+	var bad SignupValidation
+	switch {
+	case errors.As(err, &bad):
+		c.AbortWithStatusJSON(http.StatusUnprocessableEntity, shared.ErrorBody{Error: shared.ErrorDetail{
+			Code: "validation_failed", Message: "Revisa los datos marcados.", RequestID: middleware.GetRequestID(c), Fields: bad}})
+	case errors.Is(err, ErrSignupClosed):
+		shared.AbortWithError(c, http.StatusForbidden, "signup_closed", ErrSignupClosed.Error()+".")
+	case errors.Is(err, ErrEmailInUse):
+		shared.AbortWithError(c, http.StatusConflict, "email_taken", ErrEmailInUse.Error()+".")
+	case err != nil:
+		shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo crear la cuenta. Inténtalo de nuevo.")
+	default:
+		c.JSON(http.StatusAccepted, gin.H{"verified": verified})
+	}
+}
+
+func (ct *Controller) verify(c *gin.Context) {
+	var in struct {
+		Token string `json:"token" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		shared.AbortWithError(c, http.StatusBadRequest, "invalid_request", "Falta el enlace de confirmación.")
+		return
+	}
+	switch err := ct.svc.VerifyEmail(c.Request.Context(), in.Token, meta(c)); {
+	case errors.Is(err, ErrBadResetToken):
+		shared.AbortWithError(c, http.StatusBadRequest, "invalid_token", ErrBadResetToken.Error()+".")
+	case err != nil:
+		shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo confirmar el correo.")
+	default:
+		c.Status(http.StatusNoContent)
 	}
 }

@@ -62,6 +62,28 @@ type Service struct {
 	log      *slog.Logger
 	private  string
 	public   string
+	limits   Limits
+}
+
+// Limits valida lo que incluye el plan de la consulta (opcional: sin él no hay tope).
+type Limits interface {
+	CanStore(ctx context.Context, add int64) error
+	CanUseTrackingPhotos(ctx context.Context) error
+}
+
+// SetLimits activa la validación del espacio y las funciones del plan.
+func (s *Service) SetLimits(l Limits) { s.limits = l }
+
+func (s *Service) planAllows(ctx context.Context, add int64, trackingPhoto bool) error {
+	if s.limits == nil {
+		return nil
+	}
+	if trackingPhoto {
+		if err := s.limits.CanUseTrackingPhotos(ctx); err != nil {
+			return err
+		}
+	}
+	return s.limits.CanStore(ctx, add)
 }
 
 func NewService(pool db.DBTX, store ObjectStore, st Settings, p Patients, privateBucket, publicBucket string, log *slog.Logger) *Service {
@@ -256,6 +278,9 @@ func (s *Service) UploadImage(ctx context.Context, a Actor, kind string, owner *
 		return FileView{}, err
 	}
 	total := int64(len(pr.main) + len(pr.thumb))
+	if err := s.planAllows(ctx, total, kind == "tracking_photo"); err != nil {
+		return FileView{}, err
+	}
 	if err := s.checkQuota(ctx, owner, total); err != nil {
 		return FileView{}, err
 	}
@@ -388,6 +413,9 @@ func (s *Service) AddDocument(ctx context.Context, a Actor, patient uuid.UUID, i
 		return DocumentView{}, ErrTooLarge
 	}
 	if err := scanPDF(data); err != nil {
+		return DocumentView{}, err
+	}
+	if err := s.planAllows(ctx, int64(len(data)), false); err != nil {
 		return DocumentView{}, err
 	}
 	if err := s.checkQuota(ctx, &patient, int64(len(data))); err != nil {

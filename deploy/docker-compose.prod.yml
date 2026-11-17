@@ -47,6 +47,10 @@ services:
       S3_SECRET_ACCESS_KEY: ${MINIO_PASSWORD:?}
       # Solo staging lo activa: permite crear las cuentas de ejemplo con `admin seed-demo-accounts`.
       ALLOW_DEMO_ACCOUNTS: ${ALLOW_DEMO_ACCOUNTS:-false}
+      # Registro abierto de nutriólogas (plan gratuito). Apagado salvo que el .env del ambiente lo active.
+      SIGNUP_ENABLED: ${SIGNUP_ENABLED:-false}
+      # false solo en staging (junto con ALLOW_DEMO_ACCOUNTS=true): activa la cuenta sin confirmar el correo.
+      SIGNUP_REQUIRE_EMAIL_VERIFICATION: ${SIGNUP_REQUIRE_EMAIL_VERIFICATION:-true}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}

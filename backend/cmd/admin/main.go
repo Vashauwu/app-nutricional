@@ -2,6 +2,8 @@
 //
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin set-password -email a@b.mx    # cambia la contraseña y cierra sus sesiones
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin create-user -email a@b.mx -name "Lic. X" -role nutritionist
+//	go run ./cmd/admin set-plan -email a@b.mx -plan pro [-period annual]   # cambia el plan de la consulta de esa cuenta (free|standard|pro)
+//	go run ./cmd/admin grant-platform-admin -email a@b.mx   # permite administrar el catálogo SMAE global
 //	go run ./cmd/admin seed-demo-catalog            # catálogo SMAE de EJEMPLO (no oficial), activo
 //	go run ./cmd/admin seed-demo-catalog -errata    # edición de ejemplo en borrador, para probar el recálculo
 //	ALLOW_DEMO_ACCOUNTS=true go run ./cmd/admin seed-demo-accounts   # cuentas de ejemplo (SOLO staging/desarrollo)
@@ -23,13 +25,14 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/auth"
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/dishes"
+	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/smae/sample"
 	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "uso:\n  admin set-password -email <correo>  (nueva contraseña en NEW_USER_PASSWORD)\n  admin create-user -email <correo> -name <nombre> -role <nutritionist|patient>  (contraseña en NEW_USER_PASSWORD)\n  admin seed-demo-catalog [-errata]\n  admin seed-demo-accounts   (solo con ALLOW_DEMO_ACCOUNTS=true)")
+	fmt.Fprintln(os.Stderr, "uso:\n  admin set-password -email <correo>  (nueva contraseña en NEW_USER_PASSWORD)\n  admin create-user -email <correo> -name <nombre> -role <nutritionist|patient>  (contraseña en NEW_USER_PASSWORD)\n  admin set-plan -email <correo> -plan <free|standard|pro> [-period monthly|annual]\n  admin grant-platform-admin -email <correo>\n  admin seed-demo-catalog [-errata]\n  admin seed-demo-accounts   (solo con ALLOW_DEMO_ACCOUNTS=true)")
 	os.Exit(2)
 }
 
@@ -62,6 +65,10 @@ func main() {
 		createUser(ctx, pool, cfg, log)
 	case "set-password":
 		setPassword(ctx, pool, cfg, log)
+	case "set-plan":
+		setPlan(ctx, pool)
+	case "grant-platform-admin":
+		grantPlatformAdmin(ctx, pool)
 	case "seed-demo-catalog":
 		seedCatalog(ctx, pool, log)
 	case "seed-demo-accounts":
@@ -164,6 +171,15 @@ func seedAccounts(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, lo
 		os.Exit(1)
 	}
 	ctx = tenant.With(ctx, practice)
+	// La cuenta de ejemplo debe poder usar todo (plan Pro) y administrar el catálogo de ejemplo.
+	if err := plans.NewService(pool).SetPlan(ctx, "pro", "annual"); err != nil {
+		fmt.Fprintln(os.Stderr, "plan de ejemplo:", err)
+		os.Exit(1)
+	}
+	if err := q.AssignRoleByCode(ctx, db.AssignRoleByCodeParams{UserID: nutri, Code: "platform_admin"}); err != nil {
+		fmt.Fprintln(os.Stderr, "administración del catálogo:", err)
+		os.Exit(1)
+	}
 	docs, err := q.ListActiveConsentDocuments(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "documentos legales:", err)
@@ -198,6 +214,42 @@ func seedAccounts(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, lo
 		fmt.Println("creada:", p.email)
 	}
 	fmt.Println("listo. Contraseña de las tres cuentas: demo1234")
+}
+
+// practiceOf devuelve el id de la consulta de una cuenta.
+func practiceOf(ctx context.Context, pool *pgxpool.Pool, email string) (uuid.UUID, uuid.UUID) {
+	var uid, practice uuid.UUID
+	if err := pool.QueryRow(ctx, "SELECT id, practice_id FROM users WHERE email = $1", email).Scan(&uid, &practice); err != nil {
+		fmt.Fprintln(os.Stderr, "no existe una cuenta con ese correo")
+		os.Exit(1)
+	}
+	return uid, practice
+}
+
+func setPlan(ctx context.Context, pool *pgxpool.Pool) {
+	fs := flag.NewFlagSet("set-plan", flag.ExitOnError)
+	email := fs.String("email", "", "correo de la cuenta")
+	plan := fs.String("plan", "", "free | standard | pro")
+	period := fs.String("period", "", "monthly | annual (opcional)")
+	_ = fs.Parse(os.Args[2:])
+	_, practice := practiceOf(ctx, pool, *email)
+	if err := plans.NewService(pool).SetPlan(tenant.With(ctx, practice), *plan, *period); err != nil {
+		fmt.Fprintln(os.Stderr, "no se pudo cambiar el plan:", err)
+		os.Exit(1)
+	}
+	fmt.Printf("plan de la consulta de %s: %s\n", *email, *plan)
+}
+
+func grantPlatformAdmin(ctx context.Context, pool *pgxpool.Pool) {
+	fs := flag.NewFlagSet("grant-platform-admin", flag.ExitOnError)
+	email := fs.String("email", "", "correo de la cuenta")
+	_ = fs.Parse(os.Args[2:])
+	uid, practice := practiceOf(ctx, pool, *email)
+	if err := db.New(pool).AssignRoleByCode(tenant.With(ctx, practice), db.AssignRoleByCodeParams{UserID: uid, Code: "platform_admin"}); err != nil {
+		fmt.Fprintln(os.Stderr, "no se pudo asignar:", err)
+		os.Exit(1)
+	}
+	fmt.Println("administración del catálogo concedida a", *email)
 }
 
 func setPassword(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, log *slog.Logger) {

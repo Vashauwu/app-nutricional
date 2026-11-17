@@ -138,3 +138,11 @@ func NewOwnerDSN(t *testing.T) string {
 	applyMigrations(t, admin, 0, 0)
 	return dsn
 }
+
+// GrantPlatformAdmin da a una cuenta la administración del catálogo SMAE global (en producción solo la plataforma la tiene).
+func GrantPlatformAdmin(t *testing.T, pool *pgxpool.Pool, email string) {
+	t.Helper()
+	_, err := pool.Exec(context.Background(), `INSERT INTO user_role_assignments (user_id, role_id)
+		SELECT u.id, r.id FROM users u, roles r WHERE u.email = $1 AND r.code = 'platform_admin' ON CONFLICT DO NOTHING`, email)
+	require.NoError(t, err)
+}

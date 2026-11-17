@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
@@ -60,6 +61,9 @@ import { ThemeToggle } from '../../shared/components/theme-toggle';
             <button tuiButton type="submit" size="l" [disabled]="loading()">{{ loading() ? 'Ingresando…' : 'Ingresar' }}</button>
             <a routerLink="/recuperar" class="small">¿Olvidaste tu contraseña?</a>
           </form>
+          @if (signup()?.enabled) {
+            <p class="small m-0">¿Eres nutrióloga o nutriólogo? <a routerLink="/registro"><strong>Crea tu cuenta gratis</strong></a></p>
+          }
 
           @if (demo) {
           <div class="demo" role="group" aria-label="Cuentas de demostración">
@@ -87,6 +91,7 @@ export class Login {
   // Modo API: nombre y colores públicos de la consulta para la pantalla de ingreso.
   private readonly publicBrand = inject(SettingsService).loadPublicBrand().subscribe({ error: () => undefined });
   protected readonly demo = showDemoAccounts();
+  protected readonly signup = toSignal(this.auth.signupOptions());
   protected readonly show = signal(false);
   protected readonly loading = signal(false);
   protected readonly error = signal('');

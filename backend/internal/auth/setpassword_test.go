@@ -22,6 +22,7 @@ type silentMail struct{}
 func (silentMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (silentMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (silentMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (silentMail) SendVerification(context.Context, string, string) error  { return nil }
 
 func TestSetPasswordByEmail(t *testing.T) {
 	pool := testsupport.NewPool(t)

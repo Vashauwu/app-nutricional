@@ -1,0 +1,182 @@
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { TuiButton } from '@taiga-ui/core';
+import { ApiError } from '../../core/api/api-client';
+import { AuthService } from '../../core/auth/auth.service';
+import { FieldError, strongPassword } from '../../shared/components/forms';
+import { Icon } from '../../shared/components/icon';
+import { ThemeToggle } from '../../shared/components/theme-toggle';
+
+/** Registro de una nutrióloga: abre su propia consulta con el plan gratuito. */
+@Component({
+  selector: 'app-signup',
+  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './auth.scss',
+  template: `
+    <div class="auth">
+      <section class="hero" aria-label="Presentación">
+        <span class="mark"><img class="logo logo--default" src="icons/icon-96x96.png" alt="" width="36" height="36" /> Nutrición Integral</span>
+        <div>
+          <h1>Empieza gratis, a tu ritmo.</h1>
+          <p>Expediente, Dietocálculo, planes semanales y agenda en un solo lugar. Sin tarjeta para empezar.</p>
+        </div>
+        <p class="small m-0">Plan gratuito: hasta 15 pacientes activos.</p>
+      </section>
+
+      <main class="panel-wrap" id="contenido">
+        <div class="u-corner-tr"><app-theme-toggle /></div>
+        <div class="card">
+          @if (options() === undefined) {
+            <p class="muted" role="status">Cargando…</p>
+          } @else if (!options()!.enabled) {
+            <div>
+              <h2>Registro no disponible</h2>
+              <p class="muted">Por ahora no estamos abriendo cuentas nuevas desde aquí. Si ya tienes una, ingresa.</p>
+            </div>
+            <a tuiButton size="l" routerLink="/ingresar">Ingresar</a>
+          } @else if (done()) {
+            <div class="callout callout--ok" role="status">
+              <app-icon name="check-circle" />
+              <div class="callout-body">
+                <p><strong>Revisa tu correo</strong></p>
+                <p>Si <strong>{{ form.controls.email.value }}</strong> puede abrir una cuenta, te enviamos un enlace para confirmarla. Vence en 24 horas.</p>
+                <p class="small muted">¿No llega? Revisa spam o vuelve a registrarte con el mismo correo para recibir otro enlace.</p>
+              </div>
+            </div>
+            <a tuiButton appearance="secondary" size="m" routerLink="/ingresar">Ya confirmé: ingresar</a>
+          } @else {
+            <div>
+              <h2>Crear cuenta gratuita</h2>
+              <p class="muted">Abre tu consulta en la plataforma. Después podrás completar tu perfil profesional.</p>
+            </div>
+            @if (error()) {
+              <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body">{{ error() }}</div></div>
+            }
+            <form [formGroup]="form" (ngSubmit)="submit()" class="stack" novalidate>
+              <div class="field">
+                <label for="su-name">Tu nombre</label>
+                <input id="su-name" class="input" type="text" formControlName="name" autocomplete="name" aria-describedby="su-name-err" />
+                <app-field-error id="su-name-err" [control]="form.controls.name" />
+                @if (fields()['name']) { <p class="error" role="alert">{{ fields()['name'] }}</p> }
+              </div>
+              <div class="field">
+                <label for="su-email">Correo electrónico</label>
+                <input id="su-email" class="input" type="email" formControlName="email" autocomplete="email" inputmode="email" aria-describedby="su-email-err" />
+                <app-field-error id="su-email-err" [control]="form.controls.email" />
+                @if (fields()['email']) { <p class="error" role="alert">{{ fields()['email'] }}</p> }
+              </div>
+              <div class="field">
+                <label for="su-pw">Contraseña</label>
+                <div class="pw">
+                  <input id="su-pw" class="input" [type]="show() ? 'text' : 'password'" formControlName="password" autocomplete="new-password" aria-describedby="su-pw-hint su-pw-err" />
+                  <button type="button" class="icon-btn" [attr.aria-label]="show() ? 'Ocultar contraseña' : 'Mostrar contraseña'" [attr.aria-pressed]="show()" (click)="show.set(!show())">
+                    <app-icon [name]="show() ? 'eye-off' : 'eye'" />
+                  </button>
+                </div>
+                <span class="hint" id="su-pw-hint">Mínimo 8 caracteres, con una letra y un número.</span>
+                <app-field-error id="su-pw-err" [control]="form.controls.password" />
+                @if (fields()['password']) { <p class="error" role="alert">{{ fields()['password'] }}</p> }
+              </div>
+              <div class="field">
+                <label class="check" for="su-terms">
+                  <input id="su-terms" type="checkbox" formControlName="terms" aria-describedby="su-terms-err" />
+                  <span>Acepto los <a routerLink="/terminos" target="_blank">términos de uso</a> y el <a routerLink="/privacidad" target="_blank">aviso de privacidad</a>.</span>
+                </label>
+                @if ((form.controls.terms.touched && form.controls.terms.invalid) || fields()['accept_terms']) {
+                  <p class="error" id="su-terms-err" role="alert">Debes aceptar los términos y el aviso de privacidad.</p>
+                }
+              </div>
+              <button tuiButton type="submit" size="l" [disabled]="loading()">{{ loading() ? 'Creando cuenta…' : 'Crear cuenta gratis' }}</button>
+              <a routerLink="/ingresar" class="small">Ya tengo cuenta</a>
+            </form>
+          }
+        </div>
+      </main>
+    </div>
+  `,
+})
+export class Signup {
+  private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  protected readonly options = toSignal(this.auth.signupOptions());
+  protected readonly show = signal(false);
+  protected readonly loading = signal(false);
+  protected readonly done = signal(false);
+  protected readonly error = signal('');
+  protected readonly fields = signal<Record<string, string>>({});
+
+  protected readonly form = this.fb.nonNullable.group({
+    name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(120)]],
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required, strongPassword]],
+    terms: [false, [Validators.requiredTrue]],
+  });
+
+  protected submit(): void {
+    this.form.markAllAsTouched();
+    if (this.form.invalid) return;
+    this.loading.set(true);
+    this.error.set('');
+    this.fields.set({});
+    const v = this.form.getRawValue();
+    this.auth.signup({ name: v.name.trim(), email: v.email, password: v.password, acceptTerms: v.terms }).subscribe({
+      next: (r) => {
+        if (!r.verified) {
+          this.loading.set(false);
+          this.done.set(true);
+          return;
+        }
+        // Sin confirmación de correo (ambientes de prueba): entra directo.
+        this.auth.login(v.email, v.password).subscribe({
+          next: () => void this.router.navigateByUrl('/'),
+          error: () => void this.router.navigateByUrl('/ingresar'),
+        });
+      },
+      error: (e: unknown) => {
+        this.loading.set(false);
+        if (e instanceof ApiError) {
+          this.fields.set(e.fields);
+          this.error.set(e.code === 'validation_failed' ? 'Revisa los datos marcados.' : e.message);
+        } else this.error.set('No se pudo crear la cuenta.');
+      },
+    });
+  }
+}
+
+/** Destino del enlace del correo: confirma la cuenta. */
+@Component({
+  selector: 'app-verify-email',
+  imports: [RouterLink, TuiButton, Icon],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  styleUrl: './auth.scss',
+  template: `
+    <main class="panel-wrap min-h-page" id="contenido">
+      <div class="card">
+        @switch (state()) {
+          @case ('working') { <p class="muted" role="status">Confirmando tu correo…</p> }
+          @case ('ok') {
+            <div class="callout callout--ok" role="status"><app-icon name="check-circle" /><div class="callout-body"><p><strong>Correo confirmado</strong></p><p>Tu cuenta gratuita está lista. Ingresa para configurar tu consulta.</p></div></div>
+            <a tuiButton size="l" routerLink="/ingresar">Ingresar</a>
+          }
+          @default {
+            <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body"><p><strong>Enlace no válido o vencido.</strong></p><p class="small">Los enlaces duran 24 horas y solo funcionan una vez. Si ya confirmaste tu correo, ingresa.</p></div></div>
+            <div class="row"><a tuiButton size="m" routerLink="/ingresar">Ingresar</a><a tuiButton appearance="secondary" size="m" routerLink="/registro">Registrarme de nuevo</a></div>
+          }
+        }
+      </div>
+    </main>
+  `,
+})
+export class VerifyEmail {
+  private readonly auth = inject(AuthService);
+  protected readonly state = signal<'working' | 'ok' | 'bad'>('working');
+
+  constructor() {
+    const token = inject(ActivatedRoute).snapshot.paramMap.get('token') ?? '';
+    this.auth.verifyEmail(token).subscribe({ next: () => this.state.set('ok'), error: () => this.state.set('bad') });
+  }
+}

@@ -82,6 +82,11 @@ const RAIL_KEY = 'nutri-rail';
         }
         <div class="side-foot">
           <ul class="list-plain">
+            @if (auth.apiMode) {
+              <li>
+                <a routerLink="/facturacion" routerLinkActive="active" (click)="navOpen.set(false)" [attr.title]="rail() ? 'Facturación' : null"><app-icon name="gem" /><span class="label">Facturación</span></a>
+              </li>
+            }
             <li>
               <a routerLink="/configuracion" routerLinkActive="active" (click)="navOpen.set(false)" [attr.title]="rail() ? 'Configuración' : null"><app-icon name="settings" /><span class="label">Configuración</span></a>
             </li>
@@ -119,6 +124,7 @@ export class NutriShell {
 
   protected readonly userMenu = computed<MenuItem[]>(() => [
     { label: 'Mi perfil profesional', icon: 'user', run: () => void this.router.navigateByUrl('/perfil') },
+    ...(this.auth.apiMode ? [{ label: 'Facturación y plan', icon: 'gem' as const, run: () => void this.router.navigateByUrl('/facturacion') }] : []),
     { label: 'Tablas cómodas', icon: 'list', checked: this.theme.density() === 'comfortable', run: () => this.theme.setDensity('comfortable') },
     { label: 'Tablas compactas', icon: 'list', checked: this.theme.density() === 'compact', run: () => this.theme.setDensity('compact') },
     { label: 'Salir', icon: 'log-out', separator: true, run: () => this.logout() },

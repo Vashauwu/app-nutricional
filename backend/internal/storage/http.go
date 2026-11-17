@@ -13,6 +13,7 @@ import (
 
 	"github.com/nutri/app-nutricional/backend/internal/auth"
 	"github.com/nutri/app-nutricional/backend/internal/middleware"
+	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/shared"
 )
 
@@ -36,6 +37,9 @@ func actorOf(c *gin.Context) Actor {
 }
 
 func (ct *Controller) fail(c *gin.Context, err error) {
+	if plans.StatusOf(c, err) {
+		return
+	}
 	rid := middleware.GetRequestID(c)
 	var ve ValidationError
 	switch {

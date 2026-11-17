@@ -26,6 +26,7 @@ var (
 	ErrBadResetToken      = errors.New("el enlace no es válido o ya expiró")
 	ErrBadEmail           = errors.New("correo electrónico inválido")
 	ErrNotFound           = errors.New("no encontrado")
+	ErrNotVerified        = errors.New("confirma tu correo: te enviamos un enlace para activar tu cuenta")
 )
 
 // refreshGrace tolera dos refrescos casi simultáneos (varias pestañas) sin
@@ -175,6 +176,10 @@ func (s *Service) Login(ctx context.Context, email, password string, m Meta) (*T
 		s.limiter.Fail(key)
 		s.audit(ctx, uuid.NullUUID{}, "auth.login_failed", "user", uuid.NullUUID{}, m, nil)
 		return nil, ErrInvalidCredentials
+	}
+	if u.Status == "invited" && VerifyPassword(password, u.PasswordHash) {
+		// Solo quien conoce la contraseña llega aquí (las cuentas de pacientes invitados tienen una inutilizable).
+		return nil, ErrNotVerified
 	}
 	if u.Status != "active" || !VerifyPassword(password, u.PasswordHash) {
 		s.limiter.Fail(key)
@@ -467,6 +472,10 @@ var ErrNoPractice = errors.New("falta la consulta a la que pertenece la cuenta")
 // (tenant.With) la cuenta se une a ella (una paciente, o una colega del mismo equipo); sin consulta, una nutrióloga nueva
 // abre la suya (con sus textos legales marcadores) y cualquier otro rol es un error.
 func (s *Service) CreateUser(ctx context.Context, email, name, role, password string) (uuid.UUID, error) {
+	return s.createUser(ctx, email, name, role, password, "active")
+}
+
+func (s *Service) createUser(ctx context.Context, email, name, role, password, status string) (uuid.UUID, error) {
 	e, err := normalizeEmail(email)
 	if err != nil {
 		return uuid.Nil, err
@@ -500,7 +509,7 @@ func (s *Service) CreateUser(ctx context.Context, email, name, role, password st
 			return uuid.Nil, err
 		}
 	}
-	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: e, PasswordHash: hash, Status: "active", DisplayName: name, PracticeID: practice})
+	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: e, PasswordHash: hash, Status: status, DisplayName: name, PracticeID: practice})
 	if err != nil {
 		return uuid.Nil, err
 	}

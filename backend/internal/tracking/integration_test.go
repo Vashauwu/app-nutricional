@@ -37,6 +37,7 @@ type noMail struct{}
 func (noMail) SendPasswordReset(context.Context, string, string) error { return nil }
 func (noMail) SendPasswordChanged(context.Context, string) error       { return nil }
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
+func (noMail) SendVerification(context.Context, string, string) error  { return nil }
 
 const tz = "America/Mexico_City"
 
@@ -103,6 +104,7 @@ func TestTrackingIntegration(t *testing.T) {
 
 	_, err = as.CreateUser(ctx, "nutri@demo.mx", "Lic. Prueba", "nutritionist", "demo1234")
 	require.NoError(t, err)
+	testsupport.GrantPlatformAdmin(t, pool, "nutri@demo.mx")
 	nutri := testsupport.NewClient(t, srv.URL)
 	nutri.Login("nutri@demo.mx", "demo1234")
 

@@ -286,6 +286,24 @@ export class AuthService {
   }
 
   /** En modo API la validez la decide el servidor al enviar la nueva contraseña. */
+  /** ¿Hay registro abierto? Solo existe en modo API (el servidor decide por ambiente). */
+  signupOptions(): Observable<{ enabled: boolean; requireVerification: boolean }> {
+    if (!this.apiMode) return of({ enabled: false, requireVerification: true });
+    return this.api.get<{ enabled: boolean; require_verification: boolean }>('/auth/options').pipe(
+      map((o) => ({ enabled: o.enabled, requireVerification: o.require_verification })),
+      catchError(() => of({ enabled: false, requireVerification: true })),
+    );
+  }
+
+  /** Crea una cuenta de nutrióloga con plan gratuito. `verified` = ya puede ingresar (sin confirmar el correo). */
+  signup(input: { name: string; email: string; password: string; acceptTerms: boolean }): Observable<{ verified: boolean }> {
+    return this.api.post<{ verified: boolean }>('/auth/signup', { name: input.name, email: input.email, password: input.password, accept_terms: input.acceptTerms });
+  }
+
+  verifyEmail(token: string): Observable<void> {
+    return this.api.post('/auth/verify', { token });
+  }
+
   isResetTokenValid(token: string): boolean {
     if (this.apiMode) return token.length > 20;
     const t = this.resetTokens.get(token);
