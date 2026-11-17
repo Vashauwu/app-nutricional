@@ -6,6 +6,8 @@ import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { DishesService } from '../../core/services/dishes.service';
 import { PlansService } from '../../core/services/plans.service';
+import { DietCalc, DietocalculoService } from '../../core/services/dietocalculo.service';
+import { BASE_TARGETS_NOTICE, dietSummary, planTargetsFromDiet, sameTargets } from '../../core/nutrition/diet-targets';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { HasUnsavedChanges } from '../../core/guards/unsaved.guard';
 import { Totals, compareEquivalents, compareMacros, dayTotals, distributeEquivalents, itemTotals, latestMeasurement, proposeTargets, slotTotals } from '../../core/nutrition/engine';
@@ -182,6 +184,9 @@ const SAVE_TEXT: Record<SaveState, string> = {
         <aside class="sum panel" aria-label="Resumen del día seleccionado" aria-live="polite">
           @if (selVM(); as sv) {
             <div class="panel-head"><h2 class="t-sm">{{ longDate(sv.day.date) }}</h2><span class="small muted">Resumen del día</span></div>
+            @if (dietCalc() === null) {
+              <p class="small muted m-0" role="note">Objetivos <strong>base</strong>: este paciente no tiene Dietocálculo. Para mayor precisión usa el motor del Dietocálculo (<a routerLink="/dietocalculo/nuevo" [queryParams]="{ paciente: store.meta()?.patientId }">calcular</a>).</p>
+            }
             @for (m of selMacros(); track m.key) { <app-compare-row [m]="m" /> }
             <h3 class="sub-h">Equivalentes SMAE <span class="muted small">planeado / objetivo</span></h3>
             <div>
@@ -269,7 +274,29 @@ const SAVE_TEXT: Record<SaveState, string> = {
 
       <app-modal [(open)]="targetsOpen" title="Objetivos diarios" size="wide">
         <p class="small muted">Las propuestas son orientativas y siempre editables. Se guarda la versión de objetivos usada en cada plan (v{{ store.targets()?.version }}).</p>
-        <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Proponer según el paciente</button></div>
+        @if (dietCalc(); as d) {
+          <div class="callout" [class.callout--ok]="sameAsDiet()" role="status">
+            <app-icon [name]="sameAsDiet() ? 'check-circle' : 'info'" />
+            <div class="callout-body">
+              <p><strong>Dietocálculo del paciente: «{{ d.name }}»</strong></p>
+              <p class="small">{{ dietSummary(d) }}</p>
+              <p class="small">{{ sameAsDiet() ? 'Los objetivos de este plan coinciden con el Dietocálculo.' : 'Los objetivos de este plan son distintos a los del Dietocálculo.' }}</p>
+            </div>
+          </div>
+          <div class="row"><button tuiButton type="button" size="s" [appearance]="sameAsDiet() ? 'secondary' : 'primary'" (click)="useDiet(d)"><app-icon name="calculator" [size]="16" /> Usar los del Dietocálculo</button><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Estimar con las mediciones (base)</button></div>
+        } @else {
+          @if (dietCalc() === null) {
+            <div class="callout" role="note">
+              <app-icon name="info" />
+              <div class="callout-body">
+                <p><strong>Este paciente aún no tiene un Dietocálculo.</strong></p>
+                <p class="small">{{ baseNotice }}</p>
+                <p class="small"><a routerLink="/dietocalculo/nuevo" [queryParams]="{ paciente: store.meta()?.patientId }">Calcular con el Dietocálculo</a></p>
+              </div>
+            </div>
+          }
+          <div class="row"><button tuiButton type="button" size="s" appearance="secondary" (click)="propose()"><app-icon name="zap" [size]="16" /> Estimar con las mediciones (base)</button></div>
+        }
         @if (proposalNotes().length) { <div class="callout"><app-icon name="info" /><ul class="callout-body u-list-tight">@for (n of proposalNotes(); track n) { <li class="small">{{ n }}</li> }</ul></div> }
         <div class="form-grid">
           @for (k of macroKeys; track k.key) { <div class="field"><label [for]="'tg-' + k.key">{{ k.label }}</label><input [id]="'tg-' + k.key" class="input" inputmode="decimal" [value]="tgDraft()[k.key]" (input)="setTg(k.key, $any($event.target).value)" /></div> }
@@ -415,6 +442,16 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly tgDraft = signal<Record<string, string>>({ energy: '', protein: '', carbs: '', lipids: '' });
   protected readonly eqDraft = signal<Record<string, string>>({});
   protected readonly proposalNotes = signal<string[]>([]);
+  private readonly dietSvc = inject(DietocalculoService);
+  /** Dietocálculo más reciente del paciente del plan: `undefined` = cargando, `null` = no tiene. */
+  protected readonly dietCalc = signal<DietCalc | null | undefined>(undefined);
+  protected readonly baseNotice = BASE_TARGETS_NOTICE;
+  protected readonly dietSummary = (d: DietCalc): string => dietSummary(d.result);
+  protected readonly sameAsDiet = computed(() => {
+    const d = this.dietCalc();
+    const t = this.store.targets();
+    return !!d && !!t && sameTargets(t, planTargetsFromDiet(d.result));
+  });
   protected readonly macroKeys = [{ key: 'energy', label: 'Energía (kcal)' }, { key: 'protein', label: 'Proteínas (g)' }, { key: 'carbs', label: 'Carbohidratos (g)' }, { key: 'lipids', label: 'Lípidos (g)' }];
 
   protected readonly planSvc = computed(() => (this.data.version(), this.plans.get(this.id())));
@@ -514,6 +551,11 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
   protected readonly eqCols = computed(() => Object.entries(this.eqDraft()).filter(([, v]) => Number(v) > 0).map(([k]) => k));
 
   constructor() {
+    effect(() => {
+      const pid = this.store.meta()?.patientId;
+      if (!pid) return;
+      untracked(() => this.dietSvc.latestForPatient(pid).subscribe((d) => this.dietCalc.set(d)));
+    });
     effect(() => {
       this.data.version();
       untracked(() => {
@@ -722,6 +764,13 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
 
   protected setTg(key: string, v: string): void { this.tgDraft.update((d) => ({ ...d, [key]: v })); }
   protected setEq(code: string, v: string): void { this.eqDraft.update((d) => ({ ...d, [code]: v })); }
+
+  protected useDiet(d: DietCalc): void {
+    const t = planTargetsFromDiet(d.result);
+    this.tgDraft.set({ energy: t.energy, protein: t.protein, carbs: t.carbs, lipids: t.lipids });
+    this.eqDraft.set(t.equivalents);
+    this.proposalNotes.set([`Objetivos tomados del Dietocálculo «${d.name}» (${dietSummary(d.result)}). Guarda para aplicarlos al plan.`]);
+  }
 
   protected propose(): void {
     const p = this.patient();

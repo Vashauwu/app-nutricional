@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, map, of, throwError } from 'rxjs';
+import { Observable, catchError, map, of, switchMap, throwError } from 'rxjs';
 import { ApiClient, ApiError } from '../api/api-client';
 import { Patient, Reproductive } from '../../shared/models/domain';
 import { ageFrom, uid } from '../../shared/utils/format';
@@ -88,6 +88,17 @@ export class DietocalculoService {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
     }
     return this.api.get<{ items: ApiSummary[] }>('/diet-calculations', { patient_id: f.patientId, unlinked: f.unlinked ? true : undefined, q: f.q || undefined }).pipe(map((r) => r.items.map(toSummary)));
+  }
+
+  /** El Dietocálculo más reciente enlazado a un paciente, o `null` si no tiene (o no se pudo consultar). */
+  latestForPatient(patientId: string): Observable<DietCalc | null> {
+    return this.list({ patientId }).pipe(
+      switchMap((l) => {
+        const last = [...l].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+        return last ? this.get(last.id) : of(null);
+      }),
+      catchError(() => of(null)),
+    );
   }
 
   get(id: string): Observable<DietCalc> {
