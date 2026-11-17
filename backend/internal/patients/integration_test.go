@@ -24,6 +24,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/middleware"
 	"github.com/nutri/app-nutricional/backend/internal/patients"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 	"github.com/nutri/app-nutricional/backend/internal/testsupport"
 )
 
@@ -63,6 +64,7 @@ func (m *mailer) lastInvitation() string {
 }
 
 type env struct {
+	ctx  context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
 	pool *pgxpool.Pool
 	auth *auth.Service
 	srv  *httptest.Server
@@ -84,7 +86,7 @@ func start(t *testing.T) *env {
 	patients.NewController(patients.NewService(pool, as, log), as, log).Register(v1)
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
-	return &env{pool: pool, auth: as, srv: srv, mail: m}
+	return &env{ctx: testsupport.NewPractice(t, pool), pool: pool, auth: as, srv: srv, mail: m}
 }
 
 type client struct {
@@ -135,7 +137,7 @@ func (c *client) login(email, pw string) {
 }
 
 func (e *env) staff(t *testing.T, email string) *client {
-	_, err := e.auth.CreateUser(context.Background(), email, "Lic. Prueba", "nutritionist", "demo1234")
+	_, err := e.auth.CreateUser(e.ctx, email, "Lic. Prueba", "nutritionist", "demo1234")
 	require.NoError(t, err)
 	c := e.client(t)
 	c.login(email, "demo1234")
@@ -210,7 +212,7 @@ func TestPatientsIntegration(t *testing.T) {
 		require.Equal(t, 401, code)
 
 		pid := nutri.createPatient("auth1@demo.mx", "Aut", "Uno")
-		_, err := e.auth.CreateUser(context.Background(), "pacrol@demo.mx", "Pac", "patient", "demo1234")
+		_, err := e.auth.CreateUser(e.ctx, "pacrol@demo.mx", "Pac", "patient", "demo1234")
 		require.NoError(t, err)
 		p := e.client(t)
 		p.login("pacrol@demo.mx", "demo1234")
@@ -317,9 +319,9 @@ func TestPatientsIntegration(t *testing.T) {
 		require.Len(t, items, 2, "las mediciones se acumulan, no se sobrescriben")
 		require.Equal(t, "2026-03-10", items[0].(map[string]any)["measured_at"], "más reciente primero")
 
-		_, err := e.pool.Exec(context.Background(), `UPDATE patient_measurements SET weight_kg = 1`)
+		_, err := e.pool.Exec(tenant.Bypass(context.Background()), `UPDATE patient_measurements SET weight_kg = 1`)
 		require.ErrorContains(t, err, "solo insercion")
-		_, err = e.pool.Exec(context.Background(), `DELETE FROM patient_measurements`)
+		_, err = e.pool.Exec(tenant.Bypass(context.Background()), `DELETE FROM patient_measurements`)
 		require.ErrorContains(t, err, "solo insercion")
 	})
 
@@ -381,7 +383,7 @@ func TestPatientsIntegration(t *testing.T) {
 		_, list = nutri.do("GET", base, nil)
 		require.Empty(t, list["items"])
 		var kept int
-		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM patient_notes WHERE id = $1 AND deleted_at IS NOT NULL`, n["id"]).Scan(&kept))
+		require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM patient_notes WHERE id = $1 AND deleted_at IS NOT NULL`, n["id"]).Scan(&kept))
 		require.Equal(t, 1, kept, "la nota se conserva con deleted_at")
 	})
 
@@ -456,7 +458,7 @@ func TestPatientsIntegration(t *testing.T) {
 
 		// La evidencia de aceptación queda registrada.
 		var evidence string
-		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT evidence_metadata::text FROM consent_acceptances WHERE patient_id = $1 LIMIT 1`, b["id"]).Scan(&evidence))
+		require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT evidence_metadata::text FROM consent_acceptances WHERE patient_id = $1 LIMIT 1`, b["id"]).Scan(&evidence))
 		require.Contains(t, evidence, "user_agent")
 
 		// La nutrióloga controla la visibilidad de las mediciones.
@@ -514,7 +516,7 @@ func TestPatientsIntegration(t *testing.T) {
 	})
 
 	t.Run("auditoría: registra cambios sin datos personales ni clínicos", func(t *testing.T) {
-		rows, err := e.pool.Query(context.Background(), `SELECT action, metadata::text FROM audit_logs WHERE resource_type = 'patient'`)
+		rows, err := e.pool.Query(tenant.Bypass(context.Background()), `SELECT action, metadata::text FROM audit_logs WHERE resource_type = 'patient'`)
 		require.NoError(t, err)
 		defer rows.Close()
 		seen := map[string]bool{}
@@ -560,7 +562,7 @@ func TestInviteLinkExposure(t *testing.T) {
 	id := b["id"].(string)
 
 	var shown int
-	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action='patient.invitation_link_shown' AND resource_id=$1`, id).Scan(&shown))
+	require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM audit_logs WHERE action='patient.invitation_link_shown' AND resource_id=$1`, id).Scan(&shown))
 	require.Equal(t, 1, shown, "mostrar el enlace queda registrado")
 
 	code, r := nutri.do("POST", "/api/v1/patients/"+id+"/invite", nil)
@@ -648,7 +650,7 @@ func TestInviteManualPatient(t *testing.T) {
 	})
 
 	t.Run("un correo que ya es una cuenta del sistema no se puede reutilizar", func(t *testing.T) {
-		_, err := e.auth.CreateUser(context.Background(), "equipo@demo.mx", "Equipo", "nutritionist", "Clave12345")
+		_, err := e.auth.CreateUser(e.ctx, "equipo@demo.mx", "Equipo", "nutritionist", "Clave12345")
 		require.NoError(t, err)
 		pid := nutri.createPatient("equipo@demo.mx", "Eva", "Equipo")
 		code, b := nutri.do("POST", "/api/v1/patients/"+pid+"/invite", nil)
@@ -673,7 +675,7 @@ func TestInviteManualPatient(t *testing.T) {
 
 	t.Run("la invitación queda en la auditoría", func(t *testing.T) {
 		var n int
-		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action = 'patient.invited'`).Scan(&n))
+		require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM audit_logs WHERE action = 'patient.invited'`).Scan(&n))
 		require.GreaterOrEqual(t, n, 3)
 	})
 }
@@ -778,7 +780,7 @@ func TestLabs(t *testing.T) {
 	_, list = nutri.do("GET", base, nil)
 	require.Len(t, list["items"], 1)
 	var left int
-	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM patient_lab_results`).Scan(&left))
+	require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM patient_lab_results`).Scan(&left))
 	require.Equal(t, 3, left, "al borrar un estudio se borran sus resultados")
 	code, _ = nutri.do("DELETE", base+"/"+items[1].(map[string]any)["id"].(string), nil)
 	require.Equal(t, 404, code)
@@ -820,9 +822,9 @@ func TestPatientDeletesOwnAccount(t *testing.T) {
 	_, seen := nutri.do("GET", "/api/v1/patients/"+pid, nil)
 	require.Equal(t, "inactive", seen["status"], "la nutrióloga lo ve desactivado")
 	var n int
-	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM patient_measurements WHERE patient_id = $1`, pid).Scan(&n))
+	require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM patient_measurements WHERE patient_id = $1`, pid).Scan(&n))
 	require.Equal(t, 1, n, "el expediente clínico se conserva (NOM-004)")
-	require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action = 'patient.self_delete' AND resource_id = $1`, pid).Scan(&n))
+	require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM audit_logs WHERE action = 'patient.self_delete' AND resource_id = $1`, pid).Scan(&n))
 	require.Equal(t, 1, n, "queda constancia en la auditoría")
 }
 

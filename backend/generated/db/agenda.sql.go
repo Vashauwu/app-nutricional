@@ -31,18 +31,23 @@ func (q *Queries) CountAppointmentOverlap(ctx context.Context, arg CountAppointm
 }
 
 const feedByToken = `-- name: FeedByToken :one
-SELECT user_id, token, created_at FROM calendar_feeds WHERE token = $1
+SELECT user_id, token, created_at, practice_id FROM calendar_feeds WHERE token = $1
 `
 
 func (q *Queries) FeedByToken(ctx context.Context, token string) (CalendarFeed, error) {
 	row := q.db.QueryRow(ctx, feedByToken, token)
 	var i CalendarFeed
-	err := row.Scan(&i.UserID, &i.Token, &i.CreatedAt)
+	err := row.Scan(
+		&i.UserID,
+		&i.Token,
+		&i.CreatedAt,
+		&i.PracticeID,
+	)
 	return i, err
 }
 
 const getAppointment = `-- name: GetAppointment :one
-SELECT id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at FROM appointments WHERE id = $1
+SELECT id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at, practice_id FROM appointments WHERE id = $1
 `
 
 func (q *Queries) GetAppointment(ctx context.Context, id uuid.UUID) (Appointment, error) {
@@ -61,24 +66,30 @@ func (q *Queries) GetAppointment(ctx context.Context, id uuid.UUID) (Appointment
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getCalendarFeed = `-- name: GetCalendarFeed :one
-SELECT user_id, token, created_at FROM calendar_feeds WHERE user_id = $1
+SELECT user_id, token, created_at, practice_id FROM calendar_feeds WHERE user_id = $1
 `
 
 func (q *Queries) GetCalendarFeed(ctx context.Context, userID uuid.UUID) (CalendarFeed, error) {
 	row := q.db.QueryRow(ctx, getCalendarFeed, userID)
 	var i CalendarFeed
-	err := row.Scan(&i.UserID, &i.Token, &i.CreatedAt)
+	err := row.Scan(
+		&i.UserID,
+		&i.Token,
+		&i.CreatedAt,
+		&i.PracticeID,
+	)
 	return i, err
 }
 
 const insertAppointment = `-- name: InsertAppointment :one
 INSERT INTO appointments (patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at, practice_id
 `
 
 type InsertAppointmentParams struct {
@@ -120,12 +131,13 @@ func (q *Queries) InsertAppointment(ctx context.Context, arg InsertAppointmentPa
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const listAppointmentsRange = `-- name: ListAppointmentsRange :many
-SELECT a.id, a.patient_id, a.starts_at, a.ends_at, a.kind, a.mode, a.place, a.notes, a.status, a.created_by, a.created_at, a.updated_at, p.first_name AS patient_first_name, p.last_name AS patient_last_name
+SELECT a.id, a.patient_id, a.starts_at, a.ends_at, a.kind, a.mode, a.place, a.notes, a.status, a.created_by, a.created_at, a.updated_at, a.practice_id, p.first_name AS patient_first_name, p.last_name AS patient_last_name
 FROM appointments a JOIN patients p ON p.id = a.patient_id
 WHERE a.starts_at >= $1 AND a.starts_at < $2
 ORDER BY a.starts_at
@@ -149,6 +161,7 @@ type ListAppointmentsRangeRow struct {
 	CreatedBy        uuid.UUID          `json:"created_by"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	PracticeID       uuid.UUID          `json:"practice_id"`
 	PatientFirstName string             `json:"patient_first_name"`
 	PatientLastName  string             `json:"patient_last_name"`
 }
@@ -175,6 +188,7 @@ func (q *Queries) ListAppointmentsRange(ctx context.Context, arg ListAppointment
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PracticeID,
 			&i.PatientFirstName,
 			&i.PatientLastName,
 		); err != nil {
@@ -189,7 +203,7 @@ func (q *Queries) ListAppointmentsRange(ctx context.Context, arg ListAppointment
 }
 
 const listPatientAppointments = `-- name: ListPatientAppointments :many
-SELECT id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at FROM appointments
+SELECT id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at, practice_id FROM appointments
 WHERE patient_id = $1 AND status <> 'cancelled' AND ends_at >= $2
 ORDER BY starts_at
 `
@@ -221,6 +235,7 @@ func (q *Queries) ListPatientAppointments(ctx context.Context, arg ListPatientAp
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -234,7 +249,7 @@ func (q *Queries) ListPatientAppointments(ctx context.Context, arg ListPatientAp
 
 const updateAppointment = `-- name: UpdateAppointment :one
 UPDATE appointments SET starts_at = $2, ends_at = $3, kind = $4, mode = $5, place = $6, notes = $7, status = $8, updated_at = now()
-WHERE id = $1 RETURNING id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at
+WHERE id = $1 RETURNING id, patient_id, starts_at, ends_at, kind, mode, place, notes, status, created_by, created_at, updated_at, practice_id
 `
 
 type UpdateAppointmentParams struct {
@@ -273,13 +288,14 @@ func (q *Queries) UpdateAppointment(ctx context.Context, arg UpdateAppointmentPa
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const upsertCalendarFeed = `-- name: UpsertCalendarFeed :one
 INSERT INTO calendar_feeds (user_id, token) VALUES ($1, $2)
-ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = now() RETURNING user_id, token, created_at
+ON CONFLICT (user_id) DO UPDATE SET token = EXCLUDED.token, created_at = now() RETURNING user_id, token, created_at, practice_id
 `
 
 type UpsertCalendarFeedParams struct {
@@ -290,6 +306,11 @@ type UpsertCalendarFeedParams struct {
 func (q *Queries) UpsertCalendarFeed(ctx context.Context, arg UpsertCalendarFeedParams) (CalendarFeed, error) {
 	row := q.db.QueryRow(ctx, upsertCalendarFeed, arg.UserID, arg.Token)
 	var i CalendarFeed
-	err := row.Scan(&i.UserID, &i.Token, &i.CreatedAt)
+	err := row.Scan(
+		&i.UserID,
+		&i.Token,
+		&i.CreatedAt,
+		&i.PracticeID,
+	)
 	return i, err
 }

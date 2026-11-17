@@ -30,6 +30,8 @@ type Querier interface {
 	// ---------- Ediciones ----------
 	CreateEdition(ctx context.Context, arg CreateEditionParams) (SmaeEdition, error)
 	CreatePatient(ctx context.Context, arg CreatePatientParams) (Patient, error)
+	// Operaciones de plataforma sobre consultas: requieren un contexto con tenant.Bypass.
+	CreatePractice(ctx context.Context, pName string) (uuid.UUID, error)
 	CreateResetToken(ctx context.Context, arg CreateResetTokenParams) error
 	CreateSession(ctx context.Context, arg CreateSessionParams) (UserSession, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -147,6 +149,7 @@ type Querier interface {
 	ListAcceptances(ctx context.Context, patientID uuid.UUID) ([]ListAcceptancesRow, error)
 	// ---------- Consentimientos ----------
 	ListActiveConsentDocuments(ctx context.Context) ([]ConsentDocument, error)
+	ListActivePracticeIDs(ctx context.Context) ([]uuid.UUID, error)
 	ListActiveSessions(ctx context.Context, userID uuid.UUID) ([]UserSession, error)
 	// ---------- Alergias ----------
 	ListAllergies(ctx context.Context, patientID uuid.UUID) ([]PatientAllergy, error)
@@ -189,7 +192,7 @@ type Querier interface {
 	// Documentos vigentes que el paciente todavía no acepta.
 	ListPendingConsentDocuments(ctx context.Context, patientID uuid.UUID) ([]ConsentDocument, error)
 	ListPermissionCodesForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
-	ListPhotosForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]TrackingPhoto, error)
+	ListPhotosForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]ListPhotosForEntriesRow, error)
 	ListPlanEvents(ctx context.Context, planID uuid.UUID) ([]MealPlanEvent, error)
 	// Todo lo necesario para dibujar el plan: platillo, su versión y la nutrición por porción de ESA versión.
 	ListPlanItems(ctx context.Context, planID uuid.UUID) ([]ListPlanItemsRow, error)

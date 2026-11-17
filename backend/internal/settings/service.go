@@ -171,7 +171,7 @@ func (s *Service) Get(ctx context.Context) (All, error) {
 	if out.Brand, err = load(ctx, s.q, "brand", d.Brand); err != nil {
 		return d, err
 	}
-	if out.Profile, err = s.profile(ctx, d.Profile); err != nil {
+	if out.Profile, err = load(ctx, s.q, "profile", d.Profile); err != nil {
 		return d, err
 	}
 	if out.Region, err = load(ctx, s.q, "region", d.Region); err != nil {
@@ -185,25 +185,6 @@ func (s *Service) Get(ctx context.Context) (All, error) {
 		out.Alerts.ClinicalRules = []Rule{}
 	}
 	return out, err
-}
-
-// profile lee el perfil. Una cuenta que ya tenía marca guardada antes de existir el inicio guiado se da por
-// iniciada (no se la obliga a repetirlo); una cuenta nueva (sin marca ni perfil) lo ve la primera vez.
-func (s *Service) profile(ctx context.Context, def Profile) (Profile, error) {
-	_, perr := s.q.GetSetting(ctx, "profile")
-	if perr != nil && !errors.Is(perr, pgx.ErrNoRows) {
-		return def, perr
-	}
-	p, err := load(ctx, s.q, "profile", def)
-	if err != nil {
-		return def, err
-	}
-	if errors.Is(perr, pgx.ErrNoRows) {
-		if _, berr := s.q.GetSetting(ctx, "brand"); berr == nil {
-			p.OnboardingDone = true
-		}
-	}
-	return p, nil
 }
 
 func (s *Service) Storage(ctx context.Context) (Storage, error) {
@@ -224,9 +205,10 @@ type PublicBrand struct {
 	Secondary    string `json:"secondary"`
 }
 
-func (s *Service) PublicBrand(ctx context.Context) (PublicBrand, error) {
-	b, err := load(ctx, s.q, "brand", Defaults().Brand)
-	return PublicBrand{BusinessName: b.BusinessName, Tagline: b.Tagline, Primary: b.Primary, Secondary: b.Secondary}, err
+// PublicBrand es la identidad de la PLATAFORMA. Antes de iniciar sesión no se sabe de qué consulta es la persona, así que
+// la pantalla de ingreso nunca muestra la marca de una consulta (cada una la ve al entrar).
+func (s *Service) PublicBrand(_ context.Context) (PublicBrand, error) {
+	return PublicBrand{BusinessName: "Nutrición Integral", Tagline: "", Primary: "#4E344C", Secondary: "#DDD6F2"}, nil
 }
 
 func (s *Service) save(ctx context.Context, a Actor, key string, v any) error {

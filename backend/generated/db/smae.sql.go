@@ -118,7 +118,7 @@ func (q *Queries) GetActiveEdition(ctx context.Context) (SmaeEdition, error) {
 }
 
 const getCustomFood = `-- name: GetCustomFood :one
-SELECT id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at FROM custom_foods WHERE id = $1
+SELECT id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at, practice_id FROM custom_foods WHERE id = $1
 `
 
 func (q *Queries) GetCustomFood(ctx context.Context, id uuid.UUID) (CustomFood, error) {
@@ -152,6 +152,7 @@ func (q *Queries) GetCustomFood(ctx context.Context, id uuid.UUID) (CustomFood, 
 		&i.EqCriterion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -276,7 +277,7 @@ const insertCustomFood = `-- name: InsertCustomFood :one
 INSERT INTO custom_foods (name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g,
     source_type, source_reference, tags, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-RETURNING id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at
+RETURNING id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at, practice_id
 `
 
 type InsertCustomFoodParams struct {
@@ -345,6 +346,7 @@ func (q *Queries) InsertCustomFood(ctx context.Context, arg InsertCustomFoodPara
 		&i.EqCriterion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -555,7 +557,7 @@ func (q *Queries) InsertSubgroup(ctx context.Context, arg InsertSubgroupParams) 
 }
 
 const listCustomFoods = `-- name: ListCustomFoods :many
-SELECT id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at, count(*) OVER () AS total
+SELECT id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at, practice_id, count(*) OVER () AS total
 FROM custom_foods
 WHERE ($1::bool = false OR status = 'active')
   AND ($2::text = '' OR unaccent(name || ' ' || array_to_string(tags, ' ')) ILIKE '%' || unaccent($2::text) || '%')
@@ -598,6 +600,7 @@ type ListCustomFoodsRow struct {
 	EqCriterion      pgtype.Text         `json:"eq_criterion"`
 	CreatedAt        pgtype.Timestamptz  `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz  `json:"updated_at"`
+	PracticeID       uuid.UUID           `json:"practice_id"`
 	Total            int64               `json:"total"`
 }
 
@@ -643,6 +646,7 @@ func (q *Queries) ListCustomFoods(ctx context.Context, arg ListCustomFoodsParams
 			&i.EqCriterion,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PracticeID,
 			&i.Total,
 		); err != nil {
 			return nil, err
@@ -656,7 +660,7 @@ func (q *Queries) ListCustomFoods(ctx context.Context, arg ListCustomFoodsParams
 }
 
 const listCustomPortionsFor = `-- name: ListCustomPortionsFor :many
-SELECT id, custom_food_id, name, unit, quantity, grams_equivalent FROM custom_food_portions WHERE custom_food_id = ANY($1::uuid[]) ORDER BY grams_equivalent
+SELECT id, custom_food_id, name, unit, quantity, grams_equivalent, practice_id FROM custom_food_portions WHERE custom_food_id = ANY($1::uuid[]) ORDER BY grams_equivalent
 `
 
 func (q *Queries) ListCustomPortionsFor(ctx context.Context, dollar_1 []uuid.UUID) ([]CustomFoodPortion, error) {
@@ -675,6 +679,7 @@ func (q *Queries) ListCustomPortionsFor(ctx context.Context, dollar_1 []uuid.UUI
 			&i.Unit,
 			&i.Quantity,
 			&i.GramsEquivalent,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -931,7 +936,7 @@ UPDATE custom_foods SET name = $2, brand = $3, description = $4, basis_quantity 
     energy_kcal = $8, protein_g = $9, carbohydrates_g = $10, lipids_g = $11, fiber_g = $12, source_type = $13, source_reference = $14, tags = $15,
     validated_by = NULL, validated_at = NULL, updated_at = now()
 WHERE id = $1
-RETURNING id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at
+RETURNING id, name, brand, description, basis_quantity, basis_unit, density_g_per_ml, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, source_type, source_reference, tags, created_by, validated_by, validated_at, status, eq_subgroup_code, eq_reference_grams, eq_value, eq_assigned_by, eq_assigned_at, eq_criterion, created_at, updated_at, practice_id
 `
 
 type UpdateCustomFoodParams struct {
@@ -1000,6 +1005,7 @@ func (q *Queries) UpdateCustomFood(ctx context.Context, arg UpdateCustomFoodPara
 		&i.EqCriterion,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }

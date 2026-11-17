@@ -14,7 +14,7 @@ import (
 )
 
 const getDish = `-- name: GetDish :one
-SELECT id, owner_user_id, name, category, tags, status, current_version, created_at, updated_at, deleted_at FROM dishes WHERE id = $1 AND deleted_at IS NULL
+SELECT id, owner_user_id, name, category, tags, status, current_version, created_at, updated_at, deleted_at, practice_id FROM dishes WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetDish(ctx context.Context, id uuid.UUID) (Dish, error) {
@@ -31,12 +31,13 @@ func (q *Queries) GetDish(ctx context.Context, id uuid.UUID) (Dish, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getDishVersion = `-- name: GetDishVersion :one
-SELECT id, dish_id, version_number, description, recipe_mode, instructions_text, steps, servings, prep_time_minutes, recommendations, image_file_id, smae_edition_id, created_by, created_at, change_reason FROM dish_versions WHERE dish_id = $1 AND version_number = $2
+SELECT id, dish_id, version_number, description, recipe_mode, instructions_text, steps, servings, prep_time_minutes, recommendations, image_file_id, smae_edition_id, created_by, created_at, change_reason, practice_id FROM dish_versions WHERE dish_id = $1 AND version_number = $2
 `
 
 type GetDishVersionParams struct {
@@ -63,12 +64,13 @@ func (q *Queries) GetDishVersion(ctx context.Context, arg GetDishVersionParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.ChangeReason,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getRecalcBatchForEdition = `-- name: GetRecalcBatchForEdition :one
-SELECT id, from_edition_id, to_edition_id, decided_by, decided_at FROM smae_recalc_batches WHERE to_edition_id = $1 ORDER BY decided_at DESC LIMIT 1
+SELECT id, from_edition_id, to_edition_id, decided_by, decided_at, practice_id FROM smae_recalc_batches WHERE to_edition_id = $1 ORDER BY decided_at DESC LIMIT 1
 `
 
 func (q *Queries) GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid.UUID) (SmaeRecalcBatch, error) {
@@ -80,12 +82,13 @@ func (q *Queries) GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid
 		&i.ToEditionID,
 		&i.DecidedBy,
 		&i.DecidedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT dish_version_id, totals_energy, totals_protein, totals_carbs, totals_lipids, totals_fiber, serving_energy, serving_protein, serving_carbs, serving_lipids, serving_fiber, equivalents, has_custom_foods, engine_version, calculated_at FROM dish_nutrition_snapshots WHERE dish_version_id = $1
+SELECT dish_version_id, totals_energy, totals_protein, totals_carbs, totals_lipids, totals_fiber, serving_energy, serving_protein, serving_carbs, serving_lipids, serving_fiber, equivalents, has_custom_foods, engine_version, calculated_at, practice_id FROM dish_nutrition_snapshots WHERE dish_version_id = $1
 `
 
 func (q *Queries) GetSnapshot(ctx context.Context, dishVersionID uuid.UUID) (DishNutritionSnapshot, error) {
@@ -107,12 +110,13 @@ func (q *Queries) GetSnapshot(ctx context.Context, dishVersionID uuid.UUID) (Dis
 		&i.HasCustomFoods,
 		&i.EngineVersion,
 		&i.CalculatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const insertDish = `-- name: InsertDish :one
-INSERT INTO dishes (owner_user_id, name, category, tags, current_version) VALUES ($1, $2, $3, $4, 1) RETURNING id, owner_user_id, name, category, tags, status, current_version, created_at, updated_at, deleted_at
+INSERT INTO dishes (owner_user_id, name, category, tags, current_version) VALUES ($1, $2, $3, $4, 1) RETURNING id, owner_user_id, name, category, tags, status, current_version, created_at, updated_at, deleted_at, practice_id
 `
 
 type InsertDishParams struct {
@@ -141,6 +145,7 @@ func (q *Queries) InsertDish(ctx context.Context, arg InsertDishParams) (Dish, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -149,7 +154,7 @@ const insertDishVersion = `-- name: InsertDishVersion :one
 INSERT INTO dish_versions (dish_id, version_number, description, recipe_mode, instructions_text, steps, servings, prep_time_minutes,
     recommendations, image_file_id, smae_edition_id, created_by, change_reason)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-RETURNING id, dish_id, version_number, description, recipe_mode, instructions_text, steps, servings, prep_time_minutes, recommendations, image_file_id, smae_edition_id, created_by, created_at, change_reason
+RETURNING id, dish_id, version_number, description, recipe_mode, instructions_text, steps, servings, prep_time_minutes, recommendations, image_file_id, smae_edition_id, created_by, created_at, change_reason, practice_id
 `
 
 type InsertDishVersionParams struct {
@@ -201,6 +206,7 @@ func (q *Queries) InsertDishVersion(ctx context.Context, arg InsertDishVersionPa
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.ChangeReason,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -253,7 +259,7 @@ func (q *Queries) InsertIngredient(ctx context.Context, arg InsertIngredientPara
 }
 
 const insertRecalcBatch = `-- name: InsertRecalcBatch :one
-INSERT INTO smae_recalc_batches (from_edition_id, to_edition_id, decided_by) VALUES ($1, $2, $3) RETURNING id, from_edition_id, to_edition_id, decided_by, decided_at
+INSERT INTO smae_recalc_batches (from_edition_id, to_edition_id, decided_by) VALUES ($1, $2, $3) RETURNING id, from_edition_id, to_edition_id, decided_by, decided_at, practice_id
 `
 
 type InsertRecalcBatchParams struct {
@@ -271,6 +277,7 @@ func (q *Queries) InsertRecalcBatch(ctx context.Context, arg InsertRecalcBatchPa
 		&i.ToEditionID,
 		&i.DecidedBy,
 		&i.DecidedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -344,7 +351,7 @@ func (q *Queries) InsertSnapshot(ctx context.Context, arg InsertSnapshotParams) 
 const insertSubstitution = `-- name: InsertSubstitution :one
 INSERT INTO dish_substitutions (dish_version_id, substitute_dish_id, substitute_version, label, note, rule, diff, approved_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, dish_version_id, substitute_dish_id, substitute_version, label, note, rule, diff, approved_by, approved_at, removed_at
+RETURNING id, dish_version_id, substitute_dish_id, substitute_version, label, note, rule, diff, approved_by, approved_at, removed_at, practice_id
 `
 
 type InsertSubstitutionParams struct {
@@ -383,6 +390,7 @@ func (q *Queries) InsertSubstitution(ctx context.Context, arg InsertSubstitution
 		&i.ApprovedBy,
 		&i.ApprovedAt,
 		&i.RemovedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -448,7 +456,7 @@ func (q *Queries) ListCurrentDishVersions(ctx context.Context) ([]ListCurrentDis
 }
 
 const listDishVersions = `-- name: ListDishVersions :many
-SELECT v.id, v.dish_id, v.version_number, v.description, v.recipe_mode, v.instructions_text, v.steps, v.servings, v.prep_time_minutes, v.recommendations, v.image_file_id, v.smae_edition_id, v.created_by, v.created_at, v.change_reason, s.serving_energy
+SELECT v.id, v.dish_id, v.version_number, v.description, v.recipe_mode, v.instructions_text, v.steps, v.servings, v.prep_time_minutes, v.recommendations, v.image_file_id, v.smae_edition_id, v.created_by, v.created_at, v.change_reason, v.practice_id, s.serving_energy
 FROM dish_versions v
 JOIN dish_nutrition_snapshots s ON s.dish_version_id = v.id
 WHERE v.dish_id = $1
@@ -471,6 +479,7 @@ type ListDishVersionsRow struct {
 	CreatedBy        uuid.UUID          `json:"created_by"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	ChangeReason     string             `json:"change_reason"`
+	PracticeID       uuid.UUID          `json:"practice_id"`
 	ServingEnergy    decimal.Decimal    `json:"serving_energy"`
 }
 
@@ -499,6 +508,7 @@ func (q *Queries) ListDishVersions(ctx context.Context, dishID uuid.UUID) ([]Lis
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.ChangeReason,
+			&i.PracticeID,
 			&i.ServingEnergy,
 		); err != nil {
 			return nil, err
@@ -512,7 +522,7 @@ func (q *Queries) ListDishVersions(ctx context.Context, dishID uuid.UUID) ([]Lis
 }
 
 const listDishes = `-- name: ListDishes :many
-SELECT d.id, d.owner_user_id, d.name, d.category, d.tags, d.status, d.current_version, d.created_at, d.updated_at, d.deleted_at, s.serving_energy, s.serving_protein, s.serving_carbs, s.serving_lipids, s.serving_fiber, s.equivalents, s.has_custom_foods,
+SELECT d.id, d.owner_user_id, d.name, d.category, d.tags, d.status, d.current_version, d.created_at, d.updated_at, d.deleted_at, d.practice_id, s.serving_energy, s.serving_protein, s.serving_carbs, s.serving_lipids, s.serving_fiber, s.equivalents, s.has_custom_foods,
        v.description, v.servings, v.prep_time_minutes, count(*) OVER () AS total
 FROM dishes d
 JOIN dish_versions v ON v.dish_id = d.id AND v.version_number = d.current_version
@@ -547,6 +557,7 @@ type ListDishesRow struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt       pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID      uuid.UUID          `json:"practice_id"`
 	ServingEnergy   decimal.Decimal    `json:"serving_energy"`
 	ServingProtein  decimal.Decimal    `json:"serving_protein"`
 	ServingCarbs    decimal.Decimal    `json:"serving_carbs"`
@@ -588,6 +599,7 @@ func (q *Queries) ListDishes(ctx context.Context, arg ListDishesParams) ([]ListD
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.PracticeID,
 			&i.ServingEnergy,
 			&i.ServingProtein,
 			&i.ServingCarbs,
@@ -611,7 +623,7 @@ func (q *Queries) ListDishes(ctx context.Context, arg ListDishesParams) ([]ListD
 }
 
 const listIngredients = `-- name: ListIngredients :many
-SELECT id, dish_version_id, position, food_kind, food_id, name_snapshot, quantity, unit, grams, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, equivalent_code, equivalent_value, official FROM dish_ingredients WHERE dish_version_id = $1 ORDER BY position
+SELECT id, dish_version_id, position, food_kind, food_id, name_snapshot, quantity, unit, grams, energy_kcal, protein_g, carbohydrates_g, lipids_g, fiber_g, equivalent_code, equivalent_value, official, practice_id FROM dish_ingredients WHERE dish_version_id = $1 ORDER BY position
 `
 
 func (q *Queries) ListIngredients(ctx context.Context, dishVersionID uuid.UUID) ([]DishIngredient, error) {
@@ -641,6 +653,7 @@ func (q *Queries) ListIngredients(ctx context.Context, dishVersionID uuid.UUID) 
 			&i.EquivalentCode,
 			&i.EquivalentValue,
 			&i.Official,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -653,7 +666,7 @@ func (q *Queries) ListIngredients(ctx context.Context, dishVersionID uuid.UUID) 
 }
 
 const listRecalcDecisions = `-- name: ListRecalcDecisions :many
-SELECT batch_id, dish_id, from_version, to_version, decision FROM smae_recalc_decisions WHERE batch_id = $1
+SELECT batch_id, dish_id, from_version, to_version, decision, practice_id FROM smae_recalc_decisions WHERE batch_id = $1
 `
 
 func (q *Queries) ListRecalcDecisions(ctx context.Context, batchID uuid.UUID) ([]SmaeRecalcDecision, error) {
@@ -671,6 +684,7 @@ func (q *Queries) ListRecalcDecisions(ctx context.Context, batchID uuid.UUID) ([
 			&i.FromVersion,
 			&i.ToVersion,
 			&i.Decision,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -683,7 +697,7 @@ func (q *Queries) ListRecalcDecisions(ctx context.Context, batchID uuid.UUID) ([
 }
 
 const listSubstitutions = `-- name: ListSubstitutions :many
-SELECT id, dish_version_id, substitute_dish_id, substitute_version, label, note, rule, diff, approved_by, approved_at, removed_at FROM dish_substitutions WHERE dish_version_id = $1 AND removed_at IS NULL ORDER BY approved_at
+SELECT id, dish_version_id, substitute_dish_id, substitute_version, label, note, rule, diff, approved_by, approved_at, removed_at, practice_id FROM dish_substitutions WHERE dish_version_id = $1 AND removed_at IS NULL ORDER BY approved_at
 `
 
 func (q *Queries) ListSubstitutions(ctx context.Context, dishVersionID uuid.UUID) ([]DishSubstitution, error) {
@@ -707,6 +721,7 @@ func (q *Queries) ListSubstitutions(ctx context.Context, dishVersionID uuid.UUID
 			&i.ApprovedBy,
 			&i.ApprovedAt,
 			&i.RemovedAt,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}

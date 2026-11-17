@@ -41,7 +41,7 @@ func TestAuditLogIntegration(t *testing.T) {
 	auditlog.NewController(pool, as).Register(v1)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	ctx := context.Background()
+	ctx := testsupport.NewPractice(t, pool)
 
 	_, err := as.CreateUser(ctx, "nutri@demo.mx", "Lic. Prueba", "nutritionist", "demo1234")
 	require.NoError(t, err)

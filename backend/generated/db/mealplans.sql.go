@@ -14,7 +14,7 @@ import (
 )
 
 const bumpPlanRevision = `-- name: BumpPlanRevision :one
-UPDATE meal_plans SET revision = revision + 1, updated_by = $2, updated_at = now() WHERE id = $1 RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at
+UPDATE meal_plans SET revision = revision + 1, updated_by = $2, updated_at = now() WHERE id = $1 RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
 `
 
 type BumpPlanRevisionParams struct {
@@ -44,12 +44,13 @@ func (q *Queries) BumpPlanRevision(ctx context.Context, arg BumpPlanRevisionPara
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const currentPublishedPlan = `-- name: CurrentPublishedPlan :one
-SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at FROM meal_plans
+SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id FROM meal_plans
 WHERE patient_id = $1 AND status = 'published' AND deleted_at IS NULL
 ORDER BY (start_date <= $2 AND end_date >= $2) DESC, start_date DESC
 LIMIT 1
@@ -84,6 +85,7 @@ func (q *Queries) CurrentPublishedPlan(ctx context.Context, arg CurrentPublished
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -210,7 +212,7 @@ func (q *Queries) GetItemForSubstitution(ctx context.Context, arg GetItemForSubs
 }
 
 const getPlan = `-- name: GetPlan :one
-SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at FROM meal_plans WHERE id = $1 AND deleted_at IS NULL
+SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id FROM meal_plans WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error) {
@@ -235,12 +237,13 @@ func (q *Queries) GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error) {
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getRevision = `-- name: GetRevision :one
-SELECT plan_id, revision, saved_at, saved_by, snapshot FROM meal_plan_revisions WHERE plan_id = $1 AND revision = $2
+SELECT plan_id, revision, saved_at, saved_by, snapshot, practice_id FROM meal_plan_revisions WHERE plan_id = $1 AND revision = $2
 `
 
 type GetRevisionParams struct {
@@ -257,12 +260,13 @@ func (q *Queries) GetRevision(ctx context.Context, arg GetRevisionParams) (MealP
 		&i.SavedAt,
 		&i.SavedBy,
 		&i.Snapshot,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getTemplate = `-- name: GetTemplate :one
-SELECT id, name, description, scope, patient_id, structure, created_by, created_at, deleted_at FROM meal_plan_templates WHERE id = $1 AND deleted_at IS NULL
+SELECT id, name, description, scope, patient_id, structure, created_by, created_at, deleted_at, practice_id FROM meal_plan_templates WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetTemplate(ctx context.Context, id uuid.UUID) (MealPlanTemplate, error) {
@@ -278,6 +282,7 @@ func (q *Queries) GetTemplate(ctx context.Context, id uuid.UUID) (MealPlanTempla
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -312,7 +317,7 @@ func (q *Queries) InsertItem(ctx context.Context, arg InsertItemParams) error {
 const insertPlan = `-- name: InsertPlan :one
 INSERT INTO meal_plans (patient_id, name, start_date, end_date, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, created_by, updated_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)
-RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at
+RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
 `
 
 type InsertPlanParams struct {
@@ -362,6 +367,7 @@ func (q *Queries) InsertPlan(ctx context.Context, arg InsertPlanParams) (MealPla
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -390,7 +396,7 @@ func (q *Queries) InsertPlanEvent(ctx context.Context, arg InsertPlanEventParams
 const insertPublication = `-- name: InsertPublication :one
 INSERT INTO meal_plan_publications (plan_id, version_number, revision, published_by, summary)
 VALUES ($1, (SELECT COALESCE(max(version_number), 0) + 1 FROM meal_plan_publications WHERE plan_id = $1), $2, $3, $4)
-RETURNING id, plan_id, version_number, revision, published_at, published_by, summary
+RETURNING id, plan_id, version_number, revision, published_at, published_by, summary, practice_id
 `
 
 type InsertPublicationParams struct {
@@ -416,6 +422,7 @@ func (q *Queries) InsertPublication(ctx context.Context, arg InsertPublicationPa
 		&i.PublishedAt,
 		&i.PublishedBy,
 		&i.Summary,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -443,7 +450,7 @@ func (q *Queries) InsertRevision(ctx context.Context, arg InsertRevisionParams) 
 }
 
 const insertTemplate = `-- name: InsertTemplate :one
-INSERT INTO meal_plan_templates (name, description, scope, patient_id, structure, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, description, scope, patient_id, structure, created_by, created_at, deleted_at
+INSERT INTO meal_plan_templates (name, description, scope, patient_id, structure, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, description, scope, patient_id, structure, created_by, created_at, deleted_at, practice_id
 `
 
 type InsertTemplateParams struct {
@@ -476,6 +483,7 @@ func (q *Queries) InsertTemplate(ctx context.Context, arg InsertTemplateParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -510,7 +518,7 @@ func (q *Queries) ItemPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]Item
 }
 
 const lastPlanEvent = `-- name: LastPlanEvent :one
-SELECT id, plan_id, at, actor, type, summary FROM meal_plan_events WHERE plan_id = $1 ORDER BY at DESC, id LIMIT 1
+SELECT id, plan_id, at, actor, type, summary, practice_id FROM meal_plan_events WHERE plan_id = $1 ORDER BY at DESC, id LIMIT 1
 `
 
 func (q *Queries) LastPlanEvent(ctx context.Context, planID uuid.UUID) (MealPlanEvent, error) {
@@ -523,12 +531,13 @@ func (q *Queries) LastPlanEvent(ctx context.Context, planID uuid.UUID) (MealPlan
 		&i.Actor,
 		&i.Type,
 		&i.Summary,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const listDays = `-- name: ListDays :many
-SELECT id, plan_id, plan_date, notes, removed_at FROM meal_plan_days WHERE plan_id = $1 AND removed_at IS NULL ORDER BY plan_date
+SELECT id, plan_id, plan_date, notes, removed_at, practice_id FROM meal_plan_days WHERE plan_id = $1 AND removed_at IS NULL ORDER BY plan_date
 `
 
 func (q *Queries) ListDays(ctx context.Context, planID uuid.UUID) ([]MealPlanDay, error) {
@@ -546,6 +555,7 @@ func (q *Queries) ListDays(ctx context.Context, planID uuid.UUID) ([]MealPlanDay
 			&i.PlanDate,
 			&i.Notes,
 			&i.RemovedAt,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -558,7 +568,7 @@ func (q *Queries) ListDays(ctx context.Context, planID uuid.UUID) ([]MealPlanDay
 }
 
 const listPlanEvents = `-- name: ListPlanEvents :many
-SELECT id, plan_id, at, actor, type, summary FROM meal_plan_events WHERE plan_id = $1 ORDER BY at DESC, id
+SELECT id, plan_id, at, actor, type, summary, practice_id FROM meal_plan_events WHERE plan_id = $1 ORDER BY at DESC, id
 `
 
 func (q *Queries) ListPlanEvents(ctx context.Context, planID uuid.UUID) ([]MealPlanEvent, error) {
@@ -577,6 +587,7 @@ func (q *Queries) ListPlanEvents(ctx context.Context, planID uuid.UUID) ([]MealP
 			&i.Actor,
 			&i.Type,
 			&i.Summary,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -791,7 +802,7 @@ func (q *Queries) ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPla
 }
 
 const listPublications = `-- name: ListPublications :many
-SELECT id, plan_id, version_number, revision, published_at, published_by, summary FROM meal_plan_publications WHERE plan_id = $1 ORDER BY version_number DESC
+SELECT id, plan_id, version_number, revision, published_at, published_by, summary, practice_id FROM meal_plan_publications WHERE plan_id = $1 ORDER BY version_number DESC
 `
 
 func (q *Queries) ListPublications(ctx context.Context, planID uuid.UUID) ([]MealPlanPublication, error) {
@@ -811,6 +822,7 @@ func (q *Queries) ListPublications(ctx context.Context, planID uuid.UUID) ([]Mea
 			&i.PublishedAt,
 			&i.PublishedBy,
 			&i.Summary,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -976,7 +988,7 @@ func (q *Queries) RemoveSlotsNotIn(ctx context.Context, arg RemoveSlotsNotInPara
 const setPlanStatus = `-- name: SetPlanStatus :one
 UPDATE meal_plans SET status = $2, revision = revision + 1, updated_by = $3, updated_at = now()
 WHERE id = $1 AND deleted_at IS NULL
-RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at
+RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
 `
 
 type SetPlanStatusParams struct {
@@ -1007,6 +1019,7 @@ func (q *Queries) SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (M
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -1079,7 +1092,7 @@ const updatePlanDoc = `-- name: UpdatePlanDoc :one
 UPDATE meal_plans SET name = $3, start_date = $4, end_date = $5, target_energy = $6, target_protein = $7, target_carbs = $8, target_lipids = $9,
     target_equivalents = $10, targets_version = $11, revision = revision + 1, updated_by = $12, updated_at = now()
 WHERE id = $1 AND revision = $2 AND deleted_at IS NULL
-RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at
+RETURNING id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id
 `
 
 type UpdatePlanDocParams struct {
@@ -1133,6 +1146,7 @@ func (q *Queries) UpdatePlanDoc(ctx context.Context, arg UpdatePlanDocParams) (M
 		&i.UpdatedBy,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }

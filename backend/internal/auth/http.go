@@ -12,6 +12,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/middleware"
 	"github.com/nutri/app-nutricional/backend/internal/shared"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 const (
@@ -256,6 +257,8 @@ func Authenticate(svc *Service) gin.HandlerFunc {
 			return
 		}
 		c.Set(identityKey, id)
+		// Todo lo que la petición haga en la base queda limitado a la consulta de la persona (seguridad por filas).
+		c.Request = c.Request.WithContext(tenant.With(c.Request.Context(), id.PracticeID))
 		c.Next()
 	}
 }

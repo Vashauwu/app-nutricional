@@ -60,7 +60,7 @@ func TestAlertsIntegration(t *testing.T) {
 	alerts.NewController(alerts.NewService(pool, plans, set), as, log).Register(v1)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	ctx := context.Background()
+	ctx := testsupport.NewPractice(t, pool)
 
 	rep, err := cat.ImportEdition(ctx, smae.Actor{}, sample.Catalog())
 	require.NoError(t, err)

@@ -58,6 +58,7 @@ if [ ! -f "$ENVFILE" ]; then
     echo "PUBLIC_URL=https://$DOM"
     echo "POSTGRES_PASSWORD=$(gen)"
     echo "MINIO_PASSWORD=$(gen)"
+    echo "APP_DB_PASSWORD=$(gen)"
     echo "JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')"
     echo "COOKIE_SECURE=true"
     echo "# Staging NO debe enviar correos a pacientes reales: déjalo vacío allí."
@@ -66,6 +67,9 @@ if [ ! -f "$ENVFILE" ]; then
   chmod 600 "$ENVFILE"
   echo "Secretos generados en $ENVFILE (edítalo para añadir el correo SMTP)."
 fi
+
+# Ambientes creados antes del aislamiento entre consultas no traen la contraseña del rol de la API: se agrega una vez.
+grep -q '^APP_DB_PASSWORD=' "$ENVFILE" || echo "APP_DB_PASSWORD=$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)" >> "$ENVFILE"
 
 # --- Caddy de entrada: un bloque por ambiente existente ---
 cp -r edge/. /opt/nutri/edge/ 2>/dev/null || true

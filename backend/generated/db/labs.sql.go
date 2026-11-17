@@ -31,7 +31,7 @@ func (q *Queries) DeleteLabReport(ctx context.Context, arg DeleteLabReportParams
 }
 
 const insertLabReport = `-- name: InsertLabReport :one
-INSERT INTO patient_lab_reports (patient_id, taken_at, lab_name, notes, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id, patient_id, taken_at, lab_name, notes, created_by, created_at
+INSERT INTO patient_lab_reports (patient_id, taken_at, lab_name, notes, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING id, patient_id, taken_at, lab_name, notes, created_by, created_at, practice_id
 `
 
 type InsertLabReportParams struct {
@@ -60,12 +60,13 @@ func (q *Queries) InsertLabReport(ctx context.Context, arg InsertLabReportParams
 		&i.Notes,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const insertLabResult = `-- name: InsertLabResult :one
-INSERT INTO patient_lab_results (report_id, name, value, unit, ref_min, ref_max, position) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, report_id, name, value, unit, ref_min, ref_max, position
+INSERT INTO patient_lab_results (report_id, name, value, unit, ref_min, ref_max, position) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, report_id, name, value, unit, ref_min, ref_max, position, practice_id
 `
 
 type InsertLabResultParams struct {
@@ -98,12 +99,13 @@ func (q *Queries) InsertLabResult(ctx context.Context, arg InsertLabResultParams
 		&i.RefMin,
 		&i.RefMax,
 		&i.Position,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const listLabReports = `-- name: ListLabReports :many
-SELECT id, patient_id, taken_at, lab_name, notes, created_by, created_at FROM patient_lab_reports WHERE patient_id = $1 ORDER BY taken_at DESC, created_at DESC
+SELECT id, patient_id, taken_at, lab_name, notes, created_by, created_at, practice_id FROM patient_lab_reports WHERE patient_id = $1 ORDER BY taken_at DESC, created_at DESC
 `
 
 func (q *Queries) ListLabReports(ctx context.Context, patientID uuid.UUID) ([]PatientLabReport, error) {
@@ -123,6 +125,7 @@ func (q *Queries) ListLabReports(ctx context.Context, patientID uuid.UUID) ([]Pa
 			&i.Notes,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -135,7 +138,7 @@ func (q *Queries) ListLabReports(ctx context.Context, patientID uuid.UUID) ([]Pa
 }
 
 const listLabResults = `-- name: ListLabResults :many
-SELECT r.id, r.report_id, r.name, r.value, r.unit, r.ref_min, r.ref_max, r.position FROM patient_lab_results r JOIN patient_lab_reports p ON p.id = r.report_id
+SELECT r.id, r.report_id, r.name, r.value, r.unit, r.ref_min, r.ref_max, r.position, r.practice_id FROM patient_lab_results r JOIN patient_lab_reports p ON p.id = r.report_id
 WHERE p.patient_id = $1 ORDER BY r.position, r.name
 `
 
@@ -157,6 +160,7 @@ func (q *Queries) ListLabResults(ctx context.Context, patientID uuid.UUID) ([]Pa
 			&i.RefMin,
 			&i.RefMax,
 			&i.Position,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}

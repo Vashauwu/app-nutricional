@@ -18,6 +18,7 @@ import (
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
 	"github.com/nutri/app-nutricional/backend/internal/audit"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 var (
@@ -315,12 +316,16 @@ func (s *Service) Feed(ctx context.Context, token string) ([]byte, error) {
 	if len(token) != 64 {
 		return nil, ErrNotFound
 	}
-	if _, err := s.q.FeedByToken(ctx, token); err != nil {
+	// El enlace es público (sin sesión): se busca el token entre todas las consultas y, ya encontrado, todo lo demás se
+	// limita a la consulta dueña del calendario.
+	feed, err := s.q.FeedByToken(tenant.Bypass(ctx), token)
+	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, ErrNotFound
 		}
 		return nil, err
 	}
+	ctx = tenant.With(ctx, feed.PracticeID)
 	now := s.now()
 	list, err := s.Range(ctx, now.AddDate(0, 0, -60), now.AddDate(0, 0, 330))
 	if err != nil {

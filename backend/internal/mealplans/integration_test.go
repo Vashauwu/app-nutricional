@@ -24,6 +24,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/patients"
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/smae/sample"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 	"github.com/nutri/app-nutricional/backend/internal/testsupport"
 )
 
@@ -34,6 +35,7 @@ func (noMail) SendPasswordChanged(context.Context, string) error       { return 
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
 
 type env struct {
+	ctx  context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
 	pool *pgxpool.Pool
 	srv  *httptest.Server
 	auth *auth.Service
@@ -74,11 +76,11 @@ func start(t *testing.T) *env {
 	require.NoError(t, err)
 	_, err = dsh.ActivateEdition(context.Background(), dishes.Actor{}, rep.Edition.ID)
 	require.NoError(t, err)
-	return &env{pool: pool, srv: srv, auth: as}
+	return &env{ctx: testsupport.NewPractice(t, pool), pool: pool, srv: srv, auth: as}
 }
 
 func (e *env) login(t *testing.T, email, role string) *testsupport.Client {
-	_, err := e.auth.CreateUser(context.Background(), email, "Usuario", role, "demo1234")
+	_, err := e.auth.CreateUser(e.ctx, email, "Usuario", role, "demo1234")
 	require.NoError(t, err)
 	c := testsupport.NewClient(t, e.srv.URL)
 	c.Login(email, "demo1234")
@@ -115,9 +117,9 @@ func newPatient(t *testing.T, e *env, c *testsupport.Client, email string, conse
 }
 
 func linkAccount(t *testing.T, e *env, patientID, email string) *testsupport.Client {
-	uid, err := e.auth.CreateUser(context.Background(), email, "Paciente", "patient", "demo1234")
+	uid, err := e.auth.CreateUser(e.ctx, email, "Paciente", "patient", "demo1234")
 	require.NoError(t, err)
-	_, err = e.pool.Exec(context.Background(), `UPDATE patients SET user_id = $1 WHERE id = $2`, uid, patientID)
+	_, err = e.pool.Exec(tenant.Bypass(context.Background()), `UPDATE patients SET user_id = $1 WHERE id = $2`, uid, patientID)
 	require.NoError(t, err)
 	c := testsupport.NewClient(t, e.srv.URL)
 	c.Login(email, "demo1234")
@@ -171,7 +173,7 @@ func createPlan(t *testing.T, c *testsupport.Client, patient, name, start, end s
 
 func TestMealPlansIntegration(t *testing.T) {
 	e := start(t)
-	ctx := context.Background()
+	ctx := e.ctx
 	nutri := e.login(t, "nutri@demo.mx", "nutritionist")
 	pollo := newDish(t, nutri, "Pollo", "pechuga", "100", "g") // 165 kcal
 	arroz := newDish(t, nutri, "Arroz", "arroz", "1", "taza")  // 208 kcal

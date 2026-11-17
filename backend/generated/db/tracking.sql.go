@@ -143,7 +143,7 @@ func (q *Queries) DeleteEntryIfEmpty(ctx context.Context, arg DeleteEntryIfEmpty
 }
 
 const getEntry = `-- name: GetEntry :one
-SELECT id, patient_id, plan_id, item_id, entry_date, slot_name, dish_id, dish_version, dish_name, status, recorded_at, updated_at, patient_comment, needs_review FROM tracking_entries WHERE id = $1
+SELECT id, patient_id, plan_id, item_id, entry_date, slot_name, dish_id, dish_version, dish_name, status, recorded_at, updated_at, patient_comment, needs_review, practice_id FROM tracking_entries WHERE id = $1
 `
 
 func (q *Queries) GetEntry(ctx context.Context, id uuid.UUID) (TrackingEntry, error) {
@@ -164,12 +164,13 @@ func (q *Queries) GetEntry(ctx context.Context, id uuid.UUID) (TrackingEntry, er
 		&i.UpdatedAt,
 		&i.PatientComment,
 		&i.NeedsReview,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const insertComment = `-- name: InsertComment :one
-INSERT INTO meal_comments (entry_id, author_user_id, author_role, body) VALUES ($1, $2, $3, $4) RETURNING id, entry_id, author_user_id, author_role, body, created_at, edited_at, deleted_at
+INSERT INTO meal_comments (entry_id, author_user_id, author_role, body) VALUES ($1, $2, $3, $4) RETURNING id, entry_id, author_user_id, author_role, body, created_at, edited_at, deleted_at, practice_id
 `
 
 type InsertCommentParams struct {
@@ -196,12 +197,13 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) (M
 		&i.CreatedAt,
 		&i.EditedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const insertTrackingPhoto = `-- name: InsertTrackingPhoto :one
-INSERT INTO tracking_photos (entry_id, file_object_id, alt) VALUES ($1, $2, $3) RETURNING id, entry_id, file_object_id, alt, uploaded_at
+INSERT INTO tracking_photos (entry_id, file_object_id, alt) VALUES ($1, $2, $3) RETURNING id, entry_id, file_object_id, alt, uploaded_at, practice_id
 `
 
 type InsertTrackingPhotoParams struct {
@@ -219,6 +221,7 @@ func (q *Queries) InsertTrackingPhoto(ctx context.Context, arg InsertTrackingPho
 		&i.FileObjectID,
 		&i.Alt,
 		&i.UploadedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -267,7 +270,7 @@ func (q *Queries) ListCommentsForEntries(ctx context.Context, dollar_1 []uuid.UU
 }
 
 const listEntries = `-- name: ListEntries :many
-SELECT t.id, t.patient_id, t.plan_id, t.item_id, t.entry_date, t.slot_name, t.dish_id, t.dish_version, t.dish_name, t.status, t.recorded_at, t.updated_at, t.patient_comment, t.needs_review, (p.first_name || ' ' || p.last_name)::text AS patient_name,
+SELECT t.id, t.patient_id, t.plan_id, t.item_id, t.entry_date, t.slot_name, t.dish_id, t.dish_version, t.dish_name, t.status, t.recorded_at, t.updated_at, t.patient_comment, t.needs_review, t.practice_id, (p.first_name || ' ' || p.last_name)::text AS patient_name,
        (SELECT count(*) FROM tracking_photos ph JOIN file_objects f ON f.id = ph.file_object_id AND f.deleted_at IS NULL WHERE ph.entry_id = t.id)::int AS photo_count,
        (SELECT count(*) FROM meal_comments c WHERE c.entry_id = t.id AND c.deleted_at IS NULL)::int AS comment_count,
        count(*) OVER ()::int AS total
@@ -311,6 +314,7 @@ type ListEntriesRow struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	PatientComment string             `json:"patient_comment"`
 	NeedsReview    bool               `json:"needs_review"`
+	PracticeID     uuid.UUID          `json:"practice_id"`
 	PatientName    string             `json:"patient_name"`
 	PhotoCount     int32              `json:"photo_count"`
 	CommentCount   int32              `json:"comment_count"`
@@ -350,6 +354,7 @@ func (q *Queries) ListEntries(ctx context.Context, arg ListEntriesParams) ([]Lis
 			&i.UpdatedAt,
 			&i.PatientComment,
 			&i.NeedsReview,
+			&i.PracticeID,
 			&i.PatientName,
 			&i.PhotoCount,
 			&i.CommentCount,
@@ -372,15 +377,23 @@ WHERE ph.entry_id = ANY($1::uuid[])
 ORDER BY ph.uploaded_at
 `
 
-func (q *Queries) ListPhotosForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]TrackingPhoto, error) {
+type ListPhotosForEntriesRow struct {
+	ID           uuid.UUID          `json:"id"`
+	EntryID      uuid.UUID          `json:"entry_id"`
+	FileObjectID uuid.UUID          `json:"file_object_id"`
+	Alt          string             `json:"alt"`
+	UploadedAt   pgtype.Timestamptz `json:"uploaded_at"`
+}
+
+func (q *Queries) ListPhotosForEntries(ctx context.Context, dollar_1 []uuid.UUID) ([]ListPhotosForEntriesRow, error) {
 	rows, err := q.db.Query(ctx, listPhotosForEntries, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []TrackingPhoto
+	var items []ListPhotosForEntriesRow
 	for rows.Next() {
-		var i TrackingPhoto
+		var i ListPhotosForEntriesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EntryID,
@@ -470,7 +483,7 @@ ON CONFLICT (item_id) DO UPDATE
    SET status = EXCLUDED.status, recorded_at = now(), updated_at = now(), needs_review = true,
        patient_comment = COALESCE($10::text, tracking_entries.patient_comment)
    WHERE tracking_entries.patient_id = EXCLUDED.patient_id
-RETURNING id, patient_id, plan_id, item_id, entry_date, slot_name, dish_id, dish_version, dish_name, status, recorded_at, updated_at, patient_comment, needs_review
+RETURNING id, patient_id, plan_id, item_id, entry_date, slot_name, dish_id, dish_version, dish_name, status, recorded_at, updated_at, patient_comment, needs_review, practice_id
 `
 
 type UpsertEntryParams struct {
@@ -515,6 +528,7 @@ func (q *Queries) UpsertEntry(ctx context.Context, arg UpsertEntryParams) (Track
 		&i.UpdatedAt,
 		&i.PatientComment,
 		&i.NeedsReview,
+		&i.PracticeID,
 	)
 	return i, err
 }

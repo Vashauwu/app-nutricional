@@ -31,7 +31,7 @@ func (q *Queries) EndPregnancy(ctx context.Context, arg EndPregnancyParams) (int
 }
 
 const insertMenstrualRecord = `-- name: InsertMenstrualRecord :one
-INSERT INTO patient_menstrual_records (patient_id, last_period_date, created_by) VALUES ($1, $2, $3) RETURNING id, patient_id, last_period_date, created_by, created_at
+INSERT INTO patient_menstrual_records (patient_id, last_period_date, created_by) VALUES ($1, $2, $3) RETURNING id, patient_id, last_period_date, created_by, created_at, practice_id
 `
 
 type InsertMenstrualRecordParams struct {
@@ -49,12 +49,13 @@ func (q *Queries) InsertMenstrualRecord(ctx context.Context, arg InsertMenstrual
 		&i.LastPeriodDate,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const insertPregnancy = `-- name: InsertPregnancy :one
-INSERT INTO patient_pregnancies (patient_id, weeks_at_start, recorded_on, due_date, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, patient_id, weeks_at_start, recorded_on, due_date, notes, ended_on, created_by, created_at
+INSERT INTO patient_pregnancies (patient_id, weeks_at_start, recorded_on, due_date, notes, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, patient_id, weeks_at_start, recorded_on, due_date, notes, ended_on, created_by, created_at, practice_id
 `
 
 type InsertPregnancyParams struct {
@@ -86,12 +87,13 @@ func (q *Queries) InsertPregnancy(ctx context.Context, arg InsertPregnancyParams
 		&i.EndedOn,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const listMenstrualRecords = `-- name: ListMenstrualRecords :many
-SELECT id, patient_id, last_period_date, created_by, created_at FROM patient_menstrual_records WHERE patient_id = $1 ORDER BY last_period_date DESC, created_at DESC
+SELECT id, patient_id, last_period_date, created_by, created_at, practice_id FROM patient_menstrual_records WHERE patient_id = $1 ORDER BY last_period_date DESC, created_at DESC
 `
 
 func (q *Queries) ListMenstrualRecords(ctx context.Context, patientID uuid.UUID) ([]PatientMenstrualRecord, error) {
@@ -109,6 +111,7 @@ func (q *Queries) ListMenstrualRecords(ctx context.Context, patientID uuid.UUID)
 			&i.LastPeriodDate,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}
@@ -121,7 +124,7 @@ func (q *Queries) ListMenstrualRecords(ctx context.Context, patientID uuid.UUID)
 }
 
 const listPregnancies = `-- name: ListPregnancies :many
-SELECT id, patient_id, weeks_at_start, recorded_on, due_date, notes, ended_on, created_by, created_at FROM patient_pregnancies WHERE patient_id = $1 ORDER BY recorded_on DESC, created_at DESC
+SELECT id, patient_id, weeks_at_start, recorded_on, due_date, notes, ended_on, created_by, created_at, practice_id FROM patient_pregnancies WHERE patient_id = $1 ORDER BY recorded_on DESC, created_at DESC
 `
 
 func (q *Queries) ListPregnancies(ctx context.Context, patientID uuid.UUID) ([]PatientPregnancy, error) {
@@ -143,6 +146,7 @@ func (q *Queries) ListPregnancies(ctx context.Context, patientID uuid.UUID) ([]P
 			&i.EndedOn,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.PracticeID,
 		); err != nil {
 			return nil, err
 		}

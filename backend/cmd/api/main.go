@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -19,6 +20,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 
+	"github.com/nutri/app-nutricional/backend/generated/db"
 	"github.com/nutri/app-nutricional/backend/internal/agenda"
 	"github.com/nutri/app-nutricional/backend/internal/alerts"
 	"github.com/nutri/app-nutricional/backend/internal/auditlog"
@@ -39,6 +41,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/storage"
 	"github.com/nutri/app-nutricional/backend/internal/telemetry"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 	"github.com/nutri/app-nutricional/backend/internal/tracking"
 )
 
@@ -63,6 +66,11 @@ func run(logger *slog.Logger) error {
 			return err
 		}
 		logger.Info("migrations_applied")
+		if cfg.AppDBPassword != "" {
+			if err := tenant.EnsureAppRole(context.Background(), cfg.DatabaseURL, config.AppDBRole, cfg.AppDBPassword); err != nil {
+				return fmt.Errorf("preparar el rol %s: %w", config.AppDBRole, err)
+			}
+		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -85,13 +93,21 @@ func run(logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
+	// El aislamiento entre consultas depende de que la API NO corra como superusuario ni con BYPASSRLS.
+	if err := tenant.VerifyRole(ctx, pool); err != nil {
+		if cfg.IsProduction() {
+			return err
+		}
+		logger.Warn("rls_not_enforced", slog.Any("error", err))
+	}
+
 	if cfg.IsProduction() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router, plans := newRouter(cfg, logger, pool, tracing)
 	// Tareas lentas fuera de la petición: finalizar planes vencidos ya no depende de que alguien consulte.
-	go runEvery(ctx, cfg.PlanFinalizeInterval, logger, "plans_finalize", plans.FinalizeExpired)
+	go runEvery(ctx, cfg.PlanFinalizeInterval, logger, "plans_finalize", forEachPractice(pool, plans.FinalizeExpired))
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -119,6 +135,25 @@ func run(logger *slog.Logger) error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return srv.Shutdown(shutdownCtx)
+}
+
+// forEachPractice adapta un trabajo de una consulta para correr, uno tras otro, en cada consulta activa: cada llamada
+// queda limitada a su consulta por la seguridad por filas, así que un trabajo nunca mezcla datos de dos consultas.
+func forEachPractice(pool *pgxpool.Pool, job func(context.Context) error) func(context.Context) error {
+	q := db.New(pool)
+	return func(ctx context.Context) error {
+		ids, err := q.ListActivePracticeIDs(tenant.Bypass(ctx))
+		if err != nil {
+			return err
+		}
+		var firstErr error
+		for _, id := range ids {
+			if err := job(tenant.With(ctx, id)); err != nil && firstErr == nil {
+				firstErr = fmt.Errorf("consulta %s: %w", id, err)
+			}
+		}
+		return firstErr
+	}
 }
 
 // runEvery ejecuta job al arrancar y luego cada interval hasta que ctx termine. Un fallo se registra y
@@ -150,7 +185,7 @@ func runEvery(ctx context.Context, interval time.Duration, logger *slog.Logger, 
 // newPool registra el codec NUMERIC <-> shopspring/decimal en cada conexión,
 // de modo que ningún valor nutricional pase por float (§7.3), y acota el pool de conexiones.
 func newPool(ctx context.Context, cfg config.Config, tracing bool) (*pgxpool.Pool, error) {
-	pcfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	pcfg, err := pgxpool.ParseConfig(cfg.RuntimeDatabaseURL())
 	if err != nil {
 		return nil, err
 	}
@@ -163,6 +198,7 @@ func newPool(ctx context.Context, cfg config.Config, tracing bool) (*pgxpool.Poo
 		// Un span por consulta SQL, sin los valores de los parámetros (pueden ser datos personales).
 		pcfg.ConnConfig.Tracer = otelpgx.NewTracer(otelpgx.WithTrimSQLInSpanName())
 	}
+	tenant.ConfigurePool(pcfg) // cada conexión sale del pool con la consulta de quien la pide (seguridad por filas)
 	pcfg.AfterConnect = func(_ context.Context, conn *pgx.Conn) error {
 		pgxdecimal.Register(conn.TypeMap())
 		return nil

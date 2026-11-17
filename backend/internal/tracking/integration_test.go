@@ -94,7 +94,7 @@ func TestTrackingIntegration(t *testing.T) {
 	tracking.NewController(trk, as, lookup, 20<<20, log).Register(v1)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	ctx := context.Background()
+	ctx := testsupport.NewPractice(t, pool)
 
 	rep, err := cat.ImportEdition(ctx, smae.Actor{}, sample.Catalog())
 	require.NoError(t, err)

@@ -1,17 +1,17 @@
 -- name: GetUserByEmail :one
-SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
+SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name, practice_id
 FROM users
 WHERE email = $1;
 
 -- name: GetUserByID :one
-SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
+SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name, practice_id
 FROM users
 WHERE id = $1;
 
 -- name: CreateUser :one
-INSERT INTO users (email, password_hash, status, display_name)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, password_hash, status, last_login_at, created_at, updated_at, display_name;
+INSERT INTO users (email, password_hash, status, display_name, practice_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, email, password_hash, status, last_login_at, created_at, updated_at, display_name, practice_id;
 
 -- name: UpdateUserPassword :exec
 -- Establecer contraseña también activa cuentas invitadas.
