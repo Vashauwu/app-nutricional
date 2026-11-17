@@ -16,6 +16,7 @@ import (
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
 	"github.com/nutri/app-nutricional/backend/internal/config"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 var (
@@ -45,6 +46,8 @@ type Identity struct {
 	Role        string    `json:"role"`
 	Permissions []string  `json:"permissions"`
 	SessionID   uuid.UUID `json:"-"`
+	// PracticeID es la consulta de la persona; nunca viaja al cliente ni en el token (se lee de la base en cada petición).
+	PracticeID uuid.UUID `json:"-"`
 }
 
 type Tokens struct {
@@ -133,7 +136,7 @@ func (s *Service) identity(ctx context.Context, u db.User, sid uuid.UUID) (Ident
 	if len(roles) > 0 {
 		role = roles[0]
 	}
-	return Identity{UserID: u.ID, Email: u.Email, Name: u.DisplayName, Role: role, Permissions: perms, SessionID: sid}, nil
+	return Identity{UserID: u.ID, Email: u.Email, Name: u.DisplayName, Role: role, Permissions: perms, SessionID: sid, PracticeID: u.PracticeID}, nil
 }
 
 func (s *Service) issue(ctx context.Context, u db.User, sid uuid.UUID, refresh string, refreshExp time.Time) (*Tokens, error) {
@@ -161,6 +164,9 @@ func (s *Service) Login(ctx context.Context, email, password string, m Meta) (*T
 		return nil, ErrRateLimited
 	}
 	u, err := s.q.GetUserByEmail(ctx, e)
+	if err == nil {
+		ctx = tenant.With(ctx, u.PracticeID) // la bitácora de este ingreso queda en la consulta de la persona
+	}
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return nil, err
@@ -346,12 +352,21 @@ func (s *Service) ResetPassword(ctx context.Context, raw, newPassword string, m 
 		return err
 	}
 	// Si la cuenta pertenece a un paciente invitado, aceptar la invitación lo activa (deja de verse «Invitación pendiente»).
+	// El enlace llega sin sesión: se limita la transacción a la consulta de la persona antes de tocar sus datos.
+	owner, err := q.GetUserByID(ctx, uid)
+	if err != nil {
+		return err
+	}
+	if err := tenant.ScopeTx(ctx, tx, owner.PracticeID); err != nil {
+		return err
+	}
 	if err := q.ActivatePatientByUser(ctx, uuid.NullUUID{UUID: uid, Valid: true}); err != nil {
 		return err
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return err
 	}
+	ctx = tenant.With(ctx, owner.PracticeID)
 	s.audit(ctx, nu(uid), "auth.password_reset", "user", nu(uid), m, nil)
 	if u, err := s.q.GetUserByID(ctx, uid); err == nil {
 		_ = s.sendMail(ctx, "password_changed", func(c context.Context) error { return s.mailer.SendPasswordChanged(c, u.Email) })
@@ -445,7 +460,12 @@ func (s *Service) SetPasswordByEmail(ctx context.Context, email, newPassword str
 	return nil
 }
 
-// CreateUser crea una cuenta con rol; lo usa la CLI de administración.
+// ErrNoPractice: se intentó crear una cuenta de paciente sin saber a qué consulta pertenece.
+var ErrNoPractice = errors.New("falta la consulta a la que pertenece la cuenta")
+
+// CreateUser crea una cuenta con rol; lo usa la CLI de administración y las pruebas. Con una consulta en el contexto
+// (tenant.With) la cuenta se une a ella (una paciente, o una colega del mismo equipo); sin consulta, una nutrióloga nueva
+// abre la suya (con sus textos legales marcadores) y cualquier otro rol es un error.
 func (s *Service) CreateUser(ctx context.Context, email, name, role, password string) (uuid.UUID, error) {
 	e, err := normalizeEmail(email)
 	if err != nil {
@@ -458,13 +478,29 @@ func (s *Service) CreateUser(ctx context.Context, email, name, role, password st
 	if err != nil {
 		return uuid.Nil, err
 	}
+	practice := tenant.From(ctx)
+	newPractice := role == "nutritionist" && practice == uuid.Nil
+	if newPractice {
+		ctx = tenant.Bypass(ctx) // crear una consulta es una operación de plataforma
+	} else if practice == uuid.Nil {
+		return uuid.Nil, ErrNoPractice
+	}
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
 		return uuid.Nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.q.WithTx(tx)
-	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: e, PasswordHash: hash, Status: "active", DisplayName: name})
+	if newPractice {
+		label := strings.TrimSpace(name)
+		if label == "" {
+			label = e
+		}
+		if practice, err = q.CreatePractice(ctx, label); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: e, PasswordHash: hash, Status: "active", DisplayName: name, PracticeID: practice})
 	if err != nil {
 		return uuid.Nil, err
 	}

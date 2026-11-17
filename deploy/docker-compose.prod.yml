@@ -36,6 +36,8 @@ services:
       APP_TIMEZONE: ${APP_TIMEZONE:-America/Mexico_City}
       DATABASE_URL: postgres://nutri:${POSTGRES_PASSWORD:?}@postgres:5432/nutri?sslmode=disable
       AUTO_MIGRATE: "true"
+      # La API corre como el rol nutri_app (sin superusuario): así el aislamiento entre consultas lo impone la base.
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?define APP_DB_PASSWORD en el .env del ambiente (lo genera deploy.sh o release.sh)}
       CORS_ALLOWED_ORIGINS: ${PUBLIC_URL:?define PUBLIC_URL en deploy/.env}
       APP_BASE_URL: ${PUBLIC_URL}
       JWT_SECRET: ${JWT_SECRET:?}

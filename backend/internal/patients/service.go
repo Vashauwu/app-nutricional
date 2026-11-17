@@ -21,6 +21,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/audit"
 	"github.com/nutri/app-nutricional/backend/internal/auth"
 	"github.com/nutri/app-nutricional/backend/internal/nutrition_engine/calculator"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 var (
@@ -128,7 +129,7 @@ func (s *Service) Create(ctx context.Context, a Actor, in CreateInput) (db.Patie
 		if err != nil {
 			return db.Patient{}, err
 		}
-		u, err := q.CreateUser(ctx, db.CreateUserParams{Email: email, PasswordHash: hash, Status: "invited", DisplayName: strings.TrimSpace(in.FirstName + " " + in.LastName)})
+		u, err := q.CreateUser(ctx, db.CreateUserParams{Email: email, PasswordHash: hash, Status: "invited", DisplayName: strings.TrimSpace(in.FirstName + " " + in.LastName), PracticeID: tenant.From(ctx)})
 		if err != nil {
 			if strings.Contains(err.Error(), "users_email_key") {
 				return db.Patient{}, ErrEmailTaken
@@ -211,7 +212,7 @@ func (s *Service) inviteManual(ctx context.Context, a Actor, p db.Patient) (auth
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	q := s.q.WithTx(tx)
-	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: p.Email, PasswordHash: hash, Status: "invited", DisplayName: strings.TrimSpace(p.FirstName + " " + p.LastName)})
+	u, err := q.CreateUser(ctx, db.CreateUserParams{Email: p.Email, PasswordHash: hash, Status: "invited", DisplayName: strings.TrimSpace(p.FirstName + " " + p.LastName), PracticeID: tenant.From(ctx)})
 	if err != nil {
 		if strings.Contains(err.Error(), "users_email_key") {
 			return auth.Invitation{}, ErrAccountExists

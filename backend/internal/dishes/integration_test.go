@@ -33,6 +33,7 @@ func (noMail) SendPasswordChanged(context.Context, string) error       { return 
 func (noMail) SendInvitation(context.Context, string, string) error    { return nil }
 
 type env struct {
+	ctx  context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
 	pool *pgxpool.Pool
 	srv  *httptest.Server
 	cat  *smae.Service
@@ -59,11 +60,11 @@ func start(t *testing.T) *env {
 	dishes.NewController(dsh, as, log).Register(v1)
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
-	return &env{pool: pool, srv: srv, cat: cat, dsh: dsh, auth: as}
+	return &env{ctx: testsupport.NewPractice(t, pool), pool: pool, srv: srv, cat: cat, dsh: dsh, auth: as}
 }
 
 func (e *env) staff(t *testing.T, email string) *testsupport.Client {
-	_, err := e.auth.CreateUser(context.Background(), email, "Lic. Prueba", "nutritionist", "demo1234")
+	_, err := e.auth.CreateUser(e.ctx, email, "Lic. Prueba", "nutritionist", "demo1234")
 	require.NoError(t, err)
 	c := testsupport.NewClient(t, e.srv.URL)
 	c.Login(email, "demo1234")
@@ -98,7 +99,7 @@ func str(m map[string]any, path ...string) string {
 
 func TestSmaeAndDishesIntegration(t *testing.T) {
 	e := start(t)
-	ctx := context.Background()
+	ctx := e.ctx
 	rep, err := e.cat.ImportEdition(ctx, smae.Actor{}, sample.Catalog())
 	require.NoError(t, err)
 	_, err = e.dsh.ActivateEdition(ctx, dishes.Actor{}, rep.Edition.ID)
@@ -357,7 +358,7 @@ func TestSmaeAndDishesIntegration(t *testing.T) {
 
 func TestEditionRecalcFlow(t *testing.T) {
 	e := start(t)
-	ctx := context.Background()
+	ctx := e.ctx
 	rep, err := e.cat.ImportEdition(ctx, smae.Actor{}, sample.Catalog())
 	require.NoError(t, err)
 	_, err = e.dsh.ActivateEdition(ctx, dishes.Actor{}, rep.Edition.ID)

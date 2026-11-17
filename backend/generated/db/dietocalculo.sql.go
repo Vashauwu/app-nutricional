@@ -13,7 +13,7 @@ import (
 )
 
 const getDietCalculation = `-- name: GetDietCalculation :one
-SELECT d.id, d.name, d.patient_id, d.inputs, d.result, d.engine_version, d.kcal, d.created_by, d.created_at, d.updated_at, d.deleted_at, COALESCE(p.first_name || ' ' || p.last_name, '')::text AS patient_name
+SELECT d.id, d.name, d.patient_id, d.inputs, d.result, d.engine_version, d.kcal, d.created_by, d.created_at, d.updated_at, d.deleted_at, d.practice_id, COALESCE(p.first_name || ' ' || p.last_name, '')::text AS patient_name
 FROM diet_calculations d LEFT JOIN patients p ON p.id = d.patient_id
 WHERE d.id = $1 AND d.deleted_at IS NULL
 `
@@ -30,6 +30,7 @@ type GetDietCalculationRow struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID    uuid.UUID          `json:"practice_id"`
 	PatientName   string             `json:"patient_name"`
 }
 
@@ -48,6 +49,7 @@ func (q *Queries) GetDietCalculation(ctx context.Context, id uuid.UUID) (GetDiet
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 		&i.PatientName,
 	)
 	return i, err
@@ -55,7 +57,7 @@ func (q *Queries) GetDietCalculation(ctx context.Context, id uuid.UUID) (GetDiet
 
 const insertDietCalculation = `-- name: InsertDietCalculation :one
 INSERT INTO diet_calculations (name, patient_id, inputs, result, engine_version, kcal, created_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, patient_id, inputs, result, engine_version, kcal, created_by, created_at, updated_at, deleted_at
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, patient_id, inputs, result, engine_version, kcal, created_by, created_at, updated_at, deleted_at, practice_id
 `
 
 type InsertDietCalculationParams struct {
@@ -92,6 +94,7 @@ func (q *Queries) InsertDietCalculation(ctx context.Context, arg InsertDietCalcu
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -174,7 +177,7 @@ func (q *Queries) SoftDeleteDietCalculation(ctx context.Context, id uuid.UUID) (
 
 const updateDietCalculation = `-- name: UpdateDietCalculation :one
 UPDATE diet_calculations SET name = $2, patient_id = $3, inputs = $4, result = $5, engine_version = $6, kcal = $7, updated_at = now()
-WHERE id = $1 AND deleted_at IS NULL RETURNING id, name, patient_id, inputs, result, engine_version, kcal, created_by, created_at, updated_at, deleted_at
+WHERE id = $1 AND deleted_at IS NULL RETURNING id, name, patient_id, inputs, result, engine_version, kcal, created_by, created_at, updated_at, deleted_at, practice_id
 `
 
 type UpdateDietCalculationParams struct {
@@ -210,6 +213,7 @@ func (q *Queries) UpdateDietCalculation(ctx context.Context, arg UpdateDietCalcu
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }

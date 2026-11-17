@@ -3,7 +3,7 @@ SELECT * FROM app_settings WHERE key = $1;
 
 -- name: UpsertSetting :exec
 INSERT INTO app_settings (key, value, updated_by) VALUES ($1, $2, $3)
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now();
+ON CONFLICT (practice_id, key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now();
 
 -- Versiones de un documento legal con el número de aceptaciones vigentes (§4.1).
 -- name: ListConsentVersions :many

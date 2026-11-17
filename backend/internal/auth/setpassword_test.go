@@ -33,7 +33,7 @@ func TestSetPasswordByEmail(t *testing.T) {
 	auth.NewController(svc, cfg).Register(r.Group("/api/v1"))
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	ctx := context.Background()
+	ctx := testsupport.NewPractice(t, pool)
 
 	_, err := svc.CreateUser(ctx, "ana@demo.mx", "Ana", "nutritionist", "Vieja12345")
 	require.NoError(t, err)

@@ -27,6 +27,8 @@ import (
 
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/middleware"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
+	"github.com/nutri/app-nutricional/backend/internal/testsupport"
 )
 
 // Pruebas de integración con PostgreSQL real (§22). Se omiten si Docker no está disponible.
@@ -61,6 +63,7 @@ func (m *captureMailer) last() string {
 func (m *captureMailer) count() int { m.mu.Lock(); defer m.mu.Unlock(); return len(m.links) }
 
 type env struct {
+	ctx    context.Context // consulta de prueba: las cuentas creadas con él se unen a ella
 	pool   *pgxpool.Pool
 	svc    *Service
 	srv    *httptest.Server
@@ -109,7 +112,7 @@ func startEnv(t *testing.T) *env {
 	v1.GET("/_t/perm", Authenticate(svc), RequirePermission("patients:manage"), func(c *gin.Context) { c.JSON(200, gin.H{"ok": true}) })
 	srv := httptest.NewServer(r)
 	t.Cleanup(srv.Close)
-	return &env{pool: pool, svc: svc, srv: srv, mailer: mailer}
+	return &env{ctx: testsupport.NewPractice(t, pool), pool: pool, svc: svc, srv: srv, mailer: mailer}
 }
 
 type client struct {
@@ -161,7 +164,7 @@ func (c *client) do(method, path string, body any, csrf bool) (*http.Response, m
 
 func (e *env) user(t *testing.T, email, role string) {
 	t.Helper()
-	_, err := e.svc.CreateUser(context.Background(), email, "Usuario "+role, role, "demo1234")
+	_, err := e.svc.CreateUser(e.ctx, email, "Usuario "+role, role, "demo1234")
 	require.NoError(t, err)
 }
 
@@ -253,7 +256,7 @@ func TestAuthIntegration(t *testing.T) {
 		_, err = e.svc.Refresh(context.Background(), r2, Meta{})
 		require.ErrorIs(t, err, ErrSessionInvalid, "el token legítimo también queda invalidado")
 		var n int
-		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM audit_logs WHERE action='auth.refresh_reuse'`).Scan(&n))
+		require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM audit_logs WHERE action='auth.refresh_reuse'`).Scan(&n))
 		require.Equal(t, 1, n)
 	})
 
@@ -263,9 +266,9 @@ func TestAuthIntegration(t *testing.T) {
 		c.do("POST", "/api/v1/auth/login", map[string]string{"email": "nutri6@demo.mx", "password": "demo1234"}, false)
 		raw := c.cookie(refreshCookie)
 		var found int
-		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM user_sessions WHERE refresh_token_hash = $1`, []byte(raw)).Scan(&found))
+		require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM user_sessions WHERE refresh_token_hash = $1`, []byte(raw)).Scan(&found))
 		require.Zero(t, found)
-		require.NoError(t, e.pool.QueryRow(context.Background(), `SELECT count(*) FROM user_sessions WHERE refresh_token_hash = $1`, HashToken(raw)).Scan(&found))
+		require.NoError(t, e.pool.QueryRow(tenant.Bypass(context.Background()), `SELECT count(*) FROM user_sessions WHERE refresh_token_hash = $1`, HashToken(raw)).Scan(&found))
 		require.Equal(t, 1, found)
 	})
 
@@ -351,7 +354,7 @@ func TestAuthIntegration(t *testing.T) {
 		c := e.client(t)
 		c.do("POST", "/api/v1/auth/password/forgot", map[string]string{"email": "vence@demo.mx"}, false)
 		token := strings.TrimPrefix(e.mailer.last(), "http://app.test/restablecer/")
-		_, err := e.pool.Exec(context.Background(), `UPDATE password_reset_tokens SET expires_at = now() - interval '1 minute'`)
+		_, err := e.pool.Exec(tenant.Bypass(context.Background()), `UPDATE password_reset_tokens SET expires_at = now() - interval '1 minute'`)
 		require.NoError(t, err)
 		res, body := c.do("POST", "/api/v1/auth/password/reset", map[string]string{"token": token, "password": "NuevaClave2026"}, false)
 		require.Equal(t, 400, res.StatusCode)
@@ -377,7 +380,7 @@ func TestAuthIntegration(t *testing.T) {
 
 	t.Run("cuentas deshabilitadas no inician sesión", func(t *testing.T) {
 		e.user(t, "off@demo.mx", "patient")
-		_, err := e.pool.Exec(context.Background(), `UPDATE users SET status='disabled' WHERE email='off@demo.mx'`)
+		_, err := e.pool.Exec(tenant.Bypass(context.Background()), `UPDATE users SET status='disabled' WHERE email='off@demo.mx'`)
 		require.NoError(t, err)
 		res, _ := e.client(t).do("POST", "/api/v1/auth/login", map[string]string{"email": "off@demo.mx", "password": "demo1234"}, false)
 		require.Equal(t, 401, res.StatusCode)
@@ -397,7 +400,7 @@ func TestAuthIntegration(t *testing.T) {
 	})
 
 	t.Run("la auditoría registra eventos sin secretos", func(t *testing.T) {
-		rows, err := e.pool.Query(context.Background(), `SELECT action, metadata::text FROM audit_logs`)
+		rows, err := e.pool.Query(tenant.Bypass(context.Background()), `SELECT action, metadata::text FROM audit_logs`)
 		require.NoError(t, err)
 		defer rows.Close()
 		actions := map[string]bool{}

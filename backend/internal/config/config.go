@@ -2,16 +2,24 @@
 package config
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Env         string `envconfig:"APP_ENV" default:"development"`
-	HTTPAddr    string `envconfig:"HTTP_ADDR" default:":8080"`
+	Env      string `envconfig:"APP_ENV" default:"development"`
+	HTTPAddr string `envconfig:"HTTP_ADDR" default:":8080"`
+	// Conexión del propietario de la base: aplica migraciones y la usa la CLI de administración.
 	DatabaseURL string `envconfig:"DATABASE_URL" required:"true"`
-	Timezone    string `envconfig:"APP_TIMEZONE" default:"America/Mexico_City"`
+	// Conexión con la que corre la API: rol `nutri_app` (sin superusuario ni BYPASSRLS) para que el aislamiento por consulta
+	// se cumpla. Vacía = usa DATABASE_URL (solo desarrollo; en producción la API se niega a arrancar así).
+	AppDatabaseURL string `envconfig:"APP_DATABASE_URL"`
+	// Alternativa más simple: si se define, la API se conecta con el mismo servidor pero como el rol `nutri_app` con esta
+	// contraseña (que el propio arranque le asigna tras migrar). Es lo que usa el despliegue.
+	AppDBPassword string `envconfig:"APP_DB_PASSWORD"`
+	Timezone      string `envconfig:"APP_TIMEZONE" default:"America/Mexico_City"`
 	// Aplica migraciones al arrancar (cómodo en desarrollo; en producción conviene hacerlo de forma controlada, §24.1).
 	AutoMigrate bool `envconfig:"AUTO_MIGRATE" default:"false"`
 	// URL pública del frontend; se usa para armar enlaces de recuperación.
@@ -71,3 +79,20 @@ func Load() (Config, error) {
 }
 
 func (c Config) IsProduction() bool { return c.Env == "production" }
+
+// RuntimeDatabaseURL es la conexión con la que corre la API.
+func (c Config) RuntimeDatabaseURL() string {
+	if c.AppDatabaseURL != "" {
+		return c.AppDatabaseURL
+	}
+	if c.AppDBPassword != "" {
+		if u, err := url.Parse(c.DatabaseURL); err == nil {
+			u.User = url.UserPassword(AppDBRole, c.AppDBPassword)
+			return u.String()
+		}
+	}
+	return c.DatabaseURL
+}
+
+// AppDBRole es el rol de base de datos con el que corre la API (creado por la migración de cuentas aisladas).
+const AppDBRole = "nutri_app"

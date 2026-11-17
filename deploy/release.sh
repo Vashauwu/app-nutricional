@@ -21,6 +21,9 @@ setvar() { # setvar CLAVE VALOR
   cat "$ENVFILE.tmp" > "$ENVFILE" && rm -f "$ENVFILE.tmp"
 }
 
+# Contraseña del rol de la API (aislamiento entre consultas). Si el ambiente es anterior a esa función, se genera aquí una vez.
+[ -n "$(get APP_DB_PASSWORD)" ] || setvar APP_DB_PASSWORD "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)"
+
 # Sin liberaciones previas por CD, el ambiente corre las imágenes compiladas en el servidor (local/…:dev).
 PREV_TAG="$(get IMAGE_TAG)"; PREV_TAG="${PREV_TAG:-dev}"
 PREV_REPO="$(get IMAGE_REPO)"; PREV_REPO="${PREV_REPO:-local}"

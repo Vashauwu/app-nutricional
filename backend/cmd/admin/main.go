@@ -25,6 +25,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/dishes"
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/smae/sample"
+	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 func usage() {
@@ -42,7 +43,13 @@ func main() {
 		os.Exit(1)
 	}
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	pcfg, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	tenant.ConfigurePool(pcfg) // cada operación se limita a la consulta del contexto
+	pool, err := pgxpool.NewWithConfig(ctx, pcfg)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
@@ -69,6 +76,7 @@ func createUser(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, log 
 	email := fs.String("email", "", "correo")
 	name := fs.String("name", "", "nombre para mostrar")
 	role := fs.String("role", "nutritionist", "rol")
+	practice := fs.String("practice", "", "id de la consulta a la que se une la cuenta (obligatorio para pacientes; sin él, una nutrióloga nueva abre la suya)")
 	_ = fs.Parse(os.Args[2:])
 	pw := os.Getenv("NEW_USER_PASSWORD") // no se acepta por flag: quedaría en el historial del shell
 	if *email == "" || pw == "" {
@@ -78,6 +86,14 @@ func createUser(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, log 
 	if *role != "nutritionist" && *role != "patient" {
 		fmt.Fprintln(os.Stderr, "rol inválido")
 		os.Exit(2)
+	}
+	if *practice != "" || *role == "patient" {
+		pid, err := uuid.Parse(*practice)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "-practice debe ser el id de una consulta (obligatorio para pacientes)")
+			os.Exit(2)
+		}
+		ctx = tenant.With(ctx, pid)
 	}
 	svc := auth.NewService(pool, cfg, auth.LogMailer{Log: log}, log)
 	id, err := svc.CreateUser(ctx, *email, *name, *role, pw)
@@ -141,6 +157,13 @@ func seedAccounts(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, lo
 	if nutri == uuid.Nil {
 		_ = pool.QueryRow(ctx, "SELECT id FROM users WHERE email = 'nutri@demo.mx'").Scan(&nutri)
 	}
+	// Los pacientes de ejemplo son de la consulta de la nutrióloga de ejemplo.
+	var practice uuid.UUID
+	if err := pool.QueryRow(ctx, "SELECT practice_id FROM users WHERE email = 'nutri@demo.mx'").Scan(&practice); err != nil {
+		fmt.Fprintln(os.Stderr, "consulta de ejemplo:", err)
+		os.Exit(1)
+	}
+	ctx = tenant.With(ctx, practice)
 	docs, err := q.ListActiveConsentDocuments(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "documentos legales:", err)

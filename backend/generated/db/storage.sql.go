@@ -31,7 +31,7 @@ func (q *Queries) DocumentAccessByFile(ctx context.Context, fileObjectID uuid.UU
 }
 
 const getDocument = `-- name: GetDocument :one
-SELECT id, patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by, uploaded_at, deleted_at FROM patient_documents WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL
+SELECT id, patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by, uploaded_at, deleted_at, practice_id FROM patient_documents WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL
 `
 
 type GetDocumentParams struct {
@@ -55,12 +55,13 @@ func (q *Queries) GetDocument(ctx context.Context, arg GetDocumentParams) (Patie
 		&i.UploadedBy,
 		&i.UploadedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getFile = `-- name: GetFile :one
-SELECT id, storage_key, thumb_key, storage_provider, kind, visibility, mime_type, size_bytes, width, height, checksum, owner_patient_id, created_by, created_at, deleted_at FROM file_objects WHERE id = $1 AND deleted_at IS NULL
+SELECT id, storage_key, thumb_key, storage_provider, kind, visibility, mime_type, size_bytes, width, height, checksum, owner_patient_id, created_by, created_at, deleted_at, practice_id FROM file_objects WHERE id = $1 AND deleted_at IS NULL
 `
 
 func (q *Queries) GetFile(ctx context.Context, id uuid.UUID) (FileObject, error) {
@@ -82,6 +83,7 @@ func (q *Queries) GetFile(ctx context.Context, id uuid.UUID) (FileObject, error)
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -89,7 +91,7 @@ func (q *Queries) GetFile(ctx context.Context, id uuid.UUID) (FileObject, error)
 const insertDocument = `-- name: InsertDocument :one
 INSERT INTO patient_documents (patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by, uploaded_at, deleted_at
+RETURNING id, patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by, uploaded_at, deleted_at, practice_id
 `
 
 type InsertDocumentParams struct {
@@ -130,6 +132,7 @@ func (q *Queries) InsertDocument(ctx context.Context, arg InsertDocumentParams) 
 		&i.UploadedBy,
 		&i.UploadedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -137,7 +140,7 @@ func (q *Queries) InsertDocument(ctx context.Context, arg InsertDocumentParams) 
 const insertFile = `-- name: InsertFile :one
 INSERT INTO file_objects (storage_key, thumb_key, kind, visibility, mime_type, size_bytes, width, height, checksum, owner_patient_id, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-RETURNING id, storage_key, thumb_key, storage_provider, kind, visibility, mime_type, size_bytes, width, height, checksum, owner_patient_id, created_by, created_at, deleted_at
+RETURNING id, storage_key, thumb_key, storage_provider, kind, visibility, mime_type, size_bytes, width, height, checksum, owner_patient_id, created_by, created_at, deleted_at, practice_id
 `
 
 type InsertFileParams struct {
@@ -185,12 +188,13 @@ func (q *Queries) InsertFile(ctx context.Context, arg InsertFileParams) (FileObj
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const listDocuments = `-- name: ListDocuments :many
-SELECT d.id, d.patient_id, d.file_object_id, d.name, d.category, d.description, d.document_date, d.visible_to_patient, d.scan_status, d.uploaded_by, d.uploaded_at, d.deleted_at, f.size_bytes
+SELECT d.id, d.patient_id, d.file_object_id, d.name, d.category, d.description, d.document_date, d.visible_to_patient, d.scan_status, d.uploaded_by, d.uploaded_at, d.deleted_at, d.practice_id, f.size_bytes
 FROM patient_documents d JOIN file_objects f ON f.id = d.file_object_id
 WHERE d.patient_id = $1 AND d.deleted_at IS NULL AND ($2::bool = false OR (d.visible_to_patient AND d.scan_status = 'clean'))
 ORDER BY d.uploaded_at DESC
@@ -214,6 +218,7 @@ type ListDocumentsRow struct {
 	UploadedBy       uuid.UUID          `json:"uploaded_by"`
 	UploadedAt       pgtype.Timestamptz `json:"uploaded_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID       uuid.UUID          `json:"practice_id"`
 	SizeBytes        int64              `json:"size_bytes"`
 }
 
@@ -239,6 +244,7 @@ func (q *Queries) ListDocuments(ctx context.Context, arg ListDocumentsParams) ([
 			&i.UploadedBy,
 			&i.UploadedAt,
 			&i.DeletedAt,
+			&i.PracticeID,
 			&i.SizeBytes,
 		); err != nil {
 			return nil, err
@@ -302,7 +308,7 @@ func (q *Queries) TrackingPhotoOwner(ctx context.Context, fileObjectID uuid.UUID
 const updateDocument = `-- name: UpdateDocument :one
 UPDATE patient_documents SET name = $3, category = $4, description = $5, document_date = $6, visible_to_patient = $7
 WHERE id = $1 AND patient_id = $2 AND deleted_at IS NULL
-RETURNING id, patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by, uploaded_at, deleted_at
+RETURNING id, patient_id, file_object_id, name, category, description, document_date, visible_to_patient, scan_status, uploaded_by, uploaded_at, deleted_at, practice_id
 `
 
 type UpdateDocumentParams struct {
@@ -339,6 +345,7 @@ func (q *Queries) UpdateDocument(ctx context.Context, arg UpdateDocumentParams) 
 		&i.UploadedBy,
 		&i.UploadedAt,
 		&i.DeletedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }

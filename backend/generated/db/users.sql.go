@@ -28,16 +28,17 @@ func (q *Queries) AssignRoleByCode(ctx context.Context, arg AssignRoleByCodePara
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (email, password_hash, status, display_name)
-VALUES ($1, $2, $3, $4)
-RETURNING id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
+INSERT INTO users (email, password_hash, status, display_name, practice_id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, email, password_hash, status, last_login_at, created_at, updated_at, display_name, practice_id
 `
 
 type CreateUserParams struct {
-	Email        string `json:"email"`
-	PasswordHash string `json:"password_hash"`
-	Status       string `json:"status"`
-	DisplayName  string `json:"display_name"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"password_hash"`
+	Status       string    `json:"status"`
+	DisplayName  string    `json:"display_name"`
+	PracticeID   uuid.UUID `json:"practice_id"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -46,6 +47,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.PasswordHash,
 		arg.Status,
 		arg.DisplayName,
+		arg.PracticeID,
 	)
 	var i User
 	err := row.Scan(
@@ -57,12 +59,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisplayName,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
+SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name, practice_id
 FROM users
 WHERE email = $1
 `
@@ -79,12 +82,13 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisplayName,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name
+SELECT id, email, password_hash, status, last_login_at, created_at, updated_at, display_name, practice_id
 FROM users
 WHERE id = $1
 `
@@ -101,6 +105,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DisplayName,
+		&i.PracticeID,
 	)
 	return i, err
 }

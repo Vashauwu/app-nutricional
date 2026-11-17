@@ -13,25 +13,27 @@ import (
 )
 
 type AppSetting struct {
-	Key       string             `json:"key"`
-	Value     []byte             `json:"value"`
-	UpdatedBy uuid.NullUUID      `json:"updated_by"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	Key        string             `json:"key"`
+	Value      []byte             `json:"value"`
+	UpdatedBy  uuid.NullUUID      `json:"updated_by"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type Appointment struct {
-	ID        uuid.UUID          `json:"id"`
-	PatientID uuid.UUID          `json:"patient_id"`
-	StartsAt  pgtype.Timestamptz `json:"starts_at"`
-	EndsAt    pgtype.Timestamptz `json:"ends_at"`
-	Kind      string             `json:"kind"`
-	Mode      string             `json:"mode"`
-	Place     string             `json:"place"`
-	Notes     string             `json:"notes"`
-	Status    string             `json:"status"`
-	CreatedBy uuid.UUID          `json:"created_by"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+	ID         uuid.UUID          `json:"id"`
+	PatientID  uuid.UUID          `json:"patient_id"`
+	StartsAt   pgtype.Timestamptz `json:"starts_at"`
+	EndsAt     pgtype.Timestamptz `json:"ends_at"`
+	Kind       string             `json:"kind"`
+	Mode       string             `json:"mode"`
+	Place      string             `json:"place"`
+	Notes      string             `json:"notes"`
+	Status     string             `json:"status"`
+	CreatedBy  uuid.UUID          `json:"created_by"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt  pgtype.Timestamptz `json:"updated_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type AuditLog struct {
@@ -43,12 +45,14 @@ type AuditLog struct {
 	OccurredAt   pgtype.Timestamptz `json:"occurred_at"`
 	RequestID    string             `json:"request_id"`
 	Metadata     []byte             `json:"metadata"`
+	PracticeID   uuid.NullUUID      `json:"practice_id"`
 }
 
 type CalendarFeed struct {
-	UserID    uuid.UUID          `json:"user_id"`
-	Token     string             `json:"token"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UserID     uuid.UUID          `json:"user_id"`
+	Token      string             `json:"token"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type ConsentAcceptance struct {
@@ -59,6 +63,7 @@ type ConsentAcceptance struct {
 	AcceptanceMethod  string             `json:"acceptance_method"`
 	EvidenceMetadata  []byte             `json:"evidence_metadata"`
 	RevokedAt         pgtype.Timestamptz `json:"revoked_at"`
+	PracticeID        uuid.UUID          `json:"practice_id"`
 }
 
 type ConsentDocument struct {
@@ -69,6 +74,7 @@ type ConsentDocument struct {
 	Content      string             `json:"content"`
 	PublishedAt  pgtype.Timestamptz `json:"published_at"`
 	IsActive     bool               `json:"is_active"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type CustomFood struct {
@@ -99,6 +105,7 @@ type CustomFood struct {
 	EqCriterion      pgtype.Text         `json:"eq_criterion"`
 	CreatedAt        pgtype.Timestamptz  `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz  `json:"updated_at"`
+	PracticeID       uuid.UUID           `json:"practice_id"`
 }
 
 type CustomFoodPortion struct {
@@ -108,6 +115,7 @@ type CustomFoodPortion struct {
 	Unit            string          `json:"unit"`
 	Quantity        decimal.Decimal `json:"quantity"`
 	GramsEquivalent decimal.Decimal `json:"grams_equivalent"`
+	PracticeID      uuid.UUID       `json:"practice_id"`
 }
 
 type DietCalculation struct {
@@ -122,6 +130,7 @@ type DietCalculation struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt     pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID    uuid.UUID          `json:"practice_id"`
 }
 
 type Dish struct {
@@ -135,6 +144,7 @@ type Dish struct {
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt      pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID     uuid.UUID          `json:"practice_id"`
 }
 
 type DishIngredient struct {
@@ -155,6 +165,7 @@ type DishIngredient struct {
 	EquivalentCode  pgtype.Text         `json:"equivalent_code"`
 	EquivalentValue decimal.NullDecimal `json:"equivalent_value"`
 	Official        bool                `json:"official"`
+	PracticeID      uuid.UUID           `json:"practice_id"`
 }
 
 type DishNutritionSnapshot struct {
@@ -173,6 +184,7 @@ type DishNutritionSnapshot struct {
 	HasCustomFoods bool               `json:"has_custom_foods"`
 	EngineVersion  string             `json:"engine_version"`
 	CalculatedAt   pgtype.Timestamptz `json:"calculated_at"`
+	PracticeID     uuid.UUID          `json:"practice_id"`
 }
 
 type DishSubstitution struct {
@@ -187,6 +199,7 @@ type DishSubstitution struct {
 	ApprovedBy        uuid.UUID          `json:"approved_by"`
 	ApprovedAt        pgtype.Timestamptz `json:"approved_at"`
 	RemovedAt         pgtype.Timestamptz `json:"removed_at"`
+	PracticeID        uuid.UUID          `json:"practice_id"`
 }
 
 type DishVersion struct {
@@ -205,6 +218,7 @@ type DishVersion struct {
 	CreatedBy        uuid.UUID          `json:"created_by"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	ChangeReason     string             `json:"change_reason"`
+	PracticeID       uuid.UUID          `json:"practice_id"`
 }
 
 type FileObject struct {
@@ -223,6 +237,7 @@ type FileObject struct {
 	CreatedBy       uuid.NullUUID      `json:"created_by"`
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	DeletedAt       pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID      uuid.UUID          `json:"practice_id"`
 }
 
 type MealComment struct {
@@ -234,6 +249,7 @@ type MealComment struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	EditedAt     pgtype.Timestamptz `json:"edited_at"`
 	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type MealPlan struct {
@@ -255,23 +271,26 @@ type MealPlan struct {
 	UpdatedBy         uuid.UUID          `json:"updated_by"`
 	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 	DeletedAt         pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID        uuid.UUID          `json:"practice_id"`
 }
 
 type MealPlanDay struct {
-	ID        uuid.UUID          `json:"id"`
-	PlanID    uuid.UUID          `json:"plan_id"`
-	PlanDate  pgtype.Date        `json:"plan_date"`
-	Notes     string             `json:"notes"`
-	RemovedAt pgtype.Timestamptz `json:"removed_at"`
+	ID         uuid.UUID          `json:"id"`
+	PlanID     uuid.UUID          `json:"plan_id"`
+	PlanDate   pgtype.Date        `json:"plan_date"`
+	Notes      string             `json:"notes"`
+	RemovedAt  pgtype.Timestamptz `json:"removed_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type MealPlanEvent struct {
-	ID      uuid.UUID          `json:"id"`
-	PlanID  uuid.UUID          `json:"plan_id"`
-	At      pgtype.Timestamptz `json:"at"`
-	Actor   uuid.NullUUID      `json:"actor"`
-	Type    string             `json:"type"`
-	Summary string             `json:"summary"`
+	ID         uuid.UUID          `json:"id"`
+	PlanID     uuid.UUID          `json:"plan_id"`
+	At         pgtype.Timestamptz `json:"at"`
+	Actor      uuid.NullUUID      `json:"actor"`
+	Type       string             `json:"type"`
+	Summary    string             `json:"summary"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type MealPlanPublication struct {
@@ -282,14 +301,16 @@ type MealPlanPublication struct {
 	PublishedAt   pgtype.Timestamptz `json:"published_at"`
 	PublishedBy   uuid.UUID          `json:"published_by"`
 	Summary       string             `json:"summary"`
+	PracticeID    uuid.UUID          `json:"practice_id"`
 }
 
 type MealPlanRevision struct {
-	PlanID   uuid.UUID          `json:"plan_id"`
-	Revision int32              `json:"revision"`
-	SavedAt  pgtype.Timestamptz `json:"saved_at"`
-	SavedBy  uuid.UUID          `json:"saved_by"`
-	Snapshot []byte             `json:"snapshot"`
+	PlanID     uuid.UUID          `json:"plan_id"`
+	Revision   int32              `json:"revision"`
+	SavedAt    pgtype.Timestamptz `json:"saved_at"`
+	SavedBy    uuid.UUID          `json:"saved_by"`
+	Snapshot   []byte             `json:"snapshot"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type MealPlanTemplate struct {
@@ -302,14 +323,16 @@ type MealPlanTemplate struct {
 	CreatedBy   uuid.UUID          `json:"created_by"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	DeletedAt   pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID  uuid.UUID          `json:"practice_id"`
 }
 
 type MealSlot struct {
-	ID        uuid.UUID          `json:"id"`
-	DayID     uuid.UUID          `json:"day_id"`
-	Name      string             `json:"name"`
-	Position  int32              `json:"position"`
-	RemovedAt pgtype.Timestamptz `json:"removed_at"`
+	ID         uuid.UUID          `json:"id"`
+	DayID      uuid.UUID          `json:"day_id"`
+	Name       string             `json:"name"`
+	Position   int32              `json:"position"`
+	RemovedAt  pgtype.Timestamptz `json:"removed_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type MealSlotItem struct {
@@ -321,6 +344,7 @@ type MealSlotItem struct {
 	Servings     decimal.Decimal    `json:"servings"`
 	Instructions string             `json:"instructions"`
 	RemovedAt    pgtype.Timestamptz `json:"removed_at"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type PasswordResetToken struct {
@@ -353,26 +377,29 @@ type Patient struct {
 	DeletedAt           pgtype.Timestamptz `json:"deleted_at"`
 	MenarcheAge         pgtype.Int2        `json:"menarche_age"`
 	MenarcheUnknown     bool               `json:"menarche_unknown"`
+	PracticeID          uuid.UUID          `json:"practice_id"`
 }
 
 type PatientAllergy struct {
-	ID        uuid.UUID          `json:"id"`
-	PatientID uuid.UUID          `json:"patient_id"`
-	Allergen  string             `json:"allergen"`
-	Aliases   []string           `json:"aliases"`
-	Reaction  string             `json:"reaction"`
-	Severity  string             `json:"severity"`
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID         uuid.UUID          `json:"id"`
+	PatientID  uuid.UUID          `json:"patient_id"`
+	Allergen   string             `json:"allergen"`
+	Aliases    []string           `json:"aliases"`
+	Reaction   string             `json:"reaction"`
+	Severity   string             `json:"severity"`
+	Status     string             `json:"status"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type PatientCondition struct {
-	ID        uuid.UUID          `json:"id"`
-	PatientID uuid.UUID          `json:"patient_id"`
-	Name      string             `json:"name"`
-	Details   string             `json:"details"`
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID         uuid.UUID          `json:"id"`
+	PatientID  uuid.UUID          `json:"patient_id"`
+	Name       string             `json:"name"`
+	Details    string             `json:"details"`
+	Status     string             `json:"status"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type PatientDocument struct {
@@ -388,6 +415,7 @@ type PatientDocument struct {
 	UploadedBy       uuid.UUID          `json:"uploaded_by"`
 	UploadedAt       pgtype.Timestamptz `json:"uploaded_at"`
 	DeletedAt        pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID       uuid.UUID          `json:"practice_id"`
 }
 
 type PatientFoodPreference struct {
@@ -397,27 +425,30 @@ type PatientFoodPreference struct {
 	PreferenceType string             `json:"preference_type"`
 	Notes          string             `json:"notes"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	PracticeID     uuid.UUID          `json:"practice_id"`
 }
 
 type PatientLabReport struct {
-	ID        uuid.UUID          `json:"id"`
-	PatientID uuid.UUID          `json:"patient_id"`
-	TakenAt   pgtype.Date        `json:"taken_at"`
-	LabName   string             `json:"lab_name"`
-	Notes     string             `json:"notes"`
-	CreatedBy uuid.UUID          `json:"created_by"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID         uuid.UUID          `json:"id"`
+	PatientID  uuid.UUID          `json:"patient_id"`
+	TakenAt    pgtype.Date        `json:"taken_at"`
+	LabName    string             `json:"lab_name"`
+	Notes      string             `json:"notes"`
+	CreatedBy  uuid.UUID          `json:"created_by"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type PatientLabResult struct {
-	ID       uuid.UUID           `json:"id"`
-	ReportID uuid.UUID           `json:"report_id"`
-	Name     string              `json:"name"`
-	Value    decimal.Decimal     `json:"value"`
-	Unit     string              `json:"unit"`
-	RefMin   decimal.NullDecimal `json:"ref_min"`
-	RefMax   decimal.NullDecimal `json:"ref_max"`
-	Position int32               `json:"position"`
+	ID         uuid.UUID           `json:"id"`
+	ReportID   uuid.UUID           `json:"report_id"`
+	Name       string              `json:"name"`
+	Value      decimal.Decimal     `json:"value"`
+	Unit       string              `json:"unit"`
+	RefMin     decimal.NullDecimal `json:"ref_min"`
+	RefMax     decimal.NullDecimal `json:"ref_max"`
+	Position   int32               `json:"position"`
+	PracticeID uuid.UUID           `json:"practice_id"`
 }
 
 type PatientMeasurement struct {
@@ -440,19 +471,21 @@ type PatientMeasurement struct {
 	BoneKg       decimal.NullDecimal `json:"bone_kg"`
 	ObesityPct   decimal.NullDecimal `json:"obesity_pct"`
 	Girths       json.RawMessage     `json:"girths"`
+	PracticeID   uuid.UUID           `json:"practice_id"`
 }
 
 type PatientMedication struct {
-	ID        uuid.UUID          `json:"id"`
-	PatientID uuid.UUID          `json:"patient_id"`
-	Name      string             `json:"name"`
-	Dose      string             `json:"dose"`
-	Frequency string             `json:"frequency"`
-	StartDate pgtype.Date        `json:"start_date"`
-	EndDate   pgtype.Date        `json:"end_date"`
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	Kind      string             `json:"kind"`
+	ID         uuid.UUID          `json:"id"`
+	PatientID  uuid.UUID          `json:"patient_id"`
+	Name       string             `json:"name"`
+	Dose       string             `json:"dose"`
+	Frequency  string             `json:"frequency"`
+	StartDate  pgtype.Date        `json:"start_date"`
+	EndDate    pgtype.Date        `json:"end_date"`
+	Status     string             `json:"status"`
+	CreatedAt  pgtype.Timestamptz `json:"created_at"`
+	Kind       string             `json:"kind"`
+	PracticeID uuid.UUID          `json:"practice_id"`
 }
 
 type PatientMenstrualRecord struct {
@@ -461,6 +494,7 @@ type PatientMenstrualRecord struct {
 	LastPeriodDate pgtype.Date        `json:"last_period_date"`
 	CreatedBy      uuid.UUID          `json:"created_by"`
 	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	PracticeID     uuid.UUID          `json:"practice_id"`
 }
 
 type PatientNote struct {
@@ -470,6 +504,7 @@ type PatientNote struct {
 	Body         string             `json:"body"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	DeletedAt    pgtype.Timestamptz `json:"deleted_at"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type PatientPregnancy struct {
@@ -482,12 +517,20 @@ type PatientPregnancy struct {
 	EndedOn      pgtype.Date        `json:"ended_on"`
 	CreatedBy    uuid.UUID          `json:"created_by"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type Permission struct {
 	ID          uuid.UUID `json:"id"`
 	Code        string    `json:"code"`
 	Description string    `json:"description"`
+}
+
+type Practice struct {
+	ID        uuid.UUID          `json:"id"`
+	Name      string             `json:"name"`
+	Status    string             `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Role struct {
@@ -584,6 +627,7 @@ type SmaeRecalcBatch struct {
 	ToEditionID   uuid.UUID          `json:"to_edition_id"`
 	DecidedBy     uuid.UUID          `json:"decided_by"`
 	DecidedAt     pgtype.Timestamptz `json:"decided_at"`
+	PracticeID    uuid.UUID          `json:"practice_id"`
 }
 
 type SmaeRecalcDecision struct {
@@ -592,6 +636,7 @@ type SmaeRecalcDecision struct {
 	FromVersion int32       `json:"from_version"`
 	ToVersion   pgtype.Int4 `json:"to_version"`
 	Decision    string      `json:"decision"`
+	PracticeID  uuid.UUID   `json:"practice_id"`
 }
 
 type TrackingEntry struct {
@@ -609,6 +654,7 @@ type TrackingEntry struct {
 	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 	PatientComment string             `json:"patient_comment"`
 	NeedsReview    bool               `json:"needs_review"`
+	PracticeID     uuid.UUID          `json:"practice_id"`
 }
 
 type TrackingPhoto struct {
@@ -617,6 +663,7 @@ type TrackingPhoto struct {
 	FileObjectID uuid.UUID          `json:"file_object_id"`
 	Alt          string             `json:"alt"`
 	UploadedAt   pgtype.Timestamptz `json:"uploaded_at"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type User struct {
@@ -628,6 +675,7 @@ type User struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 	DisplayName  string             `json:"display_name"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
 type UserRoleAssignment struct {

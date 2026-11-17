@@ -68,7 +68,7 @@ func TestDashboardIntegration(t *testing.T) {
 	dashboard.NewController(dashboard.NewService(pool, alertsSvc, trk), as).Register(v1)
 	srv := httptest.NewServer(r)
 	defer srv.Close()
-	ctx := context.Background()
+	ctx := testsupport.NewPractice(t, pool)
 
 	rep, err := cat.ImportEdition(ctx, smae.Actor{}, sample.Catalog())
 	require.NoError(t, err)

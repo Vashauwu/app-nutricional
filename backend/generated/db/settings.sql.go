@@ -22,7 +22,7 @@ func (q *Queries) DeactivateConsentType(ctx context.Context, documentType string
 }
 
 const getSetting = `-- name: GetSetting :one
-SELECT key, value, updated_by, updated_at FROM app_settings WHERE key = $1
+SELECT key, value, updated_by, updated_at, practice_id FROM app_settings WHERE key = $1
 `
 
 func (q *Queries) GetSetting(ctx context.Context, key string) (AppSetting, error) {
@@ -33,6 +33,7 @@ func (q *Queries) GetSetting(ctx context.Context, key string) (AppSetting, error
 		&i.Value,
 		&i.UpdatedBy,
 		&i.UpdatedAt,
+		&i.PracticeID,
 	)
 	return i, err
 }
@@ -40,7 +41,7 @@ func (q *Queries) GetSetting(ctx context.Context, key string) (AppSetting, error
 const insertConsentVersion = `-- name: InsertConsentVersion :one
 INSERT INTO consent_documents (document_type, version, title, content, is_active)
 VALUES ($1, (SELECT COALESCE(max(version), 0) + 1 FROM consent_documents WHERE document_type = $1), $2, $3, true)
-RETURNING id, document_type, version, title, content, published_at, is_active
+RETURNING id, document_type, version, title, content, published_at, is_active, practice_id
 `
 
 type InsertConsentVersionParams struct {
@@ -60,12 +61,13 @@ func (q *Queries) InsertConsentVersion(ctx context.Context, arg InsertConsentVer
 		&i.Content,
 		&i.PublishedAt,
 		&i.IsActive,
+		&i.PracticeID,
 	)
 	return i, err
 }
 
 const listConsentVersions = `-- name: ListConsentVersions :many
-SELECT d.id, d.document_type, d.version, d.title, d.content, d.published_at, d.is_active, (SELECT count(*) FROM consent_acceptances a WHERE a.consent_document_id = d.id AND a.revoked_at IS NULL) AS acceptances
+SELECT d.id, d.document_type, d.version, d.title, d.content, d.published_at, d.is_active, d.practice_id, (SELECT count(*) FROM consent_acceptances a WHERE a.consent_document_id = d.id AND a.revoked_at IS NULL) AS acceptances
 FROM consent_documents d
 WHERE d.document_type = $1
 ORDER BY d.version DESC
@@ -79,6 +81,7 @@ type ListConsentVersionsRow struct {
 	Content      string             `json:"content"`
 	PublishedAt  pgtype.Timestamptz `json:"published_at"`
 	IsActive     bool               `json:"is_active"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
 	Acceptances  int64              `json:"acceptances"`
 }
 
@@ -100,6 +103,7 @@ func (q *Queries) ListConsentVersions(ctx context.Context, documentType string) 
 			&i.Content,
 			&i.PublishedAt,
 			&i.IsActive,
+			&i.PracticeID,
 			&i.Acceptances,
 		); err != nil {
 			return nil, err
@@ -114,7 +118,7 @@ func (q *Queries) ListConsentVersions(ctx context.Context, documentType string) 
 
 const upsertSetting = `-- name: UpsertSetting :exec
 INSERT INTO app_settings (key, value, updated_by) VALUES ($1, $2, $3)
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()
+ON CONFLICT (practice_id, key) DO UPDATE SET value = EXCLUDED.value, updated_by = EXCLUDED.updated_by, updated_at = now()
 `
 
 type UpsertSettingParams struct {
