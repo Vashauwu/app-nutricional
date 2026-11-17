@@ -5,7 +5,7 @@ import { debounceTime, switchMap } from 'rxjs';
 import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { PatientsService } from '../../core/services/patients.service';
-import { PlanQuery, PlansService } from '../../core/services/plans.service';
+import { PlanQuery, PlansService, deletePlanConfirm } from '../../core/services/plans.service';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { MealPlan, PLAN_STATUS_LABEL, PlanStatus } from '../../shared/models/domain';
 import { Badge, EmptyState, LoadError, PLAN_TONE, Pagination, SearchBox, Skeleton } from '../../shared/components/ui';
@@ -20,8 +20,11 @@ import { formatDate } from '../../shared/utils/format';
   imports: [PageHeader, RouterLink, TuiButton, Icon, Badge, EmptyState, LoadError, Pagination, SearchBox, Skeleton, Combobox],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
-    .filters { display: grid; gap: var(--space-3); grid-template-columns: minmax(12rem, 2fr) repeat(4, minmax(8.5rem, 1fr)); padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
-    @media (max-width: 62rem) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .filters app-search { grid-column: 1 / -1; } }
+    /* Todos los filtros comparten la línea de base: los de fecha llevan rótulo visible y antes quedaban más abajo que el resto. */
+    .filters { display: grid; gap: var(--space-3); align-items: end; grid-template-columns: minmax(13rem, 2fr) minmax(12.5rem, 1.3fr) minmax(12.5rem, 1.4fr) repeat(2, minmax(9.5rem, 1fr)); padding: var(--space-4) var(--space-5); border-block-end: 1px solid var(--line); }
+    @media (max-width: 75rem) { .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } .filters app-search { grid-column: 1 / -1; } }
+    @media (max-width: 40rem) { .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .acts { inline-size: 3rem; text-align: end; }
     .tpl { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface); align-content: start; }
   `,
   template: `
@@ -48,10 +51,11 @@ import { formatDate } from '../../shared/utils/format';
             @if (r.state === 'loading') { <app-skeleton [count]="5" /> }
             @else if (r.state === 'error') { <app-load-error [message]="r.message" (retry)="retry.set(retry() + 1)" /> }
             @else if (r.data.items.length) {
-              <div class="table-wrap"><table class="table table--cards"><caption class="visually-hidden">Planes</caption><thead><tr><th scope="col">Plan</th><th scope="col">Paciente</th><th scope="col">Periodo</th><th scope="col">Estado</th><th scope="col" class="num">Platillos</th><th scope="col">Actualizado</th></tr></thead><tbody>
+              <div class="table-wrap"><table class="table table--cards"><caption class="visually-hidden">Planes</caption><thead><tr><th scope="col">Plan</th><th scope="col">Paciente</th><th scope="col">Periodo</th><th scope="col">Estado</th><th scope="col" class="num">Platillos</th><th scope="col">Actualizado</th><th scope="col" class="acts"><span class="visually-hidden">Acciones</span></th></tr></thead><tbody>
                 @for (p of r.data.items; track p.id) {
                   <tr class="clickable"><td class="cell-main"><a class="row-link" [routerLink]="['/planes', p.id]">{{ p.name }}</a></td><td data-label="Paciente"><a [routerLink]="['/pacientes', p.patientId]">{{ patientName(p.patientId) }}</a></td><td class="mono" data-label="Periodo">{{ fd(p.startDate) }} – {{ fd(p.endDate) }}</td>
-                    <td data-label="Estado"><app-badge [tone]="tone[p.status]">{{ label[p.status] }}</app-badge></td><td class="num" data-label="Platillos">{{ count(p) }}</td><td class="small" data-label="Actualizado">{{ fd(p.updatedAt) }}<div class="muted">{{ p.updatedBy }}</div></td></tr>
+                    <td data-label="Estado"><app-badge [tone]="tone[p.status]">{{ label[p.status] }}</app-badge></td><td class="num" data-label="Platillos">{{ count(p) }}</td><td class="small" data-label="Actualizado">{{ fd(p.updatedAt) }}<div class="muted">{{ p.updatedBy }}</div></td>
+                    <td class="acts"><button type="button" class="icon-btn" [attr.aria-label]="'Eliminar el plan ' + p.name" (click)="remove(p)"><app-icon name="trash" [size]="18" /></button></td></tr>
                 }
               </tbody></table></div>
               <app-pagination [page]="r.data.page" [pageSize]="r.data.pageSize" [total]="r.data.total" (pageChange)="page.set($event)" />
@@ -114,6 +118,15 @@ export class PlanList {
     toObservable(this.query).pipe(debounceTime(250), switchMap(({ q }) => loadable(this.plans.list(q)))),
     { initialValue: { state: 'loading' } as Loadable<Page<MealPlan>> },
   );
+
+  /** Eliminación permanente, con aviso de todo lo que se borra. */
+  protected async remove(p: MealPlan): Promise<void> {
+    if (!(await this.confirm.ask(deletePlanConfirm(p.name)))) return;
+    this.plans.remove(p.id).subscribe({
+      next: () => { this.toast.ok('Plan eliminado.'); this.retry.set(this.retry() + 1); },
+      error: (e: unknown) => this.toast.error(e instanceof Error ? e.message : 'No se pudo eliminar el plan.'),
+    });
+  }
 
   protected onStatus(v: string): void { this.statusSel.set(v); this.page.set(1); }
   constructor() {

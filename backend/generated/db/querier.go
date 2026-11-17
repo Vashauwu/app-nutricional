@@ -85,6 +85,8 @@ type Querier interface {
 	// Solo el nombre y si está activo (agenda).
 	GetPatientName(ctx context.Context, id uuid.UUID) (GetPatientNameRow, error)
 	GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error)
+	// ---------- Borrado permanente ----------
+	GetPlanAnyState(ctx context.Context, id uuid.UUID) (MealPlan, error)
 	GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid.UUID) (SmaeRecalcBatch, error)
 	GetRevision(ctx context.Context, arg GetRevisionParams) (MealPlanRevision, error)
 	GetSessionByID(ctx context.Context, id uuid.UUID) (UserSession, error)
@@ -202,6 +204,8 @@ type Querier interface {
 	// Todo lo necesario para dibujar el plan: platillo, su versión y la nutrición por porción de ESA versión.
 	ListPlanItems(ctx context.Context, planID uuid.UUID) ([]ListPlanItemsRow, error)
 	ListPlanSlots(ctx context.Context, planID uuid.UUID) ([]ListPlanSlotsRow, error)
+	// Archivos de seguimiento (siempre privados) del plan, para quitarlos también del almacenamiento.
+	ListPlanTrackingFileKeys(ctx context.Context, planID uuid.UUID) ([]ListPlanTrackingFileKeysRow, error)
 	ListPlans(ctx context.Context, arg ListPlansParams) ([]ListPlansRow, error)
 	ListPortionsForFoods(ctx context.Context, dollar_1 []uuid.UUID) ([]SmaePortion, error)
 	// ---------- Preferencias ----------
@@ -224,6 +228,7 @@ type Querier interface {
 	// Cuántos planes no archivados usan un platillo (para avisar antes de desactivarlo).
 	PlansUsingDish(ctx context.Context, dishID uuid.UUID) (int64, error)
 	PracticeStorageUsed(ctx context.Context) (int64, error)
+	PurgeMealPlan(ctx context.Context, pID uuid.UUID) ([]byte, error)
 	RemoveDaysNotIn(ctx context.Context, arg RemoveDaysNotInParams) error
 	RemoveItem(ctx context.Context, id uuid.UUID) error
 	RemoveItemsNotIn(ctx context.Context, arg RemoveItemsNotInParams) error

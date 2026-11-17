@@ -248,6 +248,40 @@ func (q *Queries) GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error) {
 	return i, err
 }
 
+const getPlanAnyState = `-- name: GetPlanAnyState :one
+SELECT id, patient_id, name, status, start_date, end_date, revision, target_energy, target_protein, target_carbs, target_lipids, target_equivalents, targets_version, created_by, created_at, updated_by, updated_at, deleted_at, practice_id, target_diet_calculation_id, target_diet_synced_at FROM meal_plans WHERE id = $1
+`
+
+// ---------- Borrado permanente ----------
+func (q *Queries) GetPlanAnyState(ctx context.Context, id uuid.UUID) (MealPlan, error) {
+	row := q.db.QueryRow(ctx, getPlanAnyState, id)
+	var i MealPlan
+	err := row.Scan(
+		&i.ID,
+		&i.PatientID,
+		&i.Name,
+		&i.Status,
+		&i.StartDate,
+		&i.EndDate,
+		&i.Revision,
+		&i.TargetEnergy,
+		&i.TargetProtein,
+		&i.TargetCarbs,
+		&i.TargetLipids,
+		&i.TargetEquivalents,
+		&i.TargetsVersion,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedBy,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+		&i.PracticeID,
+		&i.TargetDietCalculationID,
+		&i.TargetDietSyncedAt,
+	)
+	return i, err
+}
+
 const getRevision = `-- name: GetRevision :one
 SELECT plan_id, revision, saved_at, saved_by, snapshot, practice_id FROM meal_plan_revisions WHERE plan_id = $1 AND revision = $2
 `
@@ -731,6 +765,39 @@ func (q *Queries) ListPlanSlots(ctx context.Context, planID uuid.UUID) ([]ListPl
 	return items, nil
 }
 
+const listPlanTrackingFileKeys = `-- name: ListPlanTrackingFileKeys :many
+SELECT f.storage_key, f.thumb_key FROM tracking_entries e
+JOIN tracking_photos ph ON ph.entry_id = e.id
+JOIN file_objects f ON f.id = ph.file_object_id
+WHERE e.plan_id = $1
+`
+
+type ListPlanTrackingFileKeysRow struct {
+	StorageKey string      `json:"storage_key"`
+	ThumbKey   pgtype.Text `json:"thumb_key"`
+}
+
+// Archivos de seguimiento (siempre privados) del plan, para quitarlos también del almacenamiento.
+func (q *Queries) ListPlanTrackingFileKeys(ctx context.Context, planID uuid.UUID) ([]ListPlanTrackingFileKeysRow, error) {
+	rows, err := q.db.Query(ctx, listPlanTrackingFileKeys, planID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlanTrackingFileKeysRow
+	for rows.Next() {
+		var i ListPlanTrackingFileKeysRow
+		if err := rows.Scan(&i.StorageKey, &i.ThumbKey); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPlans = `-- name: ListPlans :many
 SELECT p.id, p.patient_id, p.name, p.status, p.start_date, p.end_date, p.revision, p.updated_at, pt.first_name, pt.last_name,
        (SELECT count(*) FROM meal_slot_items i JOIN meal_slots s ON s.id = i.slot_id JOIN meal_plan_days d ON d.id = s.day_id
@@ -941,6 +1008,17 @@ func (q *Queries) PlansUsingDish(ctx context.Context, dishID uuid.UUID) (int64, 
 	var count int64
 	err := row.Scan(&count)
 	return count, err
+}
+
+const purgeMealPlan = `-- name: PurgeMealPlan :one
+SELECT purge_meal_plan($1)::jsonb AS result
+`
+
+func (q *Queries) PurgeMealPlan(ctx context.Context, pID uuid.UUID) ([]byte, error) {
+	row := q.db.QueryRow(ctx, purgeMealPlan, pID)
+	var result []byte
+	err := row.Scan(&result)
+	return result, err
 }
 
 const removeDaysNotIn = `-- name: RemoveDaysNotIn :exec

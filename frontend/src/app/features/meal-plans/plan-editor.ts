@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { DishesService } from '../../core/services/dishes.service';
-import { PlansService } from '../../core/services/plans.service';
+import { PlansService, deletePlanConfirm } from '../../core/services/plans.service';
 import { DietCalc, DietocalculoService } from '../../core/services/dietocalculo.service';
 import { BASE_TARGETS_NOTICE, dietLinkState, dietSummary, planTargetsFromDiet } from '../../core/nutrition/diet-targets';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
@@ -414,6 +414,7 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
     ];
     if (meta.status === 'published') items.push({ label: 'Volver a borrador', icon: 'undo', separator: true, run: () => this.status('unpublish') });
     if (meta.status === 'finished') items.push({ label: 'Crear el siguiente plan', icon: 'calendar', link: ['/planes/nuevo'] });
+    items.push({ label: 'Eliminar plan…', icon: 'trash', danger: true, separator: true, run: () => void this.deletePlan() });
     return items;
   });
 
@@ -779,6 +780,17 @@ export class PlanEditor implements OnInit, HasUnsavedChanges {
     catch (e) { this.toast.error(e instanceof Error ? e.message : 'No se pudo cambiar el estado.'); return; }
     this.store.reloadFromServer();
     this.toast.ok('Estado del plan actualizado.');
+  }
+
+  /** Eliminación permanente del plan abierto (en cualquier estado), con aviso de todo lo que se borra. */
+  protected async deletePlan(): Promise<void> {
+    const ok = await this.confirm.ask(deletePlanConfirm(this.store.name()));
+    if (!ok) return;
+    try { await firstValueFrom(this.plans.remove(this.id())); }
+    catch (e) { this.toast.error(e instanceof Error ? e.message : 'No se pudo eliminar el plan.'); return; }
+    this.store.abandon(); // el plan ya no existe: nada que guardar ni avisar al salir
+    this.toast.ok('Plan eliminado.');
+    void this.router.navigateByUrl('/planes');
   }
 
   // ---------- Objetivos (§30.7) ----------
