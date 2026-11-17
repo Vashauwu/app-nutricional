@@ -32,7 +32,8 @@ const MODES: { id: CareModality; hint: string }[] = [
     .cmp .bar { block-size: .5rem; border-radius: 999px; background: var(--line); overflow: hidden; }
     .cmp .bar i { display: block; block-size: 100%; background: var(--brand-ink); border-radius: inherit; transition: inline-size .3s cubic-bezier(.22, 1, .36, 1); }
     .addr { color: var(--nutri-texto-fuerte); font-weight: 600; margin: 0; }
-    .savebar { position: sticky; inset-block-end: 0; z-index: 5; display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); padding: var(--space-3) 0; background: var(--nutri-marfil); border-block-start: 1px solid var(--line); margin-block-start: var(--space-4); }
+    .savebar { position: sticky; inset-block-end: var(--space-4); z-index: 5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-m); box-shadow: var(--shadow-m); }
+    .cols { padding-block-end: var(--space-6); }
     @media (prefers-reduced-motion: reduce) { .cmp .bar i { transition: none; } }
   `,
   template: `
@@ -90,10 +91,15 @@ const MODES: { id: CareModality; hint: string }[] = [
           } @else { <p class="dc-sub m-0">Atiendes solo en línea: no hace falta dirección.</p> }
         </section>
 
-        <div class="savebar">
-          <span class="small" [class.muted]="!dirty()" role="status">@if (dirty()) { <app-icon name="edit" [size]="16" /> Cambios sin guardar } @else { <app-icon name="check" [size]="16" /> Todo guardado }</span>
-          <button tuiButton type="button" size="m" [disabled]="!dirty() || saving()" (click)="save()"><app-icon name="save" [size]="18" /> {{ saving() ? 'Guardando…' : 'Guardar cambios' }}</button>
-        </div>
+        @if (dirty() || saving()) {
+          <div class="savebar" role="region" aria-label="Cambios sin guardar">
+            <span class="small"><app-icon name="edit" [size]="16" /> Cambios sin guardar</span>
+            <span class="row">
+              <button tuiButton type="button" size="m" appearance="secondary" [disabled]="saving()" (click)="discard()">Descartar</button>
+              <button tuiButton type="button" size="m" [disabled]="saving()" (click)="save()"><app-icon name="save" [size]="18" /> {{ saving() ? 'Guardando…' : 'Guardar cambios' }}</button>
+            </span>
+          </div>
+        }
       </div>
     </section>
   `,
@@ -139,6 +145,8 @@ export class ProfilePage implements HasUnsavedChanges {
   protected val(e: Event): string { return (e.target as HTMLInputElement).value; }
   protected err(k: string): string { return this.errors()[k] ?? ''; }
   protected set<K extends keyof ProfessionalProfile>(k: K, v: ProfessionalProfile[K] | string): void { this.f.update((x) => ({ ...x, [k]: v })); }
+
+  protected discard(): void { this.f.set({ ...this.base() }); this.license.set(this.baseLicense()); this.errors.set({}); }
 
   protected save(): void {
     this.saving.set(true);
