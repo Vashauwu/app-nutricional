@@ -340,3 +340,41 @@ func TestPlatformActionsAreInvisibleToTenants(t *testing.T) {
 	require.NoError(t, e.pool.QueryRow(ctx, `SELECT count(*) FROM platform_actions`).Scan(&n))
 	require.Zero(t, n, "la consulta afectada no ve las solicitudes sobre ella")
 }
+
+func TestOverviewCountsWhatIsThere(t *testing.T) {
+	e := start(t, false)
+	e.now = time.Now() // las altas se fechan con el reloj de la base: la ventana del resumen debe usar el mismo
+	ana, beto := e.staff(t, "ana@plataforma.mx"), e.staff(t, "beto@plataforma.mx")
+	bg := context.Background()
+	before, err := e.svc.Overview(bg)
+	require.NoError(t, err)
+
+	_, pagaID := e.account(t, "Consulta Paga", "paga@clinica.mx")
+	_, cortesiaID := e.account(t, "Consulta Cortesía", "cortesia@clinica.mx")
+	_, bloqueadaID := e.account(t, "Consulta Bloqueada", "bloqueada@clinica.mx")
+
+	// Una cuenta que paga el Estándar mensual.
+	_, err = e.pool.Exec(tenant.Bypass(bg), `UPDATE subscriptions SET plan = 'standard', status = 'active', billing_period = 'monthly', current_period_end = $2 WHERE practice_id = $1`, pagaID, e.now.AddDate(0, 0, 20))
+	require.NoError(t, err)
+	// Una con cortesía Pro (no cuenta como ingreso).
+	req, err := e.svc.Request(bg, ana, cortesiaID, platform.KindCompPlan, platform.Params{Plan: "pro", Days: 30}, why)
+	require.NoError(t, err)
+	_, err = e.svc.Decide(bg, beto, req.ID, true, "ok")
+	require.NoError(t, err)
+	// Una suspendida.
+	require.NoError(t, e.svc.Suspend(bg, ana, bloqueadaID, "Uso indebido de la cuenta"))
+
+	after, err := e.svc.Overview(bg)
+	require.NoError(t, err)
+	require.Equal(t, before.Accounts+3, after.Accounts)
+	require.Equal(t, before.Suspended+1, after.Suspended)
+	require.Equal(t, before.Comped+1, after.Comped)
+	require.Equal(t, before.ByPlan["standard"]+1, after.ByPlan["standard"])
+	require.Equal(t, before.ByPlan["pro"]+1, after.ByPlan["pro"])
+	require.Equal(t, before.PayingAccounts+1, after.PayingAccounts)
+	require.Equal(t, before.MRRMXN+299, after.MRRMXN, "la cortesía no suma ingreso")
+	require.Equal(t, before.Signups30+3, after.Signups30)
+	require.Len(t, after.SignupsDaily, 30)
+	require.Equal(t, before.Usage.Users+3, after.Usage.Users)
+	require.Equal(t, before.PendingActions, after.PendingActions, "la solicitud ya se resolvió")
+}

@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { AuthService } from './core/auth/auth.service';
-import { consentGuard, guestGuard, roleGuard } from './core/guards/auth.guards';
+import { consentGuard, guestGuard, permissionGuard, roleGuard } from './core/guards/auth.guards';
 import { unsavedChangesGuard } from './core/guards/unsaved.guard';
 
 // Feature-based + lazy loading (§21.5). Los guards mejoran la experiencia;
@@ -67,6 +67,17 @@ export const routes: Routes = [
       { path: 'perfil', title: 'Mi perfil profesional', canDeactivate: [unsavedChangesGuard], loadComponent: () => import('./features/profile/profile').then((m) => m.ProfilePage) },
       { path: 'facturacion', title: 'Facturación', loadComponent: () => import('./features/billing/billing').then((m) => m.BillingPage) },
       { path: 'configuracion', title: 'Configuración', loadComponent: () => import('./features/settings/settings').then((m) => m.SettingsPage) },
+    ],
+  },
+  {
+    path: 'plataforma',
+    canActivate: [permissionGuard('platform:accounts')],
+    loadComponent: () => import('./features/platform/shell').then((m) => m.PlatformShell),
+    children: [
+      { path: '', pathMatch: 'full', title: 'Plataforma · Resumen', loadComponent: () => import('./features/platform/overview').then((m) => m.PlatformOverview) },
+      { path: 'cuentas', title: 'Plataforma · Cuentas', loadComponent: () => import('./features/platform/accounts').then((m) => m.PlatformAccounts) },
+      { path: 'cuentas/:id', title: 'Plataforma · Cuenta', loadComponent: () => import('./features/platform/account-detail').then((m) => m.PlatformAccountPage) },
+      { path: 'aprobaciones', title: 'Plataforma · Aprobaciones', loadComponent: () => import('./features/platform/approvals').then((m) => m.PlatformApprovals) },
     ],
   },
   { path: '**', title: 'Página no encontrada', loadComponent: () => import('./features/misc/not-found').then((m) => m.NotFound) },

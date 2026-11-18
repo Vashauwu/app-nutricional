@@ -35,6 +35,7 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g.GET("/console", ct.asset("console/index.html", "text/html; charset=utf-8"))
 	g.GET("/console.js", ct.asset("console/console.js", "text/javascript; charset=utf-8"))
 	g.GET("/console.css", ct.asset("console/console.css", "text/css; charset=utf-8"))
+	g.GET("/overview", ct.overview)
 	g.GET("/accounts", ct.list)
 	g.GET("/accounts/:id", ct.account)
 	g.GET("/actions", ct.actions)
@@ -98,6 +99,16 @@ func uid(c *gin.Context) (uuid.UUID, bool) {
 		return uuid.Nil, false
 	}
 	return id, true
+}
+
+func (ct *Controller) overview(c *gin.Context) {
+	o, err := ct.svc.Overview(c.Request.Context())
+	if err != nil {
+		ct.fail(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, o)
 }
 
 func (ct *Controller) list(c *gin.Context) {

@@ -126,6 +126,7 @@ export class NutriShell {
 
   protected readonly userMenu = computed<MenuItem[]>(() => [
     { label: 'Mi perfil profesional', icon: 'user', run: () => void this.router.navigateByUrl('/perfil') },
+    ...(this.auth.can('platform:accounts') ? [{ label: 'Panel de plataforma', icon: 'layout' as const, run: () => void this.router.navigateByUrl('/plataforma') }] : []),
     ...(this.auth.apiMode ? [{ label: 'Facturación y plan', icon: 'gem' as const, run: () => void this.router.navigateByUrl('/facturacion') }] : []),
     { label: 'Tablas cómodas', icon: 'list', checked: this.theme.density() === 'comfortable', run: () => this.theme.setDensity('comfortable') },
     { label: 'Tablas compactas', icon: 'list', checked: this.theme.density() === 'compact', run: () => this.theme.setDensity('compact') },

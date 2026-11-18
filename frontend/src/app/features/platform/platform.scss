@@ -1,0 +1,36 @@
+// Estilos del panel de plataforma. Se cargan SOLO con la zona /plataforma (no pesan en el resto de la aplicación).
+// Solo usan los tokens del sistema: marfil, superficie blanca, ciruela y los pasteles con significado.
+app-platform-shell {
+
+      & { display: block; min-block-size: 100dvh; background: var(--nutri-marfil); color: var(--nutri-texto); }
+      .frame { display: grid; grid-template-columns: 15rem 1fr; grid-template-rows: auto 1fr; min-block-size: 100dvh; }
+      header { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-3, .75rem); padding: .625rem 1.25rem; background: var(--surface); border-block-end: 1px solid var(--nutri-borde); position: sticky; inset-block-start: 0; z-index: 5; }
+      .brand { display: inline-flex; align-items: center; gap: .625rem; font-weight: 600; color: var(--brand-ink); text-decoration: none; }
+      .brand img { inline-size: 2rem; block-size: 2rem; }
+      .brand .name { font-family: var(--nutri-font-display); font-size: 1.125rem; font-weight: 700; }
+      .grow { flex: 1; }
+      .frame > * { min-inline-size: 0; }
+      nav { padding: 1rem .75rem; border-inline-end: 1px solid var(--nutri-borde); background: var(--surface); }
+      nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; }
+      nav a { display: flex; align-items: center; gap: .625rem; padding: .625rem .75rem; min-block-size: var(--tap, 2.75rem); border-radius: var(--radius-m, .75rem); color: var(--nutri-texto); text-decoration: none; font-weight: 500; }
+      nav a:hover { background: color-mix(in srgb, var(--nutri-lavanda) 45%, transparent); }
+      nav a.active { background: var(--nutri-lavanda); color: var(--brand-ink); font-weight: 600; }
+      nav a:focus-visible, .back:focus-visible { outline: 2px solid var(--brand-ink); outline-offset: 2px; }
+      nav .count { margin-inline-start: auto; }
+      nav .foot { margin-block-start: 1.5rem; padding-block-start: 1rem; border-block-start: 1px solid var(--nutri-borde); }
+      nav .hint { font-size: .8125rem; color: var(--nutri-texto-suave); padding: .5rem .75rem; }
+      main { padding: 1.5rem; min-inline-size: 0; }
+      .inner { max-inline-size: var(--page-max, 78rem); margin-inline: auto; }
+      @media (max-width: 40rem) {
+        header { padding-inline: .75rem; gap: .5rem; }
+        .brand .name, .back .lbl { display: none; }
+      }
+      @media (max-width: 52rem) {
+        .frame { grid-template-columns: 1fr; }
+        nav { border-inline-end: 0; border-block-end: 1px solid var(--nutri-borde); padding: .5rem; }
+        nav { overflow: hidden; }
+        nav ul { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; }
+        nav .foot, nav .hint { display: none; }
+        main { padding: 1rem; }
+      }
+}

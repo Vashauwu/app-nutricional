@@ -69,3 +69,35 @@ SELECT * FROM payments WHERE id = $1 AND practice_id = app_practice_id();
 
 -- name: MarkPaymentRefunded :execrows
 UPDATE payments SET status = 'refunded' WHERE id = $1 AND practice_id = app_practice_id() AND status = 'paid';
+
+-- Resumen del panel: todas las suscripciones (el estado efectivo se resuelve en Go con plans.Resolve).
+-- name: PlatformOverviewSubs :many
+SELECT p.id, p.name, p.status, p.created_at,
+       s.plan, s.status AS sub_status, s.billing_period, s.trial_ends_at, s.grace_until, s.current_period_end, s.comp_reason,
+       COALESCE((SELECT u.email FROM users u JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
+                 WHERE u.practice_id = p.id AND r.code = 'nutritionist' ORDER BY u.created_at LIMIT 1), '')::text AS owner_email
+FROM practices p JOIN subscriptions s ON s.practice_id = p.id;
+
+-- name: PlatformSignupsByDay :many
+SELECT g::date AS day, count(p.id)::bigint AS total
+FROM generate_series(sqlc.arg(from_day)::date, sqlc.arg(to_day)::date, interval '1 day') g
+LEFT JOIN practices p ON (p.created_at AT TIME ZONE 'America/Mexico_City')::date = g::date
+GROUP BY 1 ORDER BY 1;
+
+-- name: PlatformPaymentStats :one
+SELECT count(*) FILTER (WHERE status = 'paid')::bigint AS paid_count,
+       COALESCE(sum(amount_mxn) FILTER (WHERE status = 'paid'), 0)::bigint AS paid_mxn,
+       count(*) FILTER (WHERE status = 'failed')::bigint AS failed_count,
+       COALESCE(sum(amount_mxn) FILTER (WHERE status IN ('refunded', 'chargeback')), 0)::bigint AS returned_mxn
+FROM payments WHERE occurred_at >= $1;
+
+-- name: PlatformRecentPayments :many
+SELECT pa.id, pa.practice_id, p.name AS practice_name, pa.status, pa.amount_mxn, pa.plan, pa.occurred_at
+FROM payments pa JOIN practices p ON p.id = pa.practice_id
+ORDER BY pa.occurred_at DESC LIMIT 8;
+
+-- name: PlatformUsageTotals :one
+SELECT (SELECT count(*) FROM patients WHERE deleted_at IS NULL AND status <> 'inactive')::bigint AS active_patients,
+       (SELECT count(*) FROM users)::bigint AS users,
+       (SELECT COALESCE(sum(size_bytes), 0) FROM file_objects WHERE deleted_at IS NULL)::bigint AS storage_bytes,
+       (SELECT count(*) FROM platform_actions WHERE status = 'pending')::bigint AS pending_actions;
