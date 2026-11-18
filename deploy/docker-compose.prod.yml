@@ -53,6 +53,11 @@ services:
       SIGNUP_REQUIRE_EMAIL_VERIFICATION: ${SIGNUP_REQUIRE_EMAIL_VERIFICATION:-true}
       # ID de cliente de Google (público) para «Continuar con Google»; vacío = sin botón.
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      # Verificación anti robots del registro (Cloudflare Turnstile). En producción con registro abierto son obligatorias.
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      # Catálogo SMAE oficial: apagado salvo que el .env del ambiente lo encienda (hay que contar con la licencia).
+      SMAE_ENABLED: ${SMAE_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}

@@ -126,3 +126,24 @@ func TestPerksByPlan(t *testing.T) {
 	require.False(t, std.Perks.PlatformMark)
 	require.True(t, std.Perks.AllHandoutStyles && std.Perks.CustomAccent)
 }
+
+// Con el catálogo SMAE apagado, la lista de funciones no lo anuncia; el catálogo base (Catalog) no se altera.
+func TestFeaturesDoNotAdvertiseSMAEWhenOff(t *testing.T) {
+	pool := testsupport.NewPool(t)
+	svc := plans.NewService(pool)
+	ctx := testsupport.NewPractice(t, pool)
+
+	s, err := svc.Summary(ctx)
+	require.NoError(t, err)
+	require.Contains(t, s.Catalog[0].Features, "Biblioteca de platillos y catálogo SMAE")
+
+	svc.SetSMAE(false)
+	s, err = svc.Summary(ctx)
+	require.NoError(t, err)
+	for _, p := range s.Catalog {
+		for _, f := range p.Features {
+			require.NotContains(t, f, "SMAE", "el plan %s no debe anunciar lo que no está encendido", p.Code)
+		}
+	}
+	require.Contains(t, plans.Catalog[0].Features, "Biblioteca de platillos y catálogo SMAE", "la lista original no se modifica")
+}

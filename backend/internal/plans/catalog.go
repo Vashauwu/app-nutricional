@@ -37,6 +37,11 @@ type Perks struct {
 	CustomAccent bool `json:"custom_accent"`
 }
 
+const (
+	featPlatillosSMAE    = "Biblioteca de platillos y catálogo SMAE"
+	featPlatillosPropios = "Biblioteca de platillos y de alimentos propios con sus equivalencias"
+)
+
 const mb = 1 << 20
 const gb = 1 << 30
 
@@ -49,7 +54,7 @@ var Catalog = []Plan{
 		Perks:  Perks{PlatformMark: true, AllHandoutStyles: false, CustomAccent: false},
 		Features: []string{
 			"Hasta 15 pacientes activos", "Expediente, mediciones y consentimientos", "Dietocálculo y planes semanales",
-			"Biblioteca de platillos y catálogo SMAE", "Agenda, seguimiento, alertas y reportes", "Documento del paciente (PDF y WhatsApp) con la marca de la plataforma y estilo clásico", "300 MB de archivos",
+			featPlatillosSMAE, "Agenda, seguimiento, alertas y reportes", "Documento del paciente (PDF y WhatsApp) con la marca de la plataforma y estilo clásico", "300 MB de archivos",
 		},
 	},
 	{

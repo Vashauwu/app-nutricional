@@ -17,10 +17,32 @@ type Service struct {
 	pool *pgxpool.Pool
 	q    *db.Queries
 	now  func() time.Time
+	// smae: el catálogo oficial está encendido. Apagado, la lista de funciones no lo anuncia.
+	smae bool
 }
 
 func NewService(pool *pgxpool.Pool) *Service {
-	return &Service{pool: pool, q: db.New(pool), now: time.Now}
+	return &Service{pool: pool, q: db.New(pool), now: time.Now, smae: true}
+}
+
+// SetSMAE indica si el catálogo SMAE oficial está encendido (para no anunciarlo si no lo está).
+func (s *Service) SetSMAE(v bool) { s.smae = v }
+
+// catalog devuelve los planes con la lista de funciones ajustada a lo que la plataforma ofrece hoy.
+func (s *Service) catalog() []Plan {
+	out := make([]Plan, len(Catalog))
+	for i, p := range Catalog {
+		p.Features = append([]string(nil), p.Features...)
+		if !s.smae {
+			for j, f := range p.Features {
+				if f == featPlatillosSMAE {
+					p.Features[j] = featPlatillosPropios
+				}
+			}
+		}
+		out[i] = p
+	}
+	return out
 }
 
 // SetClock fija el reloj (pruebas del ciclo de vida).
@@ -90,7 +112,7 @@ func (s *Service) Summary(ctx context.Context) (Summary, error) {
 	return Summary{
 		Plan: st.Plan, Contracted: st.Contracted, BillingPeriod: sub.BillingPeriod.String, State: st.State, EndsAt: st.EndsAt,
 		Downgraded: st.Downgraded, Comped: st.Comped, CompReason: sub.CompReason.String, CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
-		PendingPlan: sub.PendingPlan.String, Usage: u, Catalog: Catalog,
+		PendingPlan: sub.PendingPlan.String, Usage: u, Catalog: s.catalog(),
 	}, nil
 }
 

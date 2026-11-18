@@ -84,6 +84,9 @@ jobs:
           site-url: ${{ vars.SITE_URL }}
           signup-enabled: ${{ vars.SIGNUP_ENABLED }}
           google-client-id: ${{ vars.GOOGLE_CLIENT_ID }}
+          smae-enabled: ${{ vars.SMAE_ENABLED }}
+          turnstile-site-key: ${{ vars.TURNSTILE_SITE_KEY }}
+          turnstile-secret: ${{ secrets.TURNSTILE_SECRET }}
 
   # El ambiente `production` debe tener «Required reviewers»: el flujo se detiene aquí hasta que apruebes en GitHub.
   produccion:
@@ -116,3 +119,6 @@ jobs:
           site-url: ${{ vars.SITE_URL }}
           signup-enabled: ${{ vars.SIGNUP_ENABLED }}
           google-client-id: ${{ vars.GOOGLE_CLIENT_ID }}
+          smae-enabled: ${{ vars.SMAE_ENABLED }}
+          turnstile-site-key: ${{ vars.TURNSTILE_SITE_KEY }}
+          turnstile-secret: ${{ secrets.TURNSTILE_SECRET }}

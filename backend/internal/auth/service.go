@@ -16,6 +16,7 @@ import (
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
 	"github.com/nutri/app-nutricional/backend/internal/config"
+	"github.com/nutri/app-nutricional/backend/internal/middleware"
 	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
@@ -71,6 +72,9 @@ type Service struct {
 	// Si es true, los correos que no condicionan la respuesta (recuperación y aviso de cambio) salen en segundo plano.
 	asyncMail bool
 	google    IDTokenVerifier
+	captcha   CaptchaVerifier
+	// Registros por correo (la ruta ya limita por IP).
+	signupByEmail *middleware.RateLimiter
 }
 
 // SetAsyncMail envía en segundo plano el correo de recuperación y el aviso de cambio de contraseña.
@@ -98,6 +102,7 @@ func NewService(pool *pgxpool.Pool, cfg config.Config, mailer Mailer, log *slog.
 	return &Service{
 		pool: pool, q: db.New(pool), cfg: cfg, Tokens: NewTokenManager(cfg.JWTSecret, cfg.AccessTokenTTL),
 		limiter: NewLimiter(5, 15*time.Minute), mailer: mailer, log: log, now: time.Now,
+		signupByEmail: middleware.NewRateLimiter(3, time.Hour),
 	}
 }
 

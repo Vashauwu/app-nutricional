@@ -333,6 +333,7 @@ type signupReq struct {
 	Email       string `json:"email"`
 	Password    string `json:"password"`
 	AcceptTerms bool   `json:"accept_terms"`
+	Captcha     string `json:"captcha"`
 }
 
 func (ct *Controller) signup(c *gin.Context) {
@@ -341,7 +342,7 @@ func (ct *Controller) signup(c *gin.Context) {
 		shared.AbortWithError(c, http.StatusBadRequest, "invalid_request", "Completa tus datos.")
 		return
 	}
-	verified, err := ct.svc.Signup(c.Request.Context(), SignupInput{Name: in.Name, Email: in.Email, Password: in.Password, AcceptTerms: in.AcceptTerms}, meta(c))
+	verified, err := ct.svc.Signup(c.Request.Context(), SignupInput{Name: in.Name, Email: in.Email, Password: in.Password, AcceptTerms: in.AcceptTerms, CaptchaToken: in.Captcha, RemoteIP: c.ClientIP()}, meta(c))
 	var bad SignupValidation
 	switch {
 	case errors.As(err, &bad):
@@ -351,6 +352,9 @@ func (ct *Controller) signup(c *gin.Context) {
 		shared.AbortWithError(c, http.StatusForbidden, "signup_closed", ErrSignupClosed.Error()+".")
 	case errors.Is(err, ErrEmailInUse):
 		shared.AbortWithError(c, http.StatusConflict, "email_taken", ErrEmailInUse.Error()+".")
+	case errors.Is(err, ErrSignupLimited):
+		c.Header("Retry-After", "3600")
+		shared.AbortWithError(c, http.StatusTooManyRequests, "rate_limited", "Hiciste varios intentos con este correo. Espera un rato e inténtalo de nuevo.")
 	case err != nil:
 		shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo crear la cuenta. Inténtalo de nuevo.")
 	default:

@@ -6,6 +6,7 @@ import { debounceTime, switchMap } from 'rxjs';
 import { TuiButton } from '@taiga-ui/core';
 import { DbService } from '../../core/data/db.service';
 import { CatalogService, CustomFoodInput } from '../../core/services/catalog.service';
+import { PlatformService } from '../../core/services/platform.service';
 import { ConfirmService, ToastService } from '../../core/services/ui.services';
 import { FoodView } from '../../core/nutrition/engine';
 import { CustomFood } from '../../shared/models/domain';
@@ -44,15 +45,19 @@ const SOURCE_LABEL = { label: 'Etiqueta nutrimental', manufacturer: 'Fabricante'
   `,
   template: `
     <div class="page">
-      <app-page-header title="Catálogo SMAE" [sub]="'Alimentos, equivalentes y composición. La edición activa es ' + edition().name + '.'" />
+      <app-page-header [title]="smae() ? 'Catálogo SMAE' : 'Mis alimentos'" [sub]="smae() ? 'Alimentos, equivalentes y composición. La edición activa es ' + edition().name + '.' : 'Tus alimentos con sus valores nutrimentales y su equivalencia.'" />
 
+      @if (!smae()) {
+        <div class="callout"><app-icon name="info" /><div class="callout-body"><p><strong>El catálogo SMAE oficial aún no está habilitado en esta plataforma.</strong> Registra tus alimentos con los valores de su etiqueta o de tu fuente, y asígnales su equivalencia para usarlos en platillos y planes.</p></div></div>
+      } @else {
       <div class="callout callout--warn"><app-icon name="alert" /><div class="callout-body"><p><strong>Datos de ejemplo.</strong> Este catálogo es sintético y no reproduce material protegido. La edición oficial se cargará cuando se confirme la licencia de la fuente.</p></div></div>
+      }
 
       <div class="tabs" role="tablist" aria-label="Secciones del catálogo">
-        @for (t of tabs; track t.id) { <button type="button" role="tab" [attr.aria-selected]="tab() === t.id" [attr.tabindex]="tab() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button> }
+        @for (t of tabs(); track t.id) { <button type="button" role="tab" [attr.aria-selected]="cur() === t.id" [attr.tabindex]="cur() === t.id ? 0 : -1" (click)="tab.set(t.id)">{{ t.label }}</button> }
       </div>
 
-      @switch (tab()) {
+      @switch (cur()) {
         @case ('alimentos') {
           <section class="panel panel--flush" aria-label="Alimentos del catálogo">
             <div class="search-row">
@@ -202,7 +207,12 @@ export class Catalog {
   private readonly router = inject(Router);
 
   protected readonly tab = signal<Tab>('alimentos');
-  protected readonly tabs: { id: Tab; label: string }[] = [{ id: 'alimentos', label: 'Catálogo SMAE' }, { id: 'personalizados', label: 'Mis alimentos' }, { id: 'ediciones', label: 'Ediciones y recálculo' }];
+  protected readonly smae = inject(PlatformService).smaeEnabled;
+  // Con el catálogo oficial apagado solo existe «Mis alimentos»; lo demás (catálogo y ediciones) no se muestra.
+  protected readonly tabs = computed<{ id: Tab; label: string }[]>(() => this.smae()
+    ? [{ id: 'alimentos', label: 'Catálogo SMAE' }, { id: 'personalizados', label: 'Mis alimentos' }, { id: 'ediciones', label: 'Ediciones y recálculo' }]
+    : [{ id: 'personalizados', label: 'Mis alimentos' }]);
+  protected readonly cur = computed<Tab>(() => (this.tabs().some((t) => t.id === this.tab()) ? this.tab() : this.tabs()[0].id));
   protected readonly step = STEP;
   protected readonly source_ = SOURCE_LABEL;
   protected readonly sources = Object.entries(SOURCE_LABEL);

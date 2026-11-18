@@ -44,6 +44,8 @@ type Catalog interface {
 	Resolve(ctx context.Context, kind string, id uuid.UUID) (smae.Food, error)
 	ResolveByEditionCode(ctx context.Context, editionID uuid.UUID, code string) (smae.Food, error)
 	Edition(ctx context.Context, id uuid.UUID) (db.SmaeEdition, error)
+	// Enabled: el catálogo oficial está encendido. Apagado solo se admiten alimentos oficiales que el platillo ya usaba.
+	Enabled() bool
 }
 
 type Service struct {
@@ -122,7 +124,7 @@ type computed struct {
 }
 
 // compute resuelve cada alimento y calcula con el motor. Rechaza alimentos de otra edición o inactivos.
-func (s *Service) compute(ctx context.Context, in Input, edition uuid.UUID) (computed, error) {
+func (s *Service) compute(ctx context.Context, in Input, edition uuid.UUID, keep map[uuid.UUID]bool) (computed, error) {
 	var out computed
 	results := make([]calculator.IngredientResult, 0, len(in.Ingredients))
 	for i, ing := range in.Ingredients {
@@ -133,6 +135,9 @@ func (s *Service) compute(ctx context.Context, in Input, edition uuid.UUID) (com
 				return out, ValidationError{key: "el alimento no existe"}
 			}
 			return out, err
+		}
+		if food.Kind == "smae" && !s.catalog.Enabled() && !keep[food.ID] {
+			return out, ValidationError{key: "el catálogo SMAE oficial no está habilitado: usa alimentos propios"}
 		}
 		if food.Kind == "smae" && (food.EditionID == nil || *food.EditionID != edition) {
 			return out, ValidationError{key: fmt.Sprintf("«%s» pertenece a otra edición del catálogo; elígelo de la edición activa", food.Name)}
@@ -229,7 +234,7 @@ func (s *Service) Create(ctx context.Context, a Actor, in Input) (DishView, erro
 	if err != nil {
 		return DishView{}, err
 	}
-	c, err := s.compute(ctx, in, ed.ID)
+	c, err := s.compute(ctx, in, ed.ID, nil)
 	if err != nil {
 		return DishView{}, err
 	}
@@ -254,6 +259,29 @@ func (s *Service) Create(ctx context.Context, a Actor, in Input) (DishView, erro
 	return s.Get(ctx, d.ID, 0)
 }
 
+// currentSmaeIngredients devuelve los alimentos oficiales que ya usa la versión vigente: con el catálogo apagado se pueden
+// conservar, pero no agregar otros.
+func (s *Service) currentSmaeIngredients(ctx context.Context, dishID uuid.UUID, version int32) (map[uuid.UUID]bool, error) {
+	v, err := s.q.GetDishVersion(ctx, db.GetDishVersionParams{DishID: dishID, VersionNumber: version})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	ings, err := s.q.ListIngredients(ctx, v.ID)
+	if err != nil {
+		return nil, err
+	}
+	keep := map[uuid.UUID]bool{}
+	for _, i := range ings {
+		if i.FoodKind == "smae" {
+			keep[i.FoodID] = true
+		}
+	}
+	return keep, nil
+}
+
 // NewVersion guarda los cambios como una versión NUEVA; las anteriores no se tocan (§7.4).
 func (s *Service) NewVersion(ctx context.Context, a Actor, id uuid.UUID, in Input) (DishView, error) {
 	if e := in.validate(true); len(e) > 0 {
@@ -270,7 +298,11 @@ func (s *Service) NewVersion(ctx context.Context, a Actor, id uuid.UUID, in Inpu
 	if err != nil {
 		return DishView{}, err
 	}
-	c, err := s.compute(ctx, in, ed.ID)
+	keep, err := s.currentSmaeIngredients(ctx, id, d.CurrentVersion)
+	if err != nil {
+		return DishView{}, err
+	}
+	c, err := s.compute(ctx, in, ed.ID, keep)
 	if err != nil {
 		return DishView{}, err
 	}

@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, HostListener, OnInit, computed, inj
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { TuiButton } from '@taiga-ui/core';
+import { PlatformService } from '../../core/services/platform.service';
 import { DbService } from '../../core/data/db.service';
 import { DISH_CATEGORIES, DishesService } from '../../core/services/dishes.service';
 import { ToastService } from '../../core/services/ui.services';
@@ -67,7 +68,7 @@ import { FoodPicker } from './food-picker';
 
           <section class="panel" aria-labelledby="h-ing">
             <h2 id="h-ing" class="panel-head">Ingredientes y cantidades</h2>
-            <p class="small muted">Los cálculos se derivan de estos datos. Elige un alimento del catálogo SMAE o uno personalizado.</p>
+            <p class="small muted">Los cálculos se derivan de estos datos. {{ smae() ? 'Elige un alimento del catálogo SMAE o uno personalizado.' : 'Elige uno de tus alimentos (Mis alimentos).' }}</p>
             <app-food-picker label="Agregar ingrediente" (picked)="startAdd($event)" />
             @if (draft(); as d) {
               <div class="add" role="group" [attr.aria-label]="'Cantidad de ' + d.food.name">
@@ -143,6 +144,7 @@ import { FoodPicker } from './food-picker';
   `,
 })
 export class DishEditor implements OnInit, HasUnsavedChanges {
+  protected readonly smae = inject(PlatformService).smaeEnabled;
   private readonly dishes = inject(DishesService);
   private readonly data = inject(DbService);
   private readonly router = inject(Router);

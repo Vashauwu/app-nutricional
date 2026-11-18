@@ -445,7 +445,11 @@ func TestEditionRecalcFlow(t *testing.T) {
 		require.Equal(t, 200, code)
 		statuses := map[string]int{}
 		for _, it := range list["items"].([]any) {
-			statuses[it.(map[string]any)["status"].(string)]++
+			m := it.(map[string]any)
+			if m["edition_number"].(float64) == 0 {
+				continue // la edición base vacía (migración 18) no cuenta
+			}
+			statuses[m["status"].(string)]++
 		}
 		require.Equal(t, 1, statuses["active"])
 		require.Equal(t, 1, statuses["archived"], "la edición anterior se conserva archivada")

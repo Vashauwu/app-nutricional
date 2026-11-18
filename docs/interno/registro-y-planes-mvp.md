@@ -58,11 +58,33 @@ arma en el navegador, así que esa regla la **refleja la interfaz**, no la fuerz
 La pantalla de Facturación avisa de la prueba, el cobro fallido, la cancelación y el vencimiento, y alerta al 80 % y al
 100 % de pacientes y archivos (también cuando, tras bajar de plan, hay más pacientes que el cupo).
 
+## Registro abierto: antibots y catálogo apagado (M3)
+
+- **Verificación anti robots** (Cloudflare Turnstile): el formulario de registro muestra el widget si el servidor tiene
+  `TURNSTILE_SITE_KEY`; el servidor valida el token con `TURNSTILE_SECRET` (falla cerrado: si no puede verificar, no se abre
+  la cuenta). En **producción con `SIGNUP_ENABLED=true` ambas variables son obligatorias** (la API no arranca sin ellas).
+  En staging y desarrollo son opcionales. El registro con Google no pide captcha (Google ya verificó al titular).
+  Claves de prueba de Cloudflare para staging: sitio `1x00000000000000000000AA`, secreto `1x0000000000000000000000000000000AA`
+  (siempre aprueban; no protegen de nada).
+- **Correos temporales** (lista corta de servicios conocidos) se rechazan; **3 registros por hora por correo** además de
+  los 10 por hora por IP.
+- La bitácora guarda la **versión de términos** aceptada (`terms_version`, hoy `2026-11-borrador`). Cambia
+  `auth.TermsVersion` al publicar los textos definitivos.
+- **Catálogo SMAE apagado por omisión** (`SMAE_ENABLED=false`): no se sirve ningún alimento oficial; la pantalla pasa a
+  «Mis alimentos» y los planes no lo anuncian. Lo ya usado en platillos y planes se conserva y se ve; con el catálogo
+  apagado no se pueden agregar alimentos oficiales nuevos a un platillo. Al encenderlo todo reaparece.
+  Una **edición base vacía** (migración 18, solo si no hay ninguna edición) da la estructura de grupos para las
+  equivalencias de «Mis alimentos» y para guardar platillos.
+- Corrección importante: leer el catálogo y administrar «Mis alimentos» ahora exige `dishes:manage` (toda nutrióloga);
+  solo **importar y activar ediciones** exige `smae:manage`. Antes, una cuenta nueva no podía ni leer el catálogo.
+
 ## Configuración por ambiente
 
 | Variable | Omisión | Uso |
 |---|---|---|
 | `SIGNUP_ENABLED` | `false` | Abre el registro. Apagado, `/registro` muestra «Registro no disponible» y el ingreso no lo enlaza. |
+| `SMAE_ENABLED` | `false` | Enciende el catálogo SMAE oficial (requiere contar con la licencia). |
+| `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET` | vacío | Verificación anti robots del registro. Obligatorias en producción con registro abierto. |
 | `SIGNUP_REQUIRE_EMAIL_VERIFICATION` | `true` | En `false` la cuenta nace activa y entra directo. Solo se acepta en desarrollo o con `ALLOW_DEMO_ACCOUNTS=true` (staging); en producción real la API no arranca. |
 
 La pantalla pregunta al servidor (`GET /api/v1/auth/options`): no hay bandera aparte en el frontend.

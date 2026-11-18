@@ -56,6 +56,13 @@ type Config struct {
 	SignupRequireEmailVerification bool `envconfig:"SIGNUP_REQUIRE_EMAIL_VERIFICATION" default:"true"`
 	// ID de cliente de Google (público) para «Continuar con Google». Sin él, el botón no existe.
 	GoogleClientID string `envconfig:"GOOGLE_CLIENT_ID"`
+	// Verificación anti robots del registro (Cloudflare Turnstile). La clave del sitio es pública; el secreto no. Sin secreto no
+	// hay verificación (desarrollo y staging); en producción con registro abierto son obligatorios.
+	TurnstileSiteKey string `envconfig:"TURNSTILE_SITE_KEY"`
+	TurnstileSecret  string `envconfig:"TURNSTILE_SECRET"`
+	// SMAEEnabled enciende el catálogo SMAE oficial. Apagado (por omisión) no se sirve ningún alimento del catálogo: las
+	// cuentas trabajan con «Mis alimentos». Lo ya usado en platillos y planes se conserva y reaparece al encenderlo.
+	SMAEEnabled bool `envconfig:"SMAE_ENABLED" default:"false"`
 	// AllowDemoAccounts marca un ambiente de pruebas (staging): nunca se activa en producción real.
 	AllowDemoAccounts bool `envconfig:"ALLOW_DEMO_ACCOUNTS" default:"false"`
 
@@ -96,8 +103,14 @@ func (c Config) IsProduction() bool { return c.Env == "production" }
 // ErrSignupUnverified: en producción no se permite abrir cuentas sin confirmar el correo.
 var ErrSignupUnverified = errors.New("SIGNUP_REQUIRE_EMAIL_VERIFICATION=false solo se permite en desarrollo o en un ambiente de pruebas (ALLOW_DEMO_ACCOUNTS=true)")
 
+// ErrSignupNoCaptcha: el registro abierto en producción exige verificación anti robots.
+var ErrSignupNoCaptcha = errors.New("SIGNUP_ENABLED en producción requiere TURNSTILE_SITE_KEY y TURNSTILE_SECRET")
+
 // Validate revisa combinaciones inseguras de configuración.
 func (c Config) Validate() error {
+	if c.IsProduction() && !c.AllowDemoAccounts && c.SignupEnabled && (c.TurnstileSiteKey == "" || c.TurnstileSecret == "") {
+		return ErrSignupNoCaptcha
+	}
 	if c.IsProduction() && !c.AllowDemoAccounts && c.SignupEnabled && !c.SignupRequireEmailVerification {
 		return ErrSignupUnverified
 	}

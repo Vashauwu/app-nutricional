@@ -45,12 +45,21 @@ type Service struct {
 	q     *db.Queries
 	audit audit.Recorder
 	log   *slog.Logger
+	// enabled: el catálogo oficial se sirve a las cuentas. Apagado no se lista ningún alimento oficial, pero lo ya usado en
+	// platillos y planes se sigue resolviendo (nada se pierde). Por omisión encendido; la API lo fija desde SMAE_ENABLED.
+	enabled bool
 }
 
 func NewService(pool *pgxpool.Pool, log *slog.Logger) *Service {
 	q := db.New(pool)
-	return &Service{pool: pool, q: q, audit: audit.Recorder{Q: q, Log: log}, log: log}
+	return &Service{pool: pool, q: q, audit: audit.Recorder{Q: q, Log: log}, log: log, enabled: true}
 }
+
+// SetEnabled enciende o apaga el catálogo SMAE oficial para las cuentas.
+func (s *Service) SetEnabled(v bool) { s.enabled = v }
+
+// Enabled dice si el catálogo SMAE oficial está encendido.
+func (s *Service) Enabled() bool { return s.enabled }
 
 func (s *Service) rec(ctx context.Context, a Actor, action, resType string, id uuid.UUID, meta map[string]any) {
 	s.audit.Record(ctx, audit.Event{Actor: a.ID, Action: action, ResourceType: resType, ResourceID: id, RequestID: a.RequestID, Metadata: meta})
@@ -318,7 +327,7 @@ func (s *Service) SearchFoods(ctx context.Context, q SearchQuery) (FoodsPage, er
 	var items []Food
 	var total int64
 	need := int32(q.Offset + q.Limit)
-	if q.Source != "custom" {
+	if q.Source != "custom" && s.enabled {
 		ed, err := s.ActiveEdition(ctx)
 		if err != nil {
 			return FoodsPage{}, err
