@@ -1,11 +1,13 @@
 package plans_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
@@ -146,4 +148,35 @@ func TestFeaturesDoNotAdvertiseSMAEWhenOff(t *testing.T) {
 		}
 	}
 	require.Contains(t, plans.Catalog[0].Features, "Biblioteca de platillos y catálogo SMAE", "la lista original no se modifica")
+}
+
+// La CLI de administración se conecta como PROPIETARIO (superusuario), que se salta la seguridad por filas. Aun así, cambiar
+// el plan de una consulta no debe tocar el de otra: las consultas de suscripción filtran por consulta de forma explícita.
+func TestOwnerConnectionOnlyTouchesItsPractice(t *testing.T) {
+	_, admin := testsupport.NewPools(t)
+	cfg := admin.Config().Copy()
+	tenant.ConfigurePool(cfg) // igual que cmd/admin
+	cli, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	require.NoError(t, err)
+	t.Cleanup(cli.Close)
+
+	a, b := testsupport.NewPractice(t, admin), testsupport.NewPractice(t, admin)
+	svc := plans.NewService(cli)
+	require.NoError(t, svc.SetPlan(a, "pro", "annual"))
+	require.NoError(t, svc.Apply(a, plans.Change{Plan: "pro", Period: "annual", Status: plans.StatusActive, CompReason: "cortesía"}))
+
+	var planA, planB string
+	require.NoError(t, admin.QueryRow(context.Background(), `SELECT plan FROM subscriptions WHERE practice_id = $1`, tenant.From(a)).Scan(&planA))
+	require.NoError(t, admin.QueryRow(context.Background(), `SELECT plan FROM subscriptions WHERE practice_id = $1`, tenant.From(b)).Scan(&planB))
+	require.Equal(t, "pro", planA)
+	require.Equal(t, "free", planB, "cambiar el plan de A con la conexión del propietario no toca a B")
+
+	// Sin consulta en el contexto no hay a quién aplicar el cambio, y no se toca ninguna fila.
+	count := func() (n int) {
+		require.NoError(t, admin.QueryRow(context.Background(), `SELECT count(*) FROM subscriptions WHERE plan = 'pro'`).Scan(&n))
+		return n
+	}
+	before := count()
+	require.ErrorIs(t, plans.NewService(cli).SetPlan(context.Background(), "pro", "annual"), plans.ErrNoSubscription)
+	require.Equal(t, before, count())
 }

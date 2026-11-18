@@ -1,14 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { TuiButton } from '@taiga-ui/core';
-import { catchError, of, tap } from 'rxjs';
-import { BillingApi, BillingPeriod, BillingSummary, PlanCode, PlanInfo } from '../../core/api/billing-api';
+import { firstValueFrom } from 'rxjs';
+import { ApiError } from '../../core/api/api-client';
+import { BillingApi, BillingPeriod, BillingSummary, PaymentInfo, PlanCode, PlanInfo } from '../../core/api/billing-api';
+import { CardInput, CardTokenizer, cardErrors } from '../../core/services/card-tokenizer';
 import { ApiClient } from '../../core/api/api-client';
-import { ToastService } from '../../core/services/ui.services';
+import { ConfirmService, ToastService } from '../../core/services/ui.services';
+import { Modal } from '../../shared/components/modal';
 import { Icon } from '../../shared/components/icon';
 import { PageHeader } from '../../shared/components/page-header';
 import { EmptyState } from '../../shared/components/ui';
-import { formatBytes, formatDate } from '../../shared/utils/format';
+import { formatBytes, formatDate, formatDateTime } from '../../shared/utils/format';
 import { Entitlements } from '../../core/services/entitlements.service';
 
 const RANK: Record<PlanCode, number> = { free: 0, standard: 1, pro: 2 };
@@ -17,7 +19,7 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
 /** Facturación: plan actual, uso frente a los límites y comparativa de planes. El cobro en línea llega en una siguiente etapa. */
 @Component({
   selector: 'app-billing',
-  imports: [TuiButton, Icon, PageHeader, EmptyState],
+  imports: [TuiButton, Icon, PageHeader, EmptyState, Modal],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styles: `
     .cur { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: start; }
@@ -40,7 +42,13 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
     .feats { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; font-size: 0.9375rem; }
     .feats li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.5rem; align-items: start; }
     .tag { display: inline-block; padding: 0 0.5rem; border-radius: 999px; background: var(--nutri-salvia); font-size: 0.75rem; font-weight: 700; }
-    @media (max-width: 62rem) { .cur, .plans { grid-template-columns: minmax(0, 1fr); } }
+    .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+    .card-line { display: flex; align-items: center; gap: 0.5rem; font-variant-numeric: tabular-nums; }
+    .hint-box { padding: var(--space-3); border: 1px dashed var(--line); border-radius: var(--radius-s); font-size: 0.8125rem; color: var(--muted); }
+    .pay-grid { display: grid; gap: var(--space-3); grid-template-columns: 1fr 1fr; }
+    .pay-grid .wide { grid-column: 1 / -1; }
+    .st-paid { color: var(--nutri-texto-fuerte); } .st-failed, .st-chargeback { color: var(--danger); font-weight: 600; }
+    @media (max-width: 62rem) { .cur, .plans { grid-template-columns: minmax(0, 1fr); } .pay-grid { grid-template-columns: minmax(0, 1fr); } }
   `,
   template: `
     <div class="page">
@@ -57,6 +65,16 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
             <p class="eyebrow" id="b-cur">Tu plan actual</p>
             <p class="plan-name">{{ s.plan.name }}</p>
             <p class="muted m-0">{{ s.plan.tagline }}</p>
+            @if (s.paymentsReady && info(); as i) {
+              @if (i.card) { <p class="card-line small m-0"><app-icon name="gem" [size]="16" /> {{ brandName(i.card.brand) }} terminada en {{ i.card.last4 }} · vence {{ i.card.expMonth }}/{{ i.card.expYear }}</p> }
+              @if (i.hasSubscription && !s.comped && s.state !== 'expired' && s.state !== 'free') {
+                <div class="actions">
+                  <button tuiButton type="button" size="s" appearance="secondary" (click)="openCard()">Cambiar tarjeta</button>
+                  @if (s.state !== 'canceled') { <button tuiButton type="button" size="s" appearance="flat" (click)="cancel()">Cancelar suscripción</button> }
+                </div>
+              }
+              @if (s.pendingPlan) { <p class="small muted m-0">Pasarás al plan {{ planName(s.pendingPlan) }} al terminar tu periodo actual.</p> }
+            }
             @if (s.plan.code !== 'free') {
               <p class="small m-0">{{ s.comped ? 'Plan concedido sin cobro' + (s.compReason ? ' · ' + s.compReason : '') : s.period === 'annual' ? 'Facturación anual' : s.period === 'monthly' ? 'Facturación mensual' : 'Cuenta con acceso completo' }}</p>
             }
@@ -100,8 +118,20 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
                 <ul class="feats">
                   @for (f of p.features; track f) { <li><app-icon name="check" [size]="16" /><span>{{ f }}</span></li> }
                 </ul>
-                @if (p.code === s.plan.code) {
+                @if (p.code === s.plan.code && s.state !== 'expired') {
                   <button tuiButton type="button" size="m" appearance="secondary" disabled>Plan actual</button>
+                } @else if (s.paymentsReady) {
+                  @if (s.comped && s.plan.code !== 'free') {
+                    <p class="small muted m-0">Tu plan se concedió sin cobro. Escríbenos para cambiarlo.</p>
+                  } @else if (p.code === 'free') {
+                    <p class="small muted m-0">{{ s.plan.code === 'free' ? 'Es tu plan actual.' : 'Pasas a este plan al cancelar tu suscripción.' }}</p>
+                  } @else if (!info()?.hasSubscription || s.state === 'expired' || s.state === 'free') {
+                    <button tuiButton type="button" size="m" (click)="openCheckout(p)">{{ info()?.trialAvailable ? 'Probar ' + (info()?.trialDays ?? 14) + ' días gratis' : 'Contratar' }}</button>
+                  } @else if (rank(p.code) > rank(s.plan.code)) {
+                    <button tuiButton type="button" size="m" [disabled]="sending() === p.code" (click)="change(p, true)">Subir a este plan</button>
+                  } @else {
+                    <button tuiButton type="button" size="m" appearance="secondary" [disabled]="sending() === p.code" (click)="change(p, false)">Bajar a este plan</button>
+                  }
                 } @else if (rank(p.code) > rank(s.plan.code)) {
                   <button tuiButton type="button" size="m" [disabled]="sending() === p.code" (click)="want(p)">{{ sending() === p.code ? 'Enviando…' : 'Quiero este plan' }}</button>
                 } @else {
@@ -111,18 +141,54 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
             }
           </div>
 
-          <div class="callout" role="note">
-            <app-icon name="info" />
-            <div class="callout-body">
-              <p><strong>El cobro en línea aún no está disponible.</strong></p>
-              <p class="small">Mientras lo habilitamos, usa tu plan actual con normalidad. Si eliges «Quiero este plan», anotamos tu interés y te avisamos en cuanto puedas contratarlo, con factura (CFDI).</p>
+          @if (!s.paymentsReady) {
+            <div class="callout" role="note">
+              <app-icon name="info" />
+              <div class="callout-body">
+                <p><strong>El cobro en línea aún no está disponible.</strong></p>
+                <p class="small">Mientras lo habilitamos, usa tu plan actual con normalidad. Si eliges «Quiero este plan», anotamos tu interés y te avisamos en cuanto puedas contratarlo, con factura (CFDI).</p>
+              </div>
             </div>
-          </div>
+          } @else if (info()?.provider === 'sim') {
+            <div class="callout" role="note"><app-icon name="info" /><div class="callout-body"><p><strong>Pasarela de pruebas.</strong> Aquí no se cobra nada: sirve para probar contratar, la prueba gratuita, un cobro fallido y la cancelación.</p></div></div>
+          }
         </section>
+
+        @if (s.paymentsReady && info(); as i) {
+          <section class="stack" aria-labelledby="b-hist">
+            <h2 class="u-h2-ui m-0" id="b-hist">Historial de cobros</h2>
+            @if (i.payments.length) {
+              <div class="table-wrap"><table class="table"><caption class="visually-hidden">Cobros de tu suscripción</caption>
+                <thead><tr><th scope="col">Fecha</th><th scope="col">Plan</th><th scope="col" class="num">Importe</th><th scope="col">Estado</th></tr></thead>
+                <tbody>@for (r of i.payments; track r.id) {
+                  <tr><td>{{ fdt(r.occurredAt.toISOString()) }}</td><td>{{ planName(r.plan) }} · {{ r.period === 'annual' ? 'anual' : 'mensual' }}</td><td class="num">{{ money(r.amountMxn) }}</td>
+                    <td [class]="'st-' + r.status">{{ statusLabel(r.status) }}@if (r.failureReason) { <span class="small muted"> · {{ r.failureReason }}</span> }</td></tr>
+                }</tbody></table></div>
+            } @else { <p class="muted small m-0">Aún no hay cobros. Durante la prueba gratuita no se cobra nada.</p> }
+          </section>
+        }
       } @else {
         <p class="muted" role="status">Cargando…</p>
       }
     </div>
+
+    <app-modal [open]="!!checkoutPlan() || cardOnly()" (closed)="closeModal()" [title]="cardOnly() ? 'Cambiar tarjeta' : 'Contratar plan ' + (checkoutPlan()?.name ?? '')" size="narrow">
+      @if (checkoutPlan(); as p) {
+        <p class="small">{{ info()?.trialAvailable ? 'Tienes ' + (info()?.trialDays ?? 14) + ' días gratis. No se te cobra hasta que termine la prueba y puedes cancelar antes sin cargo. Después: ' : 'Se cobrará ahora y cada periodo: ' }}<strong>{{ money(period() === 'annual' ? p.annualMxn : p.monthlyMxn) }}</strong> {{ period() === 'annual' ? 'al año' : 'al mes' }}, IVA incluido.</p>
+      }
+      <form id="pay-form" class="stack" (submit)="$event.preventDefault(); pay()" novalidate>
+        <div class="pay-grid">
+          <div class="field wide"><label for="pc-num">Número de tarjeta</label><input id="pc-num" class="input" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" [value]="card().number" (input)="setCard('number', $event)" />@if (errs().number) { <p class="error" role="alert">{{ errs().number }}</p> }</div>
+          <div class="field wide"><label for="pc-name">Nombre en la tarjeta</label><input id="pc-name" class="input" autocomplete="cc-name" [value]="card().name" (input)="setCard('name', $event)" />@if (errs().name) { <p class="error" role="alert">{{ errs().name }}</p> }</div>
+          <div class="field"><label for="pc-exp">Vigencia</label><input id="pc-exp" class="input" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/AA" [value]="card().expiry" (input)="setCard('expiry', $event)" />@if (errs().expiry) { <p class="error" role="alert">{{ errs().expiry }}</p> }</div>
+          <div class="field"><label for="pc-cvc">Código de seguridad</label><input id="pc-cvc" class="input" inputmode="numeric" autocomplete="cc-csc" maxlength="4" [value]="card().cvc" (input)="setCard('cvc', $event)" />@if (errs().cvc) { <p class="error" role="alert">{{ errs().cvc }}</p> }</div>
+        </div>
+        <p class="small muted m-0">El número de tu tarjeta no pasa por nuestros servidores: se envía directo al proveedor de pago.</p>
+        @if (info()?.provider === 'sim') { <div class="hint-box">Tarjetas de prueba: <b>4242 4242 4242 4242</b> aprobada · <b>4000 0000 0000 0002</b> rechazada · <b>4000 0000 0000 9995</b> el primer cobro falla. Cualquier vigencia futura y código.</div> }
+        @if (payError()) { <p class="error" role="alert">{{ payError() }}</p> }
+      </form>
+      <ng-container modalFooter><button tuiButton type="button" appearance="secondary" size="m" (click)="closeModal()">Cancelar</button><button tuiButton type="submit" form="pay-form" size="m" [disabled]="paying()">{{ paying() ? 'Procesando…' : cardOnly() ? 'Guardar tarjeta' : info()?.trialAvailable ? 'Empezar prueba gratuita' : 'Pagar y contratar' }}</button></ng-container>
+    </app-modal>
   `,
 })
 export class BillingPage {
@@ -133,10 +199,24 @@ export class BillingPage {
   protected readonly period = signal<BillingPeriod>('annual');
   protected readonly sending = signal<PlanCode | null>(null);
 
-  protected readonly summary = toSignal(
-    this.billing.summary().pipe(tap(() => this.ent.load(true)), catchError(() => { this.error.set(true); return of(null as BillingSummary | null); })),
-    { initialValue: null as BillingSummary | null },
-  );
+  protected readonly summary = signal<BillingSummary | null>(null);
+  protected readonly info = signal<PaymentInfo | null>(null);
+  private readonly confirm = inject(ConfirmService);
+  private readonly tokenizer = inject(CardTokenizer);
+
+  constructor() { this.load(); }
+
+  /** Vuelve a leer el plan y, si hay cobro en línea, el método de pago y el historial. */
+  protected load(): void {
+    this.billing.summary().subscribe({
+      next: (s) => {
+        this.summary.set(s);
+        this.ent.load(true);
+        if (s.paymentsReady) this.billing.paymentInfo().subscribe({ next: (i) => this.info.set(i), error: () => undefined });
+      },
+      error: () => this.error.set(true),
+    });
+  }
 
   private readonly ent = inject(Entitlements);
 
@@ -175,7 +255,72 @@ export class BillingPage {
     return !s || s.plan.storageBytes < 0 ? 0 : Math.min(100, Math.round((s.usage.storageBytes / s.plan.storageBytes) * 100));
   });
 
+  protected readonly fdt = formatDateTime;
   protected readonly money = mxn;
+  protected readonly checkoutPlan = signal<PlanInfo | null>(null);
+  protected readonly cardOnly = signal(false);
+  protected readonly card = signal<CardInput>({ number: '', name: '', expiry: '', cvc: '' });
+  protected readonly errs = signal<Partial<Record<keyof CardInput, string>>>({});
+  protected readonly paying = signal(false);
+  protected readonly payError = signal('');
+  protected planName = (c: PlanCode | string): string => this.summary()?.catalog.find((p) => p.code === c)?.name ?? String(c);
+  protected brandName = (b: string): string => (b === 'visa' ? 'Visa' : b === 'mastercard' ? 'Mastercard' : b);
+  protected statusLabel = (s: string): string => ({ paid: 'Pagado', failed: 'Fallido', refunded: 'Reembolsado', chargeback: 'Contracargo' } as Record<string, string>)[s] ?? s;
+
+  protected openCheckout(p: PlanInfo): void { this.resetCard(); this.checkoutPlan.set(p); }
+  protected openCard(): void { this.resetCard(); this.cardOnly.set(true); }
+  protected closeModal(): void { this.checkoutPlan.set(null); this.cardOnly.set(false); this.resetCard(); }
+  private resetCard(): void { this.card.set({ number: '', name: '', expiry: '', cvc: '' }); this.errs.set({}); this.payError.set(''); this.paying.set(false); }
+  protected setCard(k: keyof CardInput, e: Event): void { this.card.update((c) => ({ ...c, [k]: (e.target as HTMLInputElement).value })); }
+
+  /** Contrata el plan elegido o cambia la tarjeta: tokeniza en el navegador y manda solo el token. */
+  protected async pay(): Promise<void> {
+    const errors = cardErrors(this.card());
+    this.errs.set(errors);
+    if (Object.keys(errors).length) return;
+    const i = this.info();
+    if (!i) return;
+    this.paying.set(true);
+    this.payError.set('');
+    try {
+      const token = await this.tokenizer.tokenize(this.card(), i);
+      const p = this.checkoutPlan();
+      if (p) {
+        await firstValueFrom(this.billing.checkout(p.code, this.period(), token));
+        this.toast.ok(i.trialAvailable ? `Empezó tu prueba gratuita del plan ${p.name}.` : `Contrataste el plan ${p.name}.`);
+      } else {
+        await firstValueFrom(this.billing.updateCard(token));
+        this.toast.ok('Actualizamos tu tarjeta.');
+      }
+      this.closeModal();
+      this.load();
+    } catch (e) {
+      this.paying.set(false);
+      this.payError.set(e instanceof ApiError || e instanceof Error ? e.message : 'No se pudo completar el pago.');
+    }
+  }
+
+  protected async change(p: PlanInfo, up: boolean): Promise<void> {
+    const ok = await this.confirm.ask(up
+      ? { title: `Subir al plan ${p.name}`, message: `El cambio es inmediato y se cobra ${mxn(this.period() === 'annual' ? p.annualMxn : p.monthlyMxn)} ${this.period() === 'annual' ? 'al año' : 'al mes'} con tu tarjeta registrada.`, confirmLabel: 'Subir de plan' }
+      : { title: `Bajar al plan ${p.name}`, message: 'Conservas tu plan actual hasta que termine el periodo pagado. Después pasas a este plan y no se borra nada: si tienes más de lo que incluye, no podrás agregar más hasta ajustarte.', confirmLabel: 'Programar el cambio' });
+    if (!ok) return;
+    this.sending.set(p.code);
+    this.billing.changePlan(p.code, this.period()).subscribe({
+      next: () => { this.sending.set(null); this.toast.ok(up ? `Ya estás en el plan ${p.name}.` : `Pasarás al plan ${p.name} al terminar tu periodo.`); this.load(); },
+      error: (e: unknown) => { this.sending.set(null); this.toast.error(e instanceof Error ? e.message : 'No se pudo cambiar de plan.'); },
+    });
+  }
+
+  protected async cancel(): Promise<void> {
+    const s = this.summary();
+    const ok = await this.confirm.ask({ title: 'Cancelar suscripción', message: `Conservas el plan ${s?.plan.name ?? ''} hasta ${s?.endsAt ? formatDate(s.endsAt.toISOString()) : 'el fin del periodo'}. Después pasas al plan Gratuito y no se borra nada.`, confirmLabel: 'Cancelar suscripción', tone: 'danger' });
+    if (!ok) return;
+    this.billing.cancel().subscribe({
+      next: () => { this.toast.ok('Cancelamos tu suscripción.'); this.load(); },
+      error: (e: unknown) => this.toast.error(e instanceof Error ? e.message : 'No se pudo cancelar.'),
+    });
+  }
   protected readonly bytes = formatBytes;
   protected readonly round = Math.round;
   protected rank = (c: PlanCode): number => RANK[c];

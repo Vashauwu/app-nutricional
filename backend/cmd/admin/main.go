@@ -3,6 +3,7 @@
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin set-password -email a@b.mx    # cambia la contraseña y cierra sus sesiones
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin create-user -email a@b.mx -name "Lic. X" -role nutritionist
 //	go run ./cmd/admin set-plan -email a@b.mx -plan pro [-period annual] [-status trialing -trial-days 14 | past_due | canceled -until 2026-12-31] [-comp 'cortesía']
+//	go run ./cmd/admin billing-sim -email a@b.mx -event payment_failed   # evento de la pasarela simulada (payment_succeeded|payment_failed|canceled|chargeback)
 //	go run ./cmd/admin grant-platform-admin -email a@b.mx   # permite administrar el catálogo SMAE global
 //	go run ./cmd/admin seed-demo-catalog            # catálogo SMAE de EJEMPLO (no oficial), activo
 //	go run ./cmd/admin seed-demo-catalog -errata    # edición de ejemplo en borrador, para probar el recálculo
@@ -25,6 +26,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/auth"
 	"github.com/nutri/app-nutricional/backend/internal/config"
 	"github.com/nutri/app-nutricional/backend/internal/dishes"
+	"github.com/nutri/app-nutricional/backend/internal/payments"
 	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/smae/sample"
@@ -69,6 +71,8 @@ func main() {
 		setPlan(ctx, pool)
 	case "grant-platform-admin":
 		grantPlatformAdmin(ctx, pool)
+	case "billing-sim":
+		billingSim(ctx, pool, log)
 	case "seed-demo-catalog":
 		seedCatalog(ctx, pool, log)
 	case "seed-demo-accounts":
@@ -261,6 +265,43 @@ func setPlan(ctx context.Context, pool *pgxpool.Pool) {
 		os.Exit(1)
 	}
 	fmt.Printf("plan de la consulta de %s: %s (%s)\n", *email, *plan, *status)
+}
+
+// billingSim aplica a la consulta de una cuenta un evento de la pasarela SIMULADA (staging): cobro exitoso, fallido,
+// cancelación o contracargo. Pasa por el mismo camino que un aviso real del proveedor.
+func billingSim(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+	fs := flag.NewFlagSet("billing-sim", flag.ExitOnError)
+	email := fs.String("email", "", "correo de la cuenta")
+	kind := fs.String("event", "", "payment_succeeded | payment_failed | canceled | chargeback")
+	reason := fs.String("reason", "fondos insuficientes", "motivo (payment_failed)")
+	_ = fs.Parse(os.Args[2:])
+	types := map[string]string{"payment_succeeded": payments.EventPaymentSucceeded, "payment_failed": payments.EventPaymentFailed, "canceled": payments.EventSubscriptionCanceled, "chargeback": payments.EventChargeback}
+	typ, ok := types[*kind]
+	if !ok {
+		fmt.Fprintln(os.Stderr, "-event debe ser payment_succeeded, payment_failed, canceled o chargeback")
+		os.Exit(2)
+	}
+	_, practice := practiceOf(ctx, pool, *email)
+	var subID, plan, period string
+	if err := pool.QueryRow(tenant.With(ctx, practice), "SELECT provider_subscription_id, plan, COALESCE(billing_period, 'monthly') FROM subscriptions WHERE provider = 'sim' AND provider_subscription_id IS NOT NULL AND practice_id = app_practice_id()").Scan(&subID, &plan, &period); err != nil {
+		fmt.Fprintln(os.Stderr, "esa cuenta no tiene una suscripción de la pasarela simulada")
+		os.Exit(1)
+	}
+	p, _ := plans.ByCode(plan)
+	amount := p.MonthlyMXN
+	if period == "annual" {
+		amount = p.AnnualMXN
+	}
+	ev := payments.Event{ID: "evt_sim_" + uuid.NewString(), Type: typ, SubscriptionID: subID, ChargeID: "ch_sim_" + uuid.NewString(), AmountMXN: amount, Plan: plan, Period: period, OccurredAt: time.Now()}
+	if typ == payments.EventPaymentFailed {
+		ev.Reason = *reason
+	}
+	svc := payments.NewService(pool, plans.NewService(pool), payments.NewSimProvider("cli"), log)
+	if err := svc.HandleEvent(ctx, ev); err != nil {
+		fmt.Fprintln(os.Stderr, "no se pudo aplicar el evento:", err)
+		os.Exit(1)
+	}
+	fmt.Printf("evento %s aplicado a la consulta de %s\n", *kind, *email)
 }
 
 func grantPlatformAdmin(ctx context.Context, pool *pgxpool.Pool) {

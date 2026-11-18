@@ -37,6 +37,9 @@ if [ "$ENV" = staging ]; then
   [ -n "$(get ALLOW_DEMO_ACCOUNTS)" ] || setvar ALLOW_DEMO_ACCOUNTS true
   [ -n "$(get SIGNUP_ENABLED)" ] || setvar SIGNUP_ENABLED true
   [ -n "$(get SIGNUP_REQUIRE_EMAIL_VERIFICATION)" ] || setvar SIGNUP_REQUIRE_EMAIL_VERIFICATION false
+  # Cobro simulado: permite probar contratar, la prueba de 14 días, el cobro fallido y la cancelación sin dinero real.
+  [ -n "$(get PAYMENTS_PROVIDER)" ] || setvar PAYMENTS_PROVIDER sim
+  [ -n "$(get PAYMENTS_SIM_SECRET)" ] || setvar PAYMENTS_SIM_SECRET "$(openssl rand -base64 36 | tr -d '/+=\n' | cut -c1-40)"
 fi
 
 # Sin liberaciones previas por CD, el ambiente corre las imágenes compiladas en el servidor (local/…:dev).

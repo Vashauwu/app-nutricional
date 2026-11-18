@@ -21,9 +21,10 @@ func (q *Queries) ActivateUser(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const applySubscription = `-- name: ApplySubscription :exec
+const applySubscription = `-- name: ApplySubscription :execrows
 UPDATE subscriptions SET plan = $1, billing_period = $2, status = $3, trial_ends_at = $4, grace_until = $5,
     current_period_end = $6, cancel_at_period_end = $7, pending_plan = $8, comp_reason = $9, updated_at = now()
+WHERE practice_id = app_practice_id()
 `
 
 type ApplySubscriptionParams struct {
@@ -39,8 +40,8 @@ type ApplySubscriptionParams struct {
 }
 
 // Una fila por consulta (RLS): fija el estado completo de la suscripción.
-func (q *Queries) ApplySubscription(ctx context.Context, arg ApplySubscriptionParams) error {
-	_, err := q.db.Exec(ctx, applySubscription,
+func (q *Queries) ApplySubscription(ctx context.Context, arg ApplySubscriptionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, applySubscription,
 		arg.Plan,
 		arg.BillingPeriod,
 		arg.Status,
@@ -51,7 +52,10 @@ func (q *Queries) ApplySubscription(ctx context.Context, arg ApplySubscriptionPa
 		arg.PendingPlan,
 		arg.CompReason,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const countActivePatients = `-- name: CountActivePatients :one
@@ -66,9 +70,10 @@ func (q *Queries) CountActivePatients(ctx context.Context) (int64, error) {
 }
 
 const getSubscription = `-- name: GetSubscription :one
-SELECT practice_id, plan, billing_period, status, current_period_end, created_at, updated_at, trial_ends_at, grace_until, cancel_at_period_end, pending_plan, provider, provider_customer_id, provider_subscription_id, comp_reason FROM subscriptions
+SELECT practice_id, plan, billing_period, status, current_period_end, created_at, updated_at, trial_ends_at, grace_until, cancel_at_period_end, pending_plan, provider, provider_customer_id, provider_subscription_id, comp_reason, trial_used, card_brand, card_last4, card_exp_month, card_exp_year, trial_notice_sent_at FROM subscriptions WHERE practice_id = app_practice_id()
 `
 
+// Siempre filtra por la consulta del contexto: la CLI se conecta como propietario y se salta la seguridad por filas.
 func (q *Queries) GetSubscription(ctx context.Context) (Subscription, error) {
 	row := q.db.QueryRow(ctx, getSubscription)
 	var i Subscription
@@ -88,6 +93,12 @@ func (q *Queries) GetSubscription(ctx context.Context) (Subscription, error) {
 		&i.ProviderCustomerID,
 		&i.ProviderSubscriptionID,
 		&i.CompReason,
+		&i.TrialUsed,
+		&i.CardBrand,
+		&i.CardLast4,
+		&i.CardExpMonth,
+		&i.CardExpYear,
+		&i.TrialNoticeSentAt,
 	)
 	return i, err
 }
@@ -104,7 +115,7 @@ func (q *Queries) PracticeStorageUsed(ctx context.Context) (int64, error) {
 }
 
 const setSubscriptionProvider = `-- name: SetSubscriptionProvider :exec
-UPDATE subscriptions SET provider = $1, provider_customer_id = $2, provider_subscription_id = $3, updated_at = now()
+UPDATE subscriptions SET provider = $1, provider_customer_id = $2, provider_subscription_id = $3, updated_at = now() WHERE practice_id = app_practice_id()
 `
 
 type SetSubscriptionProviderParams struct {

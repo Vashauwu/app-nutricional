@@ -63,6 +63,10 @@ type Config struct {
 	// SMAEEnabled enciende el catálogo SMAE oficial. Apagado (por omisión) no se sirve ningún alimento del catálogo: las
 	// cuentas trabajan con «Mis alimentos». Lo ya usado en platillos y planes se conserva y reaparece al encenderlo.
 	SMAEEnabled bool `envconfig:"SMAE_ENABLED" default:"false"`
+	// Cobro de suscripciones. Vacío = sin cobro en línea (la pantalla solo registra el interés). «sim» es una pasarela
+	// SIMULADA para probar el ciclo completo: no cobra nada y por eso solo se permite fuera de producción real.
+	PaymentsProvider  string `envconfig:"PAYMENTS_PROVIDER"`
+	PaymentsSimSecret string `envconfig:"PAYMENTS_SIM_SECRET"`
 	// AllowDemoAccounts marca un ambiente de pruebas (staging): nunca se activa en producción real.
 	AllowDemoAccounts bool `envconfig:"ALLOW_DEMO_ACCOUNTS" default:"false"`
 
@@ -106,8 +110,21 @@ var ErrSignupUnverified = errors.New("SIGNUP_REQUIRE_EMAIL_VERIFICATION=false so
 // ErrSignupNoCaptcha: el registro abierto en producción exige verificación anti robots.
 var ErrSignupNoCaptcha = errors.New("SIGNUP_ENABLED en producción requiere TURNSTILE_SITE_KEY y TURNSTILE_SECRET")
 
+// ErrPaymentsProvider: configuración de cobro no válida.
+var ErrPaymentsProvider = errors.New("PAYMENTS_PROVIDER no válido: use «sim» (solo desarrollo o staging) o déjelo vacío; «sim» exige PAYMENTS_SIM_SECRET")
+
 // Validate revisa combinaciones inseguras de configuración.
 func (c Config) Validate() error {
+	switch c.PaymentsProvider {
+	case "":
+	case "sim":
+		// Una pasarela simulada en producción real dejaría «pagar» sin pagar.
+		if (c.IsProduction() && !c.AllowDemoAccounts) || c.PaymentsSimSecret == "" {
+			return ErrPaymentsProvider
+		}
+	default:
+		return ErrPaymentsProvider
+	}
 	if c.IsProduction() && !c.AllowDemoAccounts && c.SignupEnabled && (c.TurnstileSiteKey == "" || c.TurnstileSecret == "") {
 		return ErrSignupNoCaptcha
 	}

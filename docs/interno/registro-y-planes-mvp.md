@@ -83,6 +83,7 @@ La pantalla de Facturación avisa de la prueba, el cobro fallido, la cancelació
 | Variable | Omisión | Uso |
 |---|---|---|
 | `SIGNUP_ENABLED` | `false` | Abre el registro. Apagado, `/registro` muestra «Registro no disponible» y el ingreso no lo enlaza. |
+| `PAYMENTS_PROVIDER` / `PAYMENTS_SIM_SECRET` | vacío | Cobro en línea. `sim` = pasarela simulada (solo desarrollo y staging). Ver `cobro-m4.md`. |
 | `SMAE_ENABLED` | `false` | Enciende el catálogo SMAE oficial (requiere contar con la licencia). |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET` | vacío | Verificación anti robots del registro. Obligatorias en producción con registro abierto. |
 | `SIGNUP_REQUIRE_EMAIL_VERIFICATION` | `true` | En `false` la cuenta nace activa y entra directo. Solo se acepta en desarrollo o con `ALLOW_DEMO_ACCOUNTS=true` (staging); en producción real la API no arranca. |

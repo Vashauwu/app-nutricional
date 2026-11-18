@@ -22,3 +22,23 @@ func TestValidateSignup(t *testing.T) {
 		}
 	}
 }
+
+func TestValidatePayments(t *testing.T) {
+	cases := []struct {
+		name string
+		c    Config
+		ok   bool
+	}{
+		{"sin cobro", Config{Env: "production"}, true},
+		{"simulado en desarrollo", Config{Env: "development", PaymentsProvider: "sim", PaymentsSimSecret: "s"}, true},
+		{"simulado en staging", Config{Env: "production", AllowDemoAccounts: true, PaymentsProvider: "sim", PaymentsSimSecret: "s"}, true},
+		{"simulado en producción real: rechazado", Config{Env: "production", PaymentsProvider: "sim", PaymentsSimSecret: "s"}, false},
+		{"simulado sin secreto: rechazado", Config{Env: "development", PaymentsProvider: "sim"}, false},
+		{"proveedor desconocido: rechazado", Config{Env: "development", PaymentsProvider: "stripe"}, false},
+	}
+	for _, tc := range cases {
+		if err := tc.c.Validate(); (err == nil) != tc.ok {
+			t.Errorf("%s: err = %v", tc.name, err)
+		}
+	}
+}

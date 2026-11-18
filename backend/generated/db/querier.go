@@ -15,7 +15,7 @@ type Querier interface {
 	ActivatePatientByUser(ctx context.Context, userID uuid.NullUUID) error
 	ActivateUser(ctx context.Context, id uuid.UUID) error
 	// Una fila por consulta (RLS): fija el estado completo de la suscripción.
-	ApplySubscription(ctx context.Context, arg ApplySubscriptionParams) error
+	ApplySubscription(ctx context.Context, arg ApplySubscriptionParams) (int64, error)
 	AssignCustomEquivalence(ctx context.Context, arg AssignCustomEquivalenceParams) error
 	AssignRoleByCode(ctx context.Context, arg AssignRoleByCodeParams) error
 	BumpPlanRevision(ctx context.Context, arg BumpPlanRevisionParams) (MealPlan, error)
@@ -89,6 +89,8 @@ type Querier interface {
 	GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error)
 	// ---------- Borrado permanente ----------
 	GetPlanAnyState(ctx context.Context, id uuid.UUID) (MealPlan, error)
+	// Correo de la nutrióloga titular de la consulta (para avisos de cobro).
+	GetPracticeOwnerEmail(ctx context.Context, practiceID uuid.UUID) (string, error)
 	GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid.UUID) (SmaeRecalcBatch, error)
 	GetRevision(ctx context.Context, arg GetRevisionParams) (MealPlanRevision, error)
 	GetSessionByID(ctx context.Context, id uuid.UUID) (UserSession, error)
@@ -96,7 +98,10 @@ type Querier interface {
 	GetSessionByRefreshHash(ctx context.Context, refreshTokenHash []byte) (UserSession, error)
 	GetSetting(ctx context.Context, key string) (AppSetting, error)
 	GetSnapshot(ctx context.Context, dishVersionID uuid.UUID) (DishNutritionSnapshot, error)
+	// Siempre filtra por la consulta del contexto: la CLI se conecta como propietario y se salta la seguridad por filas.
 	GetSubscription(ctx context.Context) (Subscription, error)
+	// El proveedor avisa por id de su suscripción, sin saber de consultas: se busca saltando el aislamiento (app_bypass).
+	GetSubscriptionByProviderID(ctx context.Context, arg GetSubscriptionByProviderIDParams) (Subscription, error)
 	GetTemplate(ctx context.Context, id uuid.UUID) (MealPlanTemplate, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -133,6 +138,8 @@ type Querier interface {
 	InsertMedication(ctx context.Context, arg InsertMedicationParams) (PatientMedication, error)
 	InsertMenstrualRecord(ctx context.Context, arg InsertMenstrualRecordParams) (PatientMenstrualRecord, error)
 	InsertNote(ctx context.Context, arg InsertNoteParams) (PatientNote, error)
+	InsertPayment(ctx context.Context, arg InsertPaymentParams) error
+	InsertPaymentEvent(ctx context.Context, arg InsertPaymentEventParams) (int64, error)
 	// ---------- Planes ----------
 	InsertPlan(ctx context.Context, arg InsertPlanParams) (MealPlan, error)
 	InsertPlanEvent(ctx context.Context, arg InsertPlanEventParams) error
@@ -198,6 +205,7 @@ type Querier interface {
 	ListPatientAppointments(ctx context.Context, arg ListPatientAppointmentsParams) ([]Appointment, error)
 	// Filtros en el servidor y paginación (§16, §20.2). Búsqueda sin acentos.
 	ListPatients(ctx context.Context, arg ListPatientsParams) ([]ListPatientsRow, error)
+	ListPayments(ctx context.Context) ([]Payment, error)
 	// Documentos vigentes que el paciente todavía no acepta.
 	ListPendingConsentDocuments(ctx context.Context, patientID uuid.UUID) ([]ConsentDocument, error)
 	ListPermissionCodesForUser(ctx context.Context, userID uuid.UUID) ([]string, error)
@@ -222,7 +230,11 @@ type Querier interface {
 	ListSubgroups(ctx context.Context, editionID uuid.UUID) ([]SmaeFoodSubgroup, error)
 	ListSubstitutions(ctx context.Context, dishVersionID uuid.UUID) ([]DishSubstitution, error)
 	ListTemplates(ctx context.Context, patientID uuid.UUID) ([]ListTemplatesRow, error)
+	// Pruebas que terminan entre $1 (ahora) y $2 y aún sin aviso previo al primer cobro (se corre saltando el aislamiento).
+	ListTrialsEnding(ctx context.Context, arg ListTrialsEndingParams) ([]ListTrialsEndingRow, error)
 	MarkEntryReviewed(ctx context.Context, id uuid.UUID) (int64, error)
+	MarkTrialNoticeSent(ctx context.Context, practiceID uuid.UUID) error
+	MarkTrialUsed(ctx context.Context) error
 	PatientEmailTaken(ctx context.Context, arg PatientEmailTakenParams) (bool, error)
 	// Espacio usado por un paciente (archivos vigentes); size_bytes incluye la miniatura.
 	PatientStorageUsed(ctx context.Context, ownerPatientID uuid.NullUUID) (int64, error)
@@ -251,6 +263,7 @@ type Querier interface {
 	SetPatientDeleted(ctx context.Context, arg SetPatientDeletedParams) (Patient, error)
 	// Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
 	SetPatientInvited(ctx context.Context, id uuid.UUID) error
+	SetPaymentMethod(ctx context.Context, arg SetPaymentMethodParams) error
 	SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (MealPlan, error)
 	SetSubscriptionProvider(ctx context.Context, arg SetSubscriptionProviderParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error

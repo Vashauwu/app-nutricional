@@ -35,6 +35,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/migrate"
 	"github.com/nutri/app-nutricional/backend/internal/nutrition_engine/calculator"
 	"github.com/nutri/app-nutricional/backend/internal/patients"
+	"github.com/nutri/app-nutricional/backend/internal/payments"
 	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/reports"
 	"github.com/nutri/app-nutricional/backend/internal/settings"
@@ -106,9 +107,13 @@ func run(logger *slog.Logger) error {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	router, plans := newRouter(cfg, logger, pool, tracing)
+	router, plans, billing := newRouter(cfg, logger, pool, tracing)
 	// Tareas lentas fuera de la petición: finalizar planes vencidos ya no depende de que alguien consulte.
 	go runEvery(ctx, cfg.PlanFinalizeInterval, logger, "plans_finalize", forEachPractice(pool, plans.FinalizeExpired))
+	if billing != nil {
+		// Aviso por correo antes del primer cobro de las pruebas gratuitas.
+		go runEvery(ctx, time.Hour, logger, "trial_notices", func(ctx context.Context) error { _, err := billing.NoticeDue(ctx); return err })
+	}
 
 	srv := &http.Server{
 		Addr:              cfg.HTTPAddr,
@@ -207,7 +212,7 @@ func newPool(ctx context.Context, cfg config.Config, tracing bool) (*pgxpool.Poo
 	return pgxpool.NewWithConfig(ctx, pcfg)
 }
 
-func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, tracing bool) (*gin.Engine, *mealplans.Service) {
+func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, tracing bool) (*gin.Engine, *mealplans.Service, *payments.Service) {
 	r := gin.New()
 	// Solo se confía en X-Forwarded-For del proxy (Caddy) dentro de la red privada; si no, el límite de intentos se evade falseando la IP.
 	_ = r.SetTrustedProxies([]string{"10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.1"})
@@ -278,6 +283,18 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 	planSvc := plans.NewService(pool)
 	planSvc.SetSMAE(cfg.SMAEEnabled)
 	plans.NewController(planSvc, authSvc, logger).Register(v1)
+	var billingSvc *payments.Service
+	if cfg.PaymentsProvider == "sim" {
+		planSvc.SetPaymentsReady(true)
+		billingSvc = payments.NewService(pool, planSvc, payments.NewSimProvider(cfg.PaymentsSimSecret), logger)
+		payments.NewController(billingSvc, authSvc, logger).Register(v1)
+		logger.Warn("payments_simulated", slog.String("reason", "PAYMENTS_PROVIDER=sim: pasarela simulada, no cobra nada"))
+		if tm, ok := mailer.(interface {
+			SendTrialEnding(ctx context.Context, to, link, planName string, endsAt time.Time) error
+		}); ok {
+			billingSvc.SetNotifier(trialMailer{m: tm, link: cfg.AppBaseURL + "/facturacion"})
+		}
+	}
 	patientsSvc := patients.NewService(pool, authSvc, logger)
 	patientsSvc.SetLimits(planSvc)
 	patients.NewController(patientsSvc, authSvc, logger).Register(v1)
@@ -354,5 +371,17 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 	reports.NewController(reports.NewService(pool, patientsSvc, trackingSvc, logger), authSvc, settingsSvc, logger).Register(v1)
 	// La consulta de auditoría registra aquí sus rutas cuando se implemente.
 
-	return r, plansSvc
+	return r, plansSvc, billingSvc
+}
+
+// trialMailer adapta el correo al aviso previo al primer cobro.
+type trialMailer struct {
+	m interface {
+		SendTrialEnding(ctx context.Context, to, link, planName string, endsAt time.Time) error
+	}
+	link string
+}
+
+func (t trialMailer) SendTrialEnding(ctx context.Context, to, planName string, endsAt time.Time) error {
+	return t.m.SendTrialEnding(ctx, to, t.link, planName, endsAt)
 }
