@@ -1,0 +1,74 @@
+name: Administración de staging
+
+# Operaciones puntuales sobre staging sin entrar al servidor. Se lanza a mano desde la pestaña Actions.
+# Solo staging: producción no tiene este flujo a propósito.
+on:
+  workflow_dispatch:
+    inputs:
+      accion:
+        description: "Qué hacer"
+        type: choice
+        required: true
+        options:
+          - dar-rol-plataforma
+          - quitar-rol-plataforma
+          - listar-roles-plataforma
+      correo:
+        description: "Correo de la cuenta (no hace falta para listar)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  admin:
+    name: ${{ inputs.accion }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    environment: staging
+    concurrency:
+      group: admin-staging
+      cancel-in-progress: false
+    steps:
+      - name: Validar entradas
+        env:
+          ACCION: ${{ inputs.accion }}
+          CORREO: ${{ inputs.correo }}
+        run: |
+          set -euo pipefail
+          if [ "$ACCION" != "listar-roles-plataforma" ]; then
+            [[ "$CORREO" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "correo no válido"; exit 1; }
+          fi
+
+      - name: Preparar SSH
+        env:
+          KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN" > ~/.ssh/known_hosts
+          [ -s ~/.ssh/known_hosts ] || { echo "DEPLOY_KNOWN_HOSTS está vacío"; exit 1; }
+          printf 'Host vps\n  HostName %s\n  User %s\n  IdentityFile ~/.ssh/deploy_key\n  IdentitiesOnly yes\n  StrictHostKeyChecking yes\n' "$HOST" "$USER_" > ~/.ssh/config
+
+      - name: Ejecutar
+        env:
+          ACCION: ${{ inputs.accion }}
+          CORREO: ${{ inputs.correo }}
+        run: |
+          set -euo pipefail
+          D=/opt/nutri/staging/deploy
+          psql_staging() { ssh vps "cd $D && ./dc.sh staging exec -T postgres psql -U nutri -d nutri -v ON_ERROR_STOP=1"; }
+          case "$ACCION" in
+            dar-rol-plataforma)
+              ssh vps "cd $D && ./dc.sh staging exec -T api /app/admin grant-platform-admin -email '$CORREO'" ;;
+            quitar-rol-plataforma)
+              # El correo ya pasó la validación (sin comillas ni espacios).
+              echo "DELETE FROM user_role_assignments WHERE role_id = (SELECT id FROM roles WHERE code='platform_admin') AND user_id = (SELECT id FROM users WHERE email='$CORREO');" | psql_staging ;;
+            listar-roles-plataforma)
+              echo "SELECT u.email FROM users u JOIN user_role_assignments ura ON ura.user_id=u.id JOIN roles r ON r.id=ura.role_id WHERE r.code='platform_admin' ORDER BY 1;" | psql_staging ;;
+          esac
