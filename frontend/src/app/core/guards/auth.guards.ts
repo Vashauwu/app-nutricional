@@ -30,3 +30,13 @@ export const consentGuard: CanActivateFn = () => {
   const router = inject(Router);
   return auth.pendingConsents(auth.patientId()).length ? router.createUrlTree(['/paciente/consentimiento']) : true;
 };
+
+/** Zona de la plataforma: solo quien tiene el permiso. El servidor valida igual en cada llamada. */
+export const permissionGuard =
+  (permission: string): CanActivateFn =>
+  () => {
+    const auth = inject(AuthService);
+    const router = inject(Router);
+    if (!auth.isAuthenticated()) return router.createUrlTree(['/ingresar']);
+    return auth.can(permission) ? true : router.createUrlTree(['/']);
+  };

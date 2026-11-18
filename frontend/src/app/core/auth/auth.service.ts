@@ -43,6 +43,7 @@ export class AuthService {
 
   // ----- Estado modo API (en memoria) -----
   private readonly apiUser = signal<User | null>(null);
+  private readonly apiPerms = signal<readonly string[]>([]);
   private readonly apiPatientId = signal<string | null>(null);
   private readonly apiPending = signal<ConsentDocument[]>([]);
   private readonly apiSessions = signal<(SessionRecord & { current: boolean })[]>([]);
@@ -62,6 +63,8 @@ export class AuthService {
   });
   readonly role = computed<Role | null>(() => this.user()?.role ?? null);
   readonly isAuthenticated = computed(() => this.user() !== null);
+  /** ¿La sesión tiene este permiso? Solo mejora la interfaz (oculta o muestra); el servidor decide siempre. */
+  can(permission: string): boolean { return this.apiMode && this.apiPerms().includes(permission); }
   readonly patientId = computed(() => (this.apiMode ? this.apiPatientId() : (this.user()?.patientId ?? null)));
 
   readonly mySessions = computed<SessionRecord[]>(() => {
@@ -111,6 +114,7 @@ export class AuthService {
   private afterAuth(identity: ApiIdentity): Observable<User> {
     const user = this.toUser(identity);
     this.apiUser.set(user);
+    this.apiPerms.set(identity.permissions ?? []);
     this.data.actor.set(user.name);
     const ctx$ =
       identity.role === 'patient'
@@ -168,6 +172,7 @@ export class AuthService {
   /** La sesión terminó en el servidor: se limpia el estado local. */
   sessionLost(): void {
     this.apiUser.set(null);
+    this.apiPerms.set([]);
     this.apiPatientId.set(null);
     this.apiPending.set([]);
     this.apiSessions.set([]);

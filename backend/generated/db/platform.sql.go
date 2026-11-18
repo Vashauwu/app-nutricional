@@ -458,6 +458,134 @@ func (q *Queries) PlatformListPayments(ctx context.Context, practiceID uuid.UUID
 	return items, nil
 }
 
+const platformOverviewSubs = `-- name: PlatformOverviewSubs :many
+SELECT p.id, p.name, p.status, p.created_at,
+       s.plan, s.status AS sub_status, s.billing_period, s.trial_ends_at, s.grace_until, s.current_period_end, s.comp_reason,
+       COALESCE((SELECT u.email FROM users u JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
+                 WHERE u.practice_id = p.id AND r.code = 'nutritionist' ORDER BY u.created_at LIMIT 1), '')::text AS owner_email
+FROM practices p JOIN subscriptions s ON s.practice_id = p.id
+`
+
+type PlatformOverviewSubsRow struct {
+	ID               uuid.UUID          `json:"id"`
+	Name             string             `json:"name"`
+	Status           string             `json:"status"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+	Plan             string             `json:"plan"`
+	SubStatus        string             `json:"sub_status"`
+	BillingPeriod    pgtype.Text        `json:"billing_period"`
+	TrialEndsAt      pgtype.Timestamptz `json:"trial_ends_at"`
+	GraceUntil       pgtype.Timestamptz `json:"grace_until"`
+	CurrentPeriodEnd pgtype.Timestamptz `json:"current_period_end"`
+	CompReason       pgtype.Text        `json:"comp_reason"`
+	OwnerEmail       string             `json:"owner_email"`
+}
+
+// Resumen del panel: todas las suscripciones (el estado efectivo se resuelve en Go con plans.Resolve).
+func (q *Queries) PlatformOverviewSubs(ctx context.Context) ([]PlatformOverviewSubsRow, error) {
+	rows, err := q.db.Query(ctx, platformOverviewSubs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlatformOverviewSubsRow
+	for rows.Next() {
+		var i PlatformOverviewSubsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Status,
+			&i.CreatedAt,
+			&i.Plan,
+			&i.SubStatus,
+			&i.BillingPeriod,
+			&i.TrialEndsAt,
+			&i.GraceUntil,
+			&i.CurrentPeriodEnd,
+			&i.CompReason,
+			&i.OwnerEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const platformPaymentStats = `-- name: PlatformPaymentStats :one
+SELECT count(*) FILTER (WHERE status = 'paid')::bigint AS paid_count,
+       COALESCE(sum(amount_mxn) FILTER (WHERE status = 'paid'), 0)::bigint AS paid_mxn,
+       count(*) FILTER (WHERE status = 'failed')::bigint AS failed_count,
+       COALESCE(sum(amount_mxn) FILTER (WHERE status IN ('refunded', 'chargeback')), 0)::bigint AS returned_mxn
+FROM payments WHERE occurred_at >= $1
+`
+
+type PlatformPaymentStatsRow struct {
+	PaidCount   int64 `json:"paid_count"`
+	PaidMxn     int64 `json:"paid_mxn"`
+	FailedCount int64 `json:"failed_count"`
+	ReturnedMxn int64 `json:"returned_mxn"`
+}
+
+func (q *Queries) PlatformPaymentStats(ctx context.Context, occurredAt pgtype.Timestamptz) (PlatformPaymentStatsRow, error) {
+	row := q.db.QueryRow(ctx, platformPaymentStats, occurredAt)
+	var i PlatformPaymentStatsRow
+	err := row.Scan(
+		&i.PaidCount,
+		&i.PaidMxn,
+		&i.FailedCount,
+		&i.ReturnedMxn,
+	)
+	return i, err
+}
+
+const platformRecentPayments = `-- name: PlatformRecentPayments :many
+SELECT pa.id, pa.practice_id, p.name AS practice_name, pa.status, pa.amount_mxn, pa.plan, pa.occurred_at
+FROM payments pa JOIN practices p ON p.id = pa.practice_id
+ORDER BY pa.occurred_at DESC LIMIT 8
+`
+
+type PlatformRecentPaymentsRow struct {
+	ID           uuid.UUID          `json:"id"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
+	PracticeName string             `json:"practice_name"`
+	Status       string             `json:"status"`
+	AmountMxn    int32              `json:"amount_mxn"`
+	Plan         string             `json:"plan"`
+	OccurredAt   pgtype.Timestamptz `json:"occurred_at"`
+}
+
+func (q *Queries) PlatformRecentPayments(ctx context.Context) ([]PlatformRecentPaymentsRow, error) {
+	rows, err := q.db.Query(ctx, platformRecentPayments)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlatformRecentPaymentsRow
+	for rows.Next() {
+		var i PlatformRecentPaymentsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PracticeID,
+			&i.PracticeName,
+			&i.Status,
+			&i.AmountMxn,
+			&i.Plan,
+			&i.OccurredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const platformRevokePracticeSessions = `-- name: PlatformRevokePracticeSessions :exec
 UPDATE user_sessions SET revoked_at = now() WHERE revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE practice_id = $1)
 `
@@ -489,4 +617,67 @@ func (q *Queries) PlatformSetPracticeStatus(ctx context.Context, arg PlatformSet
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const platformSignupsByDay = `-- name: PlatformSignupsByDay :many
+SELECT g::date AS day, count(p.id)::bigint AS total
+FROM generate_series($1::date, $2::date, interval '1 day') g
+LEFT JOIN practices p ON (p.created_at AT TIME ZONE 'America/Mexico_City')::date = g::date
+GROUP BY 1 ORDER BY 1
+`
+
+type PlatformSignupsByDayParams struct {
+	FromDay pgtype.Date `json:"from_day"`
+	ToDay   pgtype.Date `json:"to_day"`
+}
+
+type PlatformSignupsByDayRow struct {
+	Day   pgtype.Date `json:"day"`
+	Total int64       `json:"total"`
+}
+
+func (q *Queries) PlatformSignupsByDay(ctx context.Context, arg PlatformSignupsByDayParams) ([]PlatformSignupsByDayRow, error) {
+	rows, err := q.db.Query(ctx, platformSignupsByDay, arg.FromDay, arg.ToDay)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlatformSignupsByDayRow
+	for rows.Next() {
+		var i PlatformSignupsByDayRow
+		if err := rows.Scan(&i.Day, &i.Total); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const platformUsageTotals = `-- name: PlatformUsageTotals :one
+SELECT (SELECT count(*) FROM patients WHERE deleted_at IS NULL AND status <> 'inactive')::bigint AS active_patients,
+       (SELECT count(*) FROM users)::bigint AS users,
+       (SELECT COALESCE(sum(size_bytes), 0) FROM file_objects WHERE deleted_at IS NULL)::bigint AS storage_bytes,
+       (SELECT count(*) FROM platform_actions WHERE status = 'pending')::bigint AS pending_actions
+`
+
+type PlatformUsageTotalsRow struct {
+	ActivePatients int64 `json:"active_patients"`
+	Users          int64 `json:"users"`
+	StorageBytes   int64 `json:"storage_bytes"`
+	PendingActions int64 `json:"pending_actions"`
+}
+
+func (q *Queries) PlatformUsageTotals(ctx context.Context) (PlatformUsageTotalsRow, error) {
+	row := q.db.QueryRow(ctx, platformUsageTotals)
+	var i PlatformUsageTotalsRow
+	err := row.Scan(
+		&i.ActivePatients,
+		&i.Users,
+		&i.StorageBytes,
+		&i.PendingActions,
+	)
+	return i, err
 }

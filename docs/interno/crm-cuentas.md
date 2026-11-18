@@ -3,7 +3,21 @@
 Documento interno. Operación de la plataforma sobre las cuentas (consultas) y sus suscripciones. Es la primera fase del CRM
 descrito en la hoja de ruta (M6); el CRM de contenido de la landing (`crm-landing.md`) **no** está construido.
 
-## Qué hay
+## Panel (Angular + Taiga UI)
+
+Entrada: `/plataforma` en la propia aplicación (menú de la cuenta → «Panel de plataforma», solo con el permiso `platform:accounts`).
+Es una zona lazy con el mismo sistema visual (marfil, ciruela, Inter/Playfair, modo oscuro) y componentes de Taiga UI.
+
+- **Resumen**: cuentas, ingreso mensual **estimado** (precio de lista; anual ÷ 12; sin cortesías ni pruebas), altas por día (30 días),
+  cuentas por plan y por estado, pruebas por vencer, cobros fallidos, cobros recientes, uso y solicitudes por aprobar.
+  Viene de `GET /api/v1/platform/overview`.
+- **Cuentas**: búsqueda, filtros por plan y acceso, paginación; en móvil pasa a tarjetas.
+- **Ficha**: plan, uso frente a límites, cobros, solicitudes y bitácora; acciones (cortesía, prórroga, reembolso, suspender/reactivar).
+- **Aprobaciones**: pendientes e historial; aprobar/rechazar con nota. El error de autoaprobación se muestra tal cual.
+
+La consola ligera de abajo (`/api/v1/platform/console`) sigue existiendo como respaldo; el panel la sustituye en el uso diario.
+
+## Qué hay (consola ligera)
 
 **Consola**: `/api/v1/platform/console` (se abre con la sesión de una persona con rol `platform_admin`; `/api` ya pasa al API
 por el proxy, no hay que tocar nada). Se sirve desde el binario de la API, **no** desde el paquete de la aplicación pública, y con

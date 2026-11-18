@@ -255,8 +255,14 @@ type Querier interface {
 	PlatformListActions(ctx context.Context, actionStatus string) ([]PlatformListActionsRow, error)
 	PlatformListAudit(ctx context.Context, practiceID uuid.NullUUID) ([]PlatformListAuditRow, error)
 	PlatformListPayments(ctx context.Context, practiceID uuid.UUID) ([]Payment, error)
+	// Resumen del panel: todas las suscripciones (el estado efectivo se resuelve en Go con plans.Resolve).
+	PlatformOverviewSubs(ctx context.Context) ([]PlatformOverviewSubsRow, error)
+	PlatformPaymentStats(ctx context.Context, occurredAt pgtype.Timestamptz) (PlatformPaymentStatsRow, error)
+	PlatformRecentPayments(ctx context.Context) ([]PlatformRecentPaymentsRow, error)
 	PlatformRevokePracticeSessions(ctx context.Context, practiceID uuid.UUID) error
 	PlatformSetPracticeStatus(ctx context.Context, arg PlatformSetPracticeStatusParams) (int64, error)
+	PlatformSignupsByDay(ctx context.Context, arg PlatformSignupsByDayParams) ([]PlatformSignupsByDayRow, error)
+	PlatformUsageTotals(ctx context.Context) (PlatformUsageTotalsRow, error)
 	PracticeStorageUsed(ctx context.Context) (int64, error)
 	PurgeMealPlan(ctx context.Context, pID uuid.UUID) ([]byte, error)
 	RemoveDaysNotIn(ctx context.Context, arg RemoveDaysNotInParams) error
