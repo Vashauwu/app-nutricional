@@ -62,8 +62,6 @@ const GROUPS: { id: string; label: string; tabs: TabId[] }[] = [
     .cols > .panel { align-content: start; }
     .subtabs { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-block-end: var(--space-4); }
     .pct-big { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; margin-inline-end: .375rem; }
-    .meas { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: var(--space-3); }
-    .meas div { padding: var(--space-3); border-radius: var(--radius-s); background: var(--nutri-marfil); } .meas b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; } .meas span { font-size: .8125rem; color: var(--muted); }
     .lock { text-align: center; }
   `,
   template: `

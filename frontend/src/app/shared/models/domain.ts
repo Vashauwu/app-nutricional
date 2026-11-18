@@ -75,17 +75,23 @@ export const COMPOSITION_FIELDS: readonly { key: CompositionKey; api: string; la
 export interface GirthField { key: string; label: string }
 export interface GirthGroup { title: string; fields: GirthField[] }
 
-const pair = (key: string, label: string): GirthField[] => [
-  { key: `${key}_l`, label: `${label} izquierdo` },
-  { key: `${key}_r`, label: `${label} derecho` },
+/** Lados de una parte del cuerpo; el derecho va primero, como se toma en consulta. */
+const pair = (key: string, label: string, fem = false): GirthField[] => [
+  { key: `${key}_r`, label: `${label} ${fem ? 'derecha' : 'derecho'}` },
+  { key: `${key}_l`, label: `${label} ${fem ? 'izquierda' : 'izquierdo'}` },
+];
+/** Medida en reposo y contraída: «Bícep derecho no contraído», «Bícep derecho contraído». */
+const flex = (key: string, label: string): GirthField[] => [
+  ...pair(`${key}_relaxed`, label).map((f) => ({ ...f, label: `${f.label} no contraído` })),
+  ...pair(`${key}_flexed`, label).map((f) => ({ ...f, label: `${f.label} contraído` })),
 ];
 
 /** Perímetros o circunferencias (cm). Cintura y cadera viajan aparte (waistCm, hipCm). */
 export const GIRTH_GROUPS: readonly GirthGroup[] = [
   { title: 'Tronco', fields: [{ key: 'shoulders', label: 'Hombros' }, { key: 'chest', label: 'Pecho' }, { key: 'abdomen', label: 'Abdomen' }] },
-  { title: 'Brazo', fields: [...pair('bicep_relaxed', 'Bíceps relajado'), ...pair('bicep_flexed', 'Bíceps contraído')] },
-  { title: 'Antebrazo y muñeca', fields: [...pair('forearm_relaxed', 'Antebrazo relajado'), ...pair('forearm_flexed', 'Antebrazo contraído'), ...pair('wrist', 'Muñeca')] },
-  { title: 'Pierna', fields: [...pair('thigh_relaxed', 'Muslo relajado'), ...pair('thigh_flexed', 'Muslo contraído'), ...pair('calf_relaxed', 'Gemelo relajado'), ...pair('calf_flexed', 'Gemelo contraído')] },
+  { title: 'Brazo', fields: flex('bicep', 'Bícep') },
+  { title: 'Antebrazo y muñeca', fields: [...flex('forearm', 'Antebrazo'), ...pair('wrist', 'Muñeca', true)] },
+  { title: 'Pierna', fields: [...flex('thigh', 'Muslo'), ...flex('calf', 'Gemelo')] },
 ];
 export const GIRTH_FIELDS: readonly GirthField[] = GIRTH_GROUPS.flatMap((g) => g.fields);
 
