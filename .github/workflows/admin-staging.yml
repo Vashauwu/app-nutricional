@@ -13,6 +13,7 @@ on:
           - dar-rol-plataforma
           - quitar-rol-plataforma
           - listar-roles-plataforma
+          - listar-cuentas
       correo:
         description: "Correo de la cuenta (no hace falta para listar)"
         type: string
@@ -37,7 +38,7 @@ jobs:
           CORREO: ${{ inputs.correo }}
         run: |
           set -euo pipefail
-          if [ "$ACCION" != "listar-roles-plataforma" ]; then
+          if [ "$ACCION" != "listar-roles-plataforma" ] && [ "$ACCION" != "listar-cuentas" ]; then
             [[ "$CORREO" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || { echo "correo no válido"; exit 1; }
           fi
 
@@ -71,4 +72,6 @@ jobs:
               echo "DELETE FROM user_role_assignments WHERE role_id = (SELECT id FROM roles WHERE code='platform_admin') AND user_id = (SELECT id FROM users WHERE email='$CORREO');" | psql_staging ;;
             listar-roles-plataforma)
               echo "SELECT u.email FROM users u JOIN user_role_assignments ura ON ura.user_id=u.id JOIN roles r ON r.id=ura.role_id WHERE r.code='platform_admin' ORDER BY 1;" | psql_staging ;;
+            listar-cuentas)
+              echo "SELECT u.email, coalesce(string_agg(r.code, ',' ORDER BY r.code), '-') AS roles FROM users u LEFT JOIN user_role_assignments ura ON ura.user_id=u.id LEFT JOIN roles r ON r.id=ura.role_id GROUP BY u.email ORDER BY u.email;" | psql_staging ;;
           esac
