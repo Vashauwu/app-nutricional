@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"log/slog"
+	"time"
 )
 
 // Mailer envía correos transaccionales. El proveedor está pendiente de
@@ -53,5 +54,10 @@ func (m LogMailer) SendVerification(ctx context.Context, to, link string) error 
 		attrs = append(attrs, slog.String("to", to), slog.String("link", link))
 	}
 	m.Log.InfoContext(ctx, "mail_stub", attrs...)
+	return nil
+}
+
+func (m LogMailer) SendTrialEnding(ctx context.Context, _, _, _ string, _ time.Time) error {
+	m.Log.InfoContext(ctx, "mail_stub", slog.String("event", "trial_ending_email"))
 	return nil
 }

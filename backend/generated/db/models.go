@@ -522,6 +522,27 @@ type PatientPregnancy struct {
 	PracticeID   uuid.UUID          `json:"practice_id"`
 }
 
+type Payment struct {
+	ID               uuid.UUID          `json:"id"`
+	PracticeID       uuid.UUID          `json:"practice_id"`
+	Provider         string             `json:"provider"`
+	ProviderChargeID string             `json:"provider_charge_id"`
+	Status           string             `json:"status"`
+	AmountMxn        int32              `json:"amount_mxn"`
+	Plan             string             `json:"plan"`
+	BillingPeriod    pgtype.Text        `json:"billing_period"`
+	FailureReason    pgtype.Text        `json:"failure_reason"`
+	OccurredAt       pgtype.Timestamptz `json:"occurred_at"`
+}
+
+type PaymentEvent struct {
+	Provider   string             `json:"provider"`
+	EventID    string             `json:"event_id"`
+	EventType  string             `json:"event_type"`
+	PracticeID uuid.NullUUID      `json:"practice_id"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
 type Permission struct {
 	ID          uuid.UUID `json:"id"`
 	Code        string    `json:"code"`
@@ -657,6 +678,12 @@ type Subscription struct {
 	ProviderCustomerID     pgtype.Text        `json:"provider_customer_id"`
 	ProviderSubscriptionID pgtype.Text        `json:"provider_subscription_id"`
 	CompReason             pgtype.Text        `json:"comp_reason"`
+	TrialUsed              bool               `json:"trial_used"`
+	CardBrand              pgtype.Text        `json:"card_brand"`
+	CardLast4              pgtype.Text        `json:"card_last4"`
+	CardExpMonth           pgtype.Int4        `json:"card_exp_month"`
+	CardExpYear            pgtype.Int4        `json:"card_exp_year"`
+	TrialNoticeSentAt      pgtype.Timestamptz `json:"trial_notice_sent_at"`
 }
 
 type TrackingEntry struct {

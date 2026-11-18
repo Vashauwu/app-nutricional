@@ -56,6 +56,9 @@ services:
       # Verificación anti robots del registro (Cloudflare Turnstile). En producción con registro abierto son obligatorias.
       TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
       TURNSTILE_SECRET: ${TURNSTILE_SECRET:-}
+      # Cobro: vacío = sin cobro en línea; «sim» = pasarela SIMULADA (solo staging; no cobra nada).
+      PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
+      PAYMENTS_SIM_SECRET: ${PAYMENTS_SIM_SECRET:-}
       # Catálogo SMAE oficial: apagado salvo que el .env del ambiente lo encienda (hay que contar con la licencia).
       SMAE_ENABLED: ${SMAE_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}

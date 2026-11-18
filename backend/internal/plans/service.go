@@ -19,11 +19,16 @@ type Service struct {
 	now  func() time.Time
 	// smae: el catálogo oficial está encendido. Apagado, la lista de funciones no lo anuncia.
 	smae bool
+	// paymentsReady: hay cobro en línea (la pantalla ofrece contratar en vez de solo anotar el interés).
+	paymentsReady bool
 }
 
 func NewService(pool *pgxpool.Pool) *Service {
 	return &Service{pool: pool, q: db.New(pool), now: time.Now, smae: true}
 }
+
+// SetPaymentsReady indica si hay cobro en línea.
+func (s *Service) SetPaymentsReady(v bool) { s.paymentsReady = v }
 
 // SetSMAE indica si el catálogo SMAE oficial está encendido (para no anunciarlo si no lo está).
 func (s *Service) SetSMAE(v bool) { s.smae = v }
@@ -112,7 +117,7 @@ func (s *Service) Summary(ctx context.Context) (Summary, error) {
 	return Summary{
 		Plan: st.Plan, Contracted: st.Contracted, BillingPeriod: sub.BillingPeriod.String, State: st.State, EndsAt: st.EndsAt,
 		Downgraded: st.Downgraded, Comped: st.Comped, CompReason: sub.CompReason.String, CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
-		PendingPlan: sub.PendingPlan.String, Usage: u, Catalog: s.catalog(),
+		PendingPlan: sub.PendingPlan.String, Usage: u, Catalog: s.catalog(), PaymentsReady: s.paymentsReady,
 	}, nil
 }
 
@@ -179,7 +184,11 @@ type Change struct {
 	CompReason        string
 }
 
-var ErrInvalidChange = errors.New("cambio de suscripción inválido")
+var (
+	ErrInvalidChange = errors.New("cambio de suscripción inválido")
+	// ErrNoSubscription: no hay consulta en el contexto o no tiene suscripción: no se cambió nada.
+	ErrNoSubscription = errors.New("la consulta no tiene suscripción")
+)
 
 func ts(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
@@ -222,12 +231,19 @@ func (s *Service) Apply(ctx context.Context, c Change) error {
 	if c.Period != "" && c.Period != "monthly" && c.Period != "annual" {
 		return fmt.Errorf("%w: periodo %q", ErrInvalidChange, c.Period)
 	}
-	return s.q.ApplySubscription(ctx, db.ApplySubscriptionParams{
+	n, err := s.q.ApplySubscription(ctx, db.ApplySubscriptionParams{
 		Plan: c.Plan, BillingPeriod: pgtype.Text{String: c.Period, Valid: c.Period != ""}, Status: c.Status,
 		TrialEndsAt: ts(c.TrialEndsAt), GraceUntil: ts(c.GraceUntil), CurrentPeriodEnd: ts(c.PeriodEnd),
 		CancelAtPeriodEnd: c.CancelAtPeriodEnd, PendingPlan: pgtype.Text{String: c.PendingPlan, Valid: c.PendingPlan != ""},
 		CompReason: pgtype.Text{String: c.CompReason, Valid: c.CompReason != ""},
 	})
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return ErrNoSubscription
+	}
+	return nil
 }
 
 // SetPlan asigna un plan sin cobro ni vencimiento (cuenta de ejemplo, ajuste manual). Conserva el motivo si ya lo había.

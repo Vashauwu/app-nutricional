@@ -73,6 +73,14 @@ func (m *SMTPMailer) SendVerification(ctx context.Context, to, link string) erro
 		"El enlace vence en 24 horas y solo funciona una vez. Si no fuiste tú, ignora este mensaje: no se activará nada.")
 }
 
+// SendTrialEnding avisa, antes del primer cobro, que la prueba gratuita termina (se puede cancelar sin cargo).
+func (m *SMTPMailer) SendTrialEnding(ctx context.Context, to, link, planName string, endsAt time.Time) error {
+	return m.queue(ctx, "trial_ending", to, "Tu prueba gratuita termina pronto",
+		fmt.Sprintf("Tu prueba gratuita del plan %s termina el %s. Ese día se hará el primer cobro con la tarjeta que registraste.", planName, endsAt.Format("02/01/2006")),
+		"Ver mi plan", link,
+		"Si no quieres continuar, cancela desde Facturación antes de esa fecha y no se te cobrará nada.")
+}
+
 func (m *SMTPMailer) SendPasswordChanged(ctx context.Context, to string) error {
 	return m.queue(ctx, "password_changed", to, "Tu contraseña se cambió",
 		"Te avisamos que la contraseña de tu cuenta se cambió hace un momento.",
