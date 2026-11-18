@@ -37,7 +37,7 @@ const PAGES: Entry[] = [
   { group: 'Ir a', label: 'Dietocálculo', icon: 'scale', link: '/dietocalculo' },
   { group: 'Ir a', label: 'Seguimiento', icon: 'activity', link: '/seguimiento' },
   { group: 'Ir a', label: 'Platillos', icon: 'dish', link: '/platillos' },
-  { group: 'Ir a', label: 'Catálogo SMAE', icon: 'book', link: '/catalogo' },
+  { group: 'Ir a', label: 'Catálogo de alimentos', icon: 'book', link: '/catalogo' },
   { group: 'Ir a', label: 'Reportes', icon: 'chart', link: '/reportes' },
   { group: 'Ir a', label: 'Configuración', icon: 'settings', link: '/configuracion' },
 ];

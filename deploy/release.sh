@@ -27,6 +27,9 @@ setvar() { # setvar CLAVE VALOR
 # Configuración pública que llega desde las variables del ambiente en GitHub (vacío = no cambia lo que ya tenga el .env).
 [ -z "${SIGNUP_ENABLED:-}" ] || setvar SIGNUP_ENABLED "$SIGNUP_ENABLED"
 [ -z "${GOOGLE_CLIENT_ID:-}" ] || setvar GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
+[ -z "${SMAE_ENABLED:-}" ] || setvar SMAE_ENABLED "$SMAE_ENABLED"
+[ -z "${TURNSTILE_SITE_KEY:-}" ] || setvar TURNSTILE_SITE_KEY "$TURNSTILE_SITE_KEY"
+[ -z "${TURNSTILE_SECRET:-}" ] || setvar TURNSTILE_SECRET "$TURNSTILE_SECRET"
 
 # Staging es el ambiente de pruebas: registro abierto y sin confirmar el correo (su remitente de pruebas no entrega a
 # cualquier destinatario). Solo se escribe lo que falte: un valor puesto a mano en el .env se respeta. Nunca en producción.

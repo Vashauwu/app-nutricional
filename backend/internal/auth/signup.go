@@ -18,7 +18,12 @@ var (
 	ErrSignupClosed  = errors.New("el registro no está disponible por ahora")
 	ErrTermsRequired = errors.New("debes aceptar los términos de uso y el aviso de privacidad")
 	ErrEmailInUse    = errors.New("ese correo ya tiene una cuenta")
+	ErrSignupLimited = errors.New("demasiados intentos con este correo")
 )
+
+// TermsVersion identifica el texto de términos y aviso de privacidad que aceptó la persona (se guarda en la bitácora).
+// Cambiarlo al publicar textos nuevos.
+const TermsVersion = "2026-11-borrador"
 
 // SignupValidation agrupa errores por campo del registro.
 type SignupValidation map[string]string
@@ -32,6 +37,9 @@ type SignupInput struct {
 	Email       string
 	Password    string
 	AcceptTerms bool
+	// CaptchaToken lo produce el widget de la pantalla; RemoteIP se manda al verificador.
+	CaptchaToken string
+	RemoteIP     string
 }
 
 // SignupOptions dice a la pantalla si hay registro y si exige confirmar el correo.
@@ -40,6 +48,10 @@ type SignupOptions struct {
 	RequireVerification bool `json:"require_verification"`
 	// GoogleClientID (público) activa el botón «Continuar con Google»; vacío = no hay botón.
 	GoogleClientID string `json:"google_client_id,omitempty"`
+	// CaptchaSiteKey (pública) activa la verificación anti robots en el formulario; vacío = sin verificación.
+	CaptchaSiteKey string `json:"captcha_site_key,omitempty"`
+	// SMAEEnabled: el catálogo SMAE oficial está encendido en esta plataforma.
+	SMAEEnabled bool `json:"smae_enabled"`
 }
 
 func (s *Service) SignupOptions() SignupOptions {
@@ -47,8 +59,15 @@ func (s *Service) SignupOptions() SignupOptions {
 	if s.google != nil {
 		o.GoogleClientID = s.cfg.GoogleClientID
 	}
+	if s.captcha != nil {
+		o.CaptchaSiteKey = s.cfg.TurnstileSiteKey
+	}
+	o.SMAEEnabled = s.cfg.SMAEEnabled
 	return o
 }
+
+// SetCaptcha activa la verificación anti robots del registro (nil = sin verificación).
+func (s *Service) SetCaptcha(v CaptchaVerifier) { s.captcha = v }
 
 // Signup abre una consulta nueva con plan gratuito. Con verificación de correo la cuenta queda pendiente hasta confirmar
 // el enlace y la respuesta es la misma exista o no el correo (no revela quién tiene cuenta). Sin verificación (solo fuera
@@ -56,6 +75,14 @@ func (s *Service) SignupOptions() SignupOptions {
 func (s *Service) Signup(ctx context.Context, in SignupInput, m Meta) (verified bool, err error) {
 	if !s.cfg.SignupEnabled {
 		return false, ErrSignupClosed
+	}
+	if s.captcha != nil {
+		if err := s.captcha.Verify(ctx, in.CaptchaToken, in.RemoteIP); err != nil {
+			if errors.Is(err, ErrCaptcha) {
+				return false, SignupValidation{"captcha": "Confirma que no eres un robot e inténtalo de nuevo."}
+			}
+			return false, err
+		}
 	}
 	bad := SignupValidation{}
 	name := strings.TrimSpace(in.Name)
@@ -65,6 +92,8 @@ func (s *Service) Signup(ctx context.Context, in SignupInput, m Meta) (verified 
 	e, mailErr := normalizeEmail(in.Email)
 	if mailErr != nil {
 		bad["email"] = "Escribe un correo válido."
+	} else if IsDisposableEmail(e) {
+		bad["email"] = "Usa un correo permanente: los correos temporales no están permitidos."
 	}
 	if err := ValidatePassword(in.Password); err != nil {
 		bad["password"] = err.Error()
@@ -74,6 +103,10 @@ func (s *Service) Signup(ctx context.Context, in SignupInput, m Meta) (verified 
 	}
 	if len(bad) > 0 {
 		return false, bad
+	}
+	// Por correo, además del límite por IP de la ruta: evita bombardear una bandeja con enlaces o probar muchas contraseñas.
+	if ok, _ := s.signupByEmail.Allow(e); !ok {
+		return false, ErrSignupLimited
 	}
 
 	verify := s.cfg.SignupRequireEmailVerification
@@ -113,7 +146,7 @@ func (s *Service) Signup(ctx context.Context, in SignupInput, m Meta) (verified 
 		return false, err
 	}
 	ctx = tenant.With(ctx, u.PracticeID)
-	s.audit(ctx, nu(u.ID), "auth.signup", "user", nu(u.ID), m, map[string]any{"verification": verify, "terms_accepted": true})
+	s.audit(ctx, nu(u.ID), "auth.signup", "user", nu(u.ID), m, map[string]any{"verification": verify, "terms_accepted": true, "terms_version": TermsVersion})
 	if verify {
 		return false, s.sendVerification(ctx, u)
 	}

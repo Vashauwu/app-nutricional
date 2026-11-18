@@ -14,6 +14,9 @@ inputs:
   site-url: { description: "URL pública del ambiente para la prueba de humo", required: true }
   signup-enabled: { description: "true/false: abre o cierra el registro de nutriólogas. Vacío = no cambia lo que ya tenga el ambiente", required: false, default: "" }
   google-client-id: { description: "ID de cliente de Google (público) para «Continuar con Google». Vacío = no cambia", required: false, default: "" }
+  smae-enabled: { description: "true/false: enciende el catálogo SMAE oficial. Vacío = no cambia lo que ya tenga el ambiente (apagado por omisión)", required: false, default: "" }
+  turnstile-site-key: { description: "Clave pública de Cloudflare Turnstile (verificación anti robots del registro). Vacío = no cambia", required: false, default: "" }
+  turnstile-secret: { description: "Secreto de Cloudflare Turnstile (secreto del ambiente). Viaja por la entrada estándar de SSH, no por la línea de comandos. Vacío = no cambia", required: false, default: "" }
 
 runs:
   using: composite
@@ -43,15 +46,22 @@ runs:
         TOKEN: ${{ inputs.registry-token }}
         SIGNUP: ${{ inputs.signup-enabled }}
         GCID: ${{ inputs.google-client-id }}
+        SMAE: ${{ inputs.smae-enabled }}
+        TSKEY: ${{ inputs.turnstile-site-key }}
+        TSSECRET: ${{ inputs.turnstile-secret }}
       run: |
         set -euo pipefail
         # Valores públicos de configuración (variables del ambiente en GitHub): se validan antes de viajar por SSH.
         case "$SIGNUP" in ""|true|false) ;; *) echo "signup-enabled debe ser true o false"; exit 1;; esac
         printf '%s' "$GCID" | grep -Eq '^[A-Za-z0-9._-]*$' || { echo "google-client-id tiene caracteres no válidos"; exit 1; }
+        case "$SMAE" in ""|true|false) ;; *) echo "smae-enabled debe ser true o false"; exit 1;; esac
+        printf '%s' "$TSKEY" | grep -Eq '^[A-Za-z0-9._-]*$' || { echo "turnstile-site-key tiene caracteres no válidos"; exit 1; }
+        printf '%s' "$TSSECRET" | grep -Eq '^[A-Za-z0-9._-]*$' || { echo "turnstile-secret tiene caracteres no válidos"; exit 1; }
         # El token es de corta duración (vive lo que el trabajo). Se usa para descargar y se cierra la sesión.
         printf '%s' "$TOKEN" | ssh vps "docker login ghcr.io -u '${{ inputs.registry-user }}' --password-stdin >/dev/null"
         trap 'ssh vps "docker logout ghcr.io >/dev/null 2>&1 || true"' EXIT
-        ssh vps "cd /opt/nutri/${{ inputs.environment }}/deploy && SIGNUP_ENABLED='$SIGNUP' GOOGLE_CLIENT_ID='$GCID' ./release.sh ${{ inputs.environment }} ${{ inputs.tag }} ${{ inputs.repo }}"
+        # El secreto de Turnstile entra por la entrada estándar: no queda en la lista de procesos del servidor.
+        printf '%s' "$TSSECRET" | ssh vps "cd /opt/nutri/${{ inputs.environment }}/deploy && IFS= read -r TURNSTILE_SECRET || true; export TURNSTILE_SECRET; SIGNUP_ENABLED='$SIGNUP' GOOGLE_CLIENT_ID='$GCID' SMAE_ENABLED='$SMAE' TURNSTILE_SITE_KEY='$TSKEY' ./release.sh ${{ inputs.environment }} ${{ inputs.tag }} ${{ inputs.repo }}"
 
     - name: Prueba de humo desde fuera
       shell: bash

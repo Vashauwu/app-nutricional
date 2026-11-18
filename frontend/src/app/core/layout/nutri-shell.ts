@@ -6,6 +6,7 @@ import { DbService } from '../data/db.service';
 import { PlansService } from '../services/plans.service';
 import { CatalogService } from '../services/catalog.service';
 import { DishesService } from '../services/dishes.service';
+import { PlatformService } from '../services/platform.service';
 import { SettingsService } from '../services/settings.service';
 import { ThemeService } from '../services/theme.service';
 import { ActionMenu, MenuItem } from '../../shared/components/action-menu';
@@ -64,7 +65,7 @@ const RAIL_KEY = 'nutri-rail';
             <span class="label">{{ brand().businessName }}</span>
           </a>
         </div>
-        @for (g of groups; track g.title) {
+        @for (g of groups(); track g.title) {
           <div class="group" role="group" [attr.aria-label]="g.title || 'General'">
             @if (g.title) { <p class="group-title label">{{ g.title }}</p> }
             <ul class="list-plain">
@@ -109,6 +110,7 @@ export class NutriShell {
   private readonly router = inject(Router);
   private readonly plans = inject(PlansService);
   private readonly catalog = inject(CatalogService);
+  private readonly platform = inject(PlatformService);
   private readonly dishes = inject(DishesService);
   private readonly settings = inject(SettingsService);
   protected readonly navOpen = signal(false);
@@ -131,7 +133,7 @@ export class NutriShell {
   ]);
 
   // Agrupación por tarea (≤ 4 elementos por grupo): la clínica, la biblioteca y el análisis.
-  protected readonly groups: NavGroup[] = [
+  protected readonly groups = computed<NavGroup[]>(() => [
     { title: '', items: [{ path: '/', label: 'Inicio', icon: 'home', exact: true }] },
     {
       title: 'Clínica',
@@ -147,14 +149,15 @@ export class NutriShell {
       title: 'Biblioteca',
       items: [
         { path: '/platillos', label: 'Platillos', icon: 'dish' },
-        { path: '/catalogo', label: 'Catálogo SMAE', icon: 'book' },
+        { path: '/catalogo', label: this.platform.smaeEnabled() ? 'Catálogo SMAE' : 'Mis alimentos', icon: 'book' },
       ],
     },
     { title: 'Análisis', items: [{ path: '/reportes', label: 'Reportes', icon: 'chart' }] },
-  ];
+  ]);
 
   constructor() {
     this.plans.finalizeExpired();
+    this.platform.load();
     // Modo API: catálogo y platillos (resumen) disponibles para selectores y planes. En modo simulado no hace nada.
     this.catalog.hydrate().subscribe({ error: () => undefined });
     this.dishes.loadAll().subscribe({ error: () => undefined });

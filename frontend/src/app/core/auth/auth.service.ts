@@ -290,11 +290,12 @@ export class AuthService {
 
   /** En modo API la validez la decide el servidor al enviar la nueva contraseña. */
   /** ¿Hay registro abierto? Solo existe en modo API (el servidor decide por ambiente). */
-  signupOptions(): Observable<{ enabled: boolean; requireVerification: boolean; googleClientId: string }> {
-    if (!this.apiMode) return of({ enabled: false, requireVerification: true, googleClientId: '' });
-    return this.api.get<{ enabled: boolean; require_verification: boolean; google_client_id?: string }>('/auth/options').pipe(
-      map((o) => ({ enabled: o.enabled, requireVerification: o.require_verification, googleClientId: o.google_client_id ?? '' })),
-      catchError(() => of({ enabled: false, requireVerification: true, googleClientId: '' })),
+  signupOptions(): Observable<{ enabled: boolean; requireVerification: boolean; googleClientId: string; captchaSiteKey: string }> {
+    const off = { enabled: false, requireVerification: true, googleClientId: '', captchaSiteKey: '' };
+    if (!this.apiMode) return of(off);
+    return this.api.get<{ enabled: boolean; require_verification: boolean; google_client_id?: string; captcha_site_key?: string }>('/auth/options').pipe(
+      map((o) => ({ enabled: o.enabled, requireVerification: o.require_verification, googleClientId: o.google_client_id ?? '', captchaSiteKey: o.captcha_site_key ?? '' })),
+      catchError(() => of(off)),
     );
   }
 
@@ -314,8 +315,8 @@ export class AuthService {
   }
 
   /** Crea una cuenta de nutrióloga con plan gratuito. `verified` = ya puede ingresar (sin confirmar el correo). */
-  signup(input: { name: string; email: string; password: string; acceptTerms: boolean }): Observable<{ verified: boolean }> {
-    return this.api.post<{ verified: boolean }>('/auth/signup', { name: input.name, email: input.email, password: input.password, accept_terms: input.acceptTerms });
+  signup(input: { name: string; email: string; password: string; acceptTerms: boolean; captcha?: string }): Observable<{ verified: boolean }> {
+    return this.api.post<{ verified: boolean }>('/auth/signup', { name: input.name, email: input.email, password: input.password, accept_terms: input.acceptTerms, captcha: input.captcha ?? '' });
   }
 
   verifyEmail(token: string): Observable<void> {

@@ -269,14 +269,23 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 		authSvc.SetGoogleVerifier(auth.NewGoogleVerifier(cfg.GoogleClientID))
 		logger.Info("google_signin_enabled")
 	}
+	if cfg.TurnstileSecret != "" {
+		authSvc.SetCaptcha(auth.NewTurnstileVerifier(cfg.TurnstileSecret))
+		logger.Info("signup_captcha_enabled")
+	}
 	authSvc.SetAsyncMail(true)
 	auth.NewController(authSvc, cfg).Register(v1)
 	planSvc := plans.NewService(pool)
+	planSvc.SetSMAE(cfg.SMAEEnabled)
 	plans.NewController(planSvc, authSvc, logger).Register(v1)
 	patientsSvc := patients.NewService(pool, authSvc, logger)
 	patientsSvc.SetLimits(planSvc)
 	patients.NewController(patientsSvc, authSvc, logger).Register(v1)
 	smaeSvc := smae.NewService(pool, logger)
+	smaeSvc.SetEnabled(cfg.SMAEEnabled)
+	if !cfg.SMAEEnabled {
+		logger.Warn("smae_disabled", slog.String("reason", "SMAE_ENABLED=false: el catálogo oficial no se sirve a las cuentas"))
+	}
 	smae.NewController(smaeSvc, authSvc, logger).Register(v1)
 	dishesSvc := dishes.NewService(pool, smaeSvc, logger)
 	dishesSvc.SetClinical(patientsSvc)

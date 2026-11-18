@@ -8,13 +8,14 @@ import { AuthService } from '../../core/auth/auth.service';
 import { FieldError, strongPassword } from '../../shared/components/forms';
 import { Icon } from '../../shared/components/icon';
 import { GoogleButton } from '../../shared/components/google-button';
+import { Captcha } from '../../shared/components/captcha';
 import { ThemeToggle } from '../../shared/components/theme-toggle';
 import { AuthArt } from './auth-art';
 
 /** Registro de una nutrióloga: abre su propia consulta con el plan gratuito. */
 @Component({
   selector: 'app-signup',
-  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle, GoogleButton, AuthArt],
+  imports: [ReactiveFormsModule, RouterLink, TuiButton, Icon, FieldError, ThemeToggle, GoogleButton, Captcha, AuthArt],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: './auth.scss',
   template: `
@@ -100,7 +101,11 @@ import { AuthArt } from './auth-art';
                   <p class="error" id="su-terms-err" role="alert">Debes aceptar los términos y el aviso de privacidad.</p>
                 }
               </div>
-              <button tuiButton type="submit" size="l" [disabled]="loading()">{{ loading() ? 'Creando cuenta…' : 'Crear cuenta gratis' }}</button>
+              @if (options()!.captchaSiteKey; as ck) {
+                <app-captcha [siteKey]="ck" [reset]="captchaReset()" (token)="captcha.set($event)" />
+                @if (fields()['captcha']) { <p class="error" role="alert">{{ fields()['captcha'] }}</p> }
+              }
+              <button tuiButton type="submit" size="l" [disabled]="loading() || (!!options()!.captchaSiteKey && !captcha())">{{ loading() ? 'Creando cuenta…' : 'Crear cuenta gratis' }}</button>
             </form>
           }
         </div>
@@ -120,6 +125,9 @@ export class Signup {
   protected readonly done = signal(false);
   protected readonly error = signal('');
   protected readonly fields = signal<Record<string, string>>({});
+  /** Token anti robots vigente (vacío = aún sin resolver) y contador para pedir un desafío nuevo tras un intento fallido. */
+  protected readonly captcha = signal('');
+  protected readonly captchaReset = signal(0);
 
   protected readonly form = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(120)]],
@@ -144,7 +152,7 @@ export class Signup {
     this.error.set('');
     this.fields.set({});
     const v = this.form.getRawValue();
-    this.auth.signup({ name: v.name.trim(), email: v.email, password: v.password, acceptTerms: v.terms }).subscribe({
+    this.auth.signup({ name: v.name.trim(), email: v.email, password: v.password, acceptTerms: v.terms, captcha: this.captcha() }).subscribe({
       next: (r) => {
         if (!r.verified) {
           this.loading.set(false);
@@ -159,6 +167,7 @@ export class Signup {
       },
       error: (e: unknown) => {
         this.loading.set(false);
+        this.captchaReset.update((n) => n + 1); // el token es de un solo uso
         if (e instanceof ApiError) {
           this.fields.set(e.fields);
           this.error.set(e.code === 'validation_failed' ? 'Revisa los datos marcados.' : e.message);

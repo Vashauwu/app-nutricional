@@ -46,10 +46,11 @@ func Fail(c *gin.Context, log *slog.Logger, err error) {
 }
 
 func (ct *Controller) Register(v1 *gin.RouterGroup) {
-	g := v1.Group("", auth.Authenticate(ct.auth), auth.RequirePermission("smae:manage"), auth.CSRF())
+	// Leer el catálogo y administrar «Mis alimentos» es de toda nutrióloga (biblioteca de platillos). Importar y activar
+	// ediciones del catálogo global es solo de la plataforma (`smae:manage`).
+	g := v1.Group("", auth.Authenticate(ct.auth), auth.RequirePermission("dishes:manage"), auth.CSRF())
 	g.GET("/smae/taxonomy", ct.taxonomy)
 	g.GET("/smae/editions", ct.editions)
-	g.POST("/smae/editions", ct.importEdition)
 	g.GET("/smae/foods", ct.foods)
 	g.GET("/smae/foods/:kind/:id", ct.food)
 	g.GET("/custom-foods", ct.listCustom)
@@ -58,6 +59,9 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g.POST("/custom-foods/:id/validate", ct.validateCustom)
 	g.POST("/custom-foods/:id/equivalence", ct.equivalence)
 	g.POST("/custom-foods/:id/active", ct.customActive)
+
+	platform := v1.Group("", auth.Authenticate(ct.auth), auth.RequirePermission("smae:manage"), auth.CSRF())
+	platform.POST("/smae/editions", ct.importEdition)
 }
 
 func (ct *Controller) taxonomy(c *gin.Context) {
