@@ -53,10 +53,10 @@ runs:
         set -euo pipefail
         # Valores públicos de configuración (variables del ambiente en GitHub): se validan antes de viajar por SSH.
         case "$SIGNUP" in ""|true|false) ;; *) echo "signup-enabled debe ser true o false"; exit 1;; esac
-        printf '%s' "$GCID" | grep -Eq '^[A-Za-z0-9._-]*$' || { echo "google-client-id tiene caracteres no válidos"; exit 1; }
+        [[ "$GCID" =~ ^[A-Za-z0-9._-]*$ ]] || { echo "google-client-id tiene caracteres no válidos"; exit 1; }
         case "$SMAE" in ""|true|false) ;; *) echo "smae-enabled debe ser true o false"; exit 1;; esac
-        printf '%s' "$TSKEY" | grep -Eq '^[A-Za-z0-9._-]*$' || { echo "turnstile-site-key tiene caracteres no válidos"; exit 1; }
-        printf '%s' "$TSSECRET" | grep -Eq '^[A-Za-z0-9._-]*$' || { echo "turnstile-secret tiene caracteres no válidos"; exit 1; }
+        [[ "$TSKEY" =~ ^[A-Za-z0-9._-]*$ ]] || { echo "turnstile-site-key tiene caracteres no válidos"; exit 1; }
+        [[ "$TSSECRET" =~ ^[A-Za-z0-9._-]*$ ]] || { echo "turnstile-secret tiene caracteres no válidos"; exit 1; }
         # El token es de corta duración (vive lo que el trabajo). Se usa para descargar y se cierra la sesión.
         printf '%s' "$TOKEN" | ssh vps "docker login ghcr.io -u '${{ inputs.registry-user }}' --password-stdin >/dev/null"
         trap 'ssh vps "docker logout ghcr.io >/dev/null 2>&1 || true"' EXIT
