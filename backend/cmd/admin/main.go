@@ -223,7 +223,7 @@ func seedAccounts(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, lo
 // practiceOf devuelve el id de la consulta de una cuenta.
 func practiceOf(ctx context.Context, pool *pgxpool.Pool, email string) (uuid.UUID, uuid.UUID) {
 	var uid, practice uuid.UUID
-	if err := pool.QueryRow(ctx, "SELECT id, practice_id FROM users WHERE email = $1", email).Scan(&uid, &practice); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT id, practice_id FROM users WHERE lower(email) = lower($1)", email).Scan(&uid, &practice); err != nil {
 		fmt.Fprintln(os.Stderr, "no existe una cuenta con ese correo")
 		os.Exit(1)
 	}
