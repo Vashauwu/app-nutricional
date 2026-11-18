@@ -321,6 +321,28 @@ func (s *Service) Cancel(ctx context.Context, a Actor) error {
 	return nil
 }
 
+// Refund devuelve un cobro pagado de la consulta del contexto (lo pide el CRM, con aprobación de una segunda persona).
+func (s *Service) Refund(ctx context.Context, actor uuid.UUID, paymentID uuid.UUID) error {
+	p, err := s.q.GetPayment(ctx, paymentID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("%w: el cobro no existe", ErrInvalid)
+	}
+	if err != nil {
+		return err
+	}
+	if p.Status != "paid" {
+		return fmt.Errorf("%w: solo se reembolsan cobros pagados", ErrInvalid)
+	}
+	if err := s.prov.Refund(ctx, p.ProviderChargeID); err != nil {
+		return err
+	}
+	if _, err := s.q.MarkPaymentRefunded(ctx, paymentID); err != nil {
+		return err
+	}
+	s.rec(ctx, actor, "billing.refund", map[string]any{"payment": paymentID, "amount_mxn": p.AmountMxn})
+	return nil
+}
+
 // HandleEvent aplica un evento del proveedor ya verificado. Es idempotente: un reintento no repite el efecto.
 func (s *Service) HandleEvent(ctx context.Context, ev Event) error {
 	bypass := tenant.Bypass(ctx)

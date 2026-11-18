@@ -80,6 +80,8 @@ type Provider interface {
 	Subscribe(ctx context.Context, in SubscribeInput) (Subscription, error)
 	ChangePlan(ctx context.Context, subscriptionID, plan, period string, amountMXN int) (Subscription, error)
 	Cancel(ctx context.Context, subscriptionID string) error
+	// Refund devuelve un cobro ya pagado.
+	Refund(ctx context.Context, chargeID string) error
 	// ParseEvent verifica la firma y traduce el cuerpo; falla con ErrBadSignature si no es auténtico.
 	ParseEvent(h http.Header, body []byte) (Event, error)
 }

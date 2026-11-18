@@ -67,6 +67,9 @@ type Config struct {
 	// SIMULADA para probar el ciclo completo: no cobra nada y por eso solo se permite fuera de producción real.
 	PaymentsProvider  string `envconfig:"PAYMENTS_PROVIDER"`
 	PaymentsSimSecret string `envconfig:"PAYMENTS_SIM_SECRET"`
+	// Operación de cuentas: permite que una misma persona pida y apruebe una acción que cuesta dinero (equipos de una sola
+	// persona). Apagado por omisión: la regla es que las apruebe OTRA. Cada uso queda registrado como autoaprobación.
+	PlatformAllowSelfApproval bool `envconfig:"PLATFORM_ALLOW_SELF_APPROVAL" default:"false"`
 	// AllowDemoAccounts marca un ambiente de pruebas (staging): nunca se activa en producción real.
 	AllowDemoAccounts bool `envconfig:"ALLOW_DEMO_ACCOUNTS" default:"false"`
 
