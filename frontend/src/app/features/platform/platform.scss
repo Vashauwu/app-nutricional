@@ -4,7 +4,7 @@ app-platform-shell {
 
       & { display: block; min-block-size: 100dvh; background: var(--nutri-marfil); color: var(--nutri-texto); }
       .frame { display: grid; grid-template-columns: 15rem 1fr; grid-template-rows: auto 1fr; min-block-size: 100dvh; }
-      header { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-3, .75rem); padding: .625rem 1.25rem; background: var(--surface); border-block-end: 1px solid var(--nutri-borde); position: sticky; inset-block-start: 0; z-index: 5; }
+      .frame > header { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-3, .75rem); padding: .625rem 1.25rem; background: var(--surface); border-block-end: 1px solid var(--nutri-borde); position: sticky; inset-block-start: 0; z-index: 5; }
       .brand { display: inline-flex; align-items: center; gap: .625rem; font-weight: 600; color: var(--brand-ink); text-decoration: none; }
       .brand img { inline-size: 2rem; block-size: 2rem; }
       .brand .name { font-family: var(--nutri-font-display); font-size: 1.125rem; font-weight: 700; }
@@ -22,7 +22,7 @@ app-platform-shell {
       main { padding: 1.5rem; min-inline-size: 0; }
       .inner { max-inline-size: var(--page-max, 78rem); margin-inline: auto; }
       @media (max-width: 40rem) {
-        header { padding-inline: .75rem; gap: .5rem; }
+        .frame > header { padding-inline: .75rem; gap: .5rem; }
         .brand .name, .back .lbl { display: none; }
       }
       @media (max-width: 52rem) {
@@ -33,4 +33,9 @@ app-platform-shell {
         nav .foot, nav .hint { display: none; }
         main { padding: 1rem; }
       }
+
+  // Superficies del navegador que también llevan la marca: selección, cursor y barras de desplazamiento.
+  ::selection { background: var(--nutri-lavanda); color: var(--brand-ink); }
+  input, textarea { caret-color: var(--brand-ink); }
+  nav ul { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--nutri-texto) 30%, transparent) transparent; }
 }

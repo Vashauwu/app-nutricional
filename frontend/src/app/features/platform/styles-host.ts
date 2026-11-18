@@ -5,7 +5,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation } from '@angular/
   selector: 'app-pf-styles',
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
-  styleUrl: './platform-ui.scss',
+  styleUrls: ['./platform-ui.scss', './platform-tables.scss'],
   template: '',
 })
 export class PfStyles {}

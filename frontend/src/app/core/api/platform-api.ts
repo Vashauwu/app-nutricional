@@ -18,7 +18,7 @@ export interface PaymentRow { id: string; status: 'paid' | 'failed' | 'refunded'
 export interface AuditRow { action: string; actor: string; occurred_at: string; metadata: Record<string, unknown> }
 export interface ActionRow {
   id: string; practice_id: string; practice_name?: string; kind: ActionKind; params: { plan?: PlanCode; period?: string; days?: number; payment_id?: string };
-  reason: string; status: ActionStatus; requested_by: string; requested_by_email?: string; requested_at: string; decided_at?: string; decision_note?: string; error?: string;
+  reason: string; status: ActionStatus; requested_by: string; requested_by_email?: string; requested_at: string; decided_at?: string; decided_by_email?: string; decision_note?: string; error?: string;
 }
 /** -1 = sin tope. */
 export interface Limits { active_patients: number; storage_bytes: number; tracking_photos: boolean }
@@ -31,7 +31,7 @@ export interface DayCount { day: string; total: number }
 export interface Overview {
   generated_at: string; accounts: number; suspended: number; comped: number;
   by_state: Partial<Record<SubState, number>>; by_plan: Partial<Record<PlanCode, number>>;
-  paying_accounts: number; mrr_mxn: number; trials_ending_soon: number; pending_actions: number;
+  paying_accounts: number; mrr_mxn: number; mrr_by_plan: Partial<Record<PlanCode, number>>; trials_ending_soon: number; pending_actions: number;
   signups_daily: DayCount[]; signups_30d: number; signups_prev_30d: number;
   payments_30d: { paid_count: number; paid_mxn: number; failed_count: number; returned_mxn: number };
   recent_payments: { id: string; practice_id: string; practice_name: string; status: PaymentRow['status']; amount_mxn: number; plan: PlanCode; occurred_at: string }[];

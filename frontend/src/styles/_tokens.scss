@@ -56,6 +56,9 @@
   --tui-border-normal: var(--nutri-borde);
   --tui-border-hover: color-mix(in srgb, var(--nutri-borde) 60%, var(--nutri-texto));
   --tui-border-focus: var(--brand-ink);
+
+  // El rojo de las acciones destructivas es el de peligro del sistema (no el rojo por defecto de Taiga).
+  --tui-status-negative: #8a1c3b;
 }
 
 // Superficies y estado neutros (modo claro). Los gráficos usan estos tokens.
@@ -86,6 +89,7 @@
   --nutri-texto-fuerte: #fbf5fb;
   --surface: #28222a;
   --danger: #ff9db8;
+  --tui-status-negative: #ff9db8;
   --ok: #9fd8a8;
   --warn: #ecc96e;
   --info: #93c8ec;

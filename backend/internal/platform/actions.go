@@ -39,6 +39,7 @@ type ActionRow struct {
 	Status        string     `json:"status"`
 	RequestedBy   uuid.UUID  `json:"requested_by"`
 	RequesterMail string     `json:"requested_by_email,omitempty"`
+	DeciderMail   string     `json:"decided_by_email,omitempty"`
 	RequestedAt   time.Time  `json:"requested_at"`
 	DecidedAt     *time.Time `json:"decided_at,omitempty"`
 	DecisionNote  string     `json:"decision_note,omitempty"`
@@ -119,8 +120,10 @@ func (s *Service) Actions(ctx context.Context, status string, practice uuid.UUID
 		if practice != uuid.Nil && r.PracticeID != practice {
 			continue
 		}
-		out = append(out, rowOf(db.PlatformAction{ID: r.ID, PracticeID: r.PracticeID, Kind: r.Kind, Params: r.Params, Reason: r.Reason, Status: r.Status, RequestedBy: r.RequestedBy,
-			RequestedAt: r.RequestedAt, DecidedBy: r.DecidedBy, DecidedAt: r.DecidedAt, DecisionNote: r.DecisionNote, ExecutedAt: r.ExecutedAt, Error: r.Error}, r.PracticeName, r.RequesterEmail))
+		row := rowOf(db.PlatformAction{ID: r.ID, PracticeID: r.PracticeID, Kind: r.Kind, Params: r.Params, Reason: r.Reason, Status: r.Status, RequestedBy: r.RequestedBy,
+			RequestedAt: r.RequestedAt, DecidedBy: r.DecidedBy, DecidedAt: r.DecidedAt, DecisionNote: r.DecisionNote, ExecutedAt: r.ExecutedAt, Error: r.Error}, r.PracticeName, r.RequesterEmail)
+		row.DeciderMail = r.DeciderEmail
+		out = append(out, row)
 	}
 	return out, nil
 }

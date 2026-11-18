@@ -49,8 +49,8 @@ INSERT INTO platform_actions (practice_id, kind, params, reason, requested_by) V
 SELECT * FROM platform_actions WHERE id = $1;
 
 -- name: PlatformListActions :many
-SELECT a.*, p.name AS practice_name, COALESCE(u.email, '')::text AS requester_email
-FROM platform_actions a JOIN practices p ON p.id = a.practice_id LEFT JOIN users u ON u.id = a.requested_by
+SELECT a.*, p.name AS practice_name, COALESCE(u.email, '')::text AS requester_email, COALESCE(d.email, '')::text AS decider_email
+FROM platform_actions a JOIN practices p ON p.id = a.practice_id LEFT JOIN users u ON u.id = a.requested_by LEFT JOIN users d ON d.id = a.decided_by
 WHERE (sqlc.arg(action_status)::text = '' OR a.status = sqlc.arg(action_status)::text)
 ORDER BY a.requested_at DESC LIMIT 100;
 

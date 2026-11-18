@@ -1,89 +1,55 @@
-// Piezas compartidas por las pantallas del panel (prefijo .pf-). Se cargan con el marco, solo en /plataforma.
+// Piezas compartidas del panel (prefijo .pf-). Se cargan con el marco, solo en /plataforma.
+// Vocabulario: secciones abiertas separadas por filos finos, tablas sobre superficie blanca y datos en cifras tabulares.
+// No hay mosaicos de tarjetas: la jerarquía sale del orden, del peso tipográfico y del espacio.
+app-platform-overview, app-platform-accounts, app-platform-account, app-platform-approvals { display: block; }
 
-// Panel de plataforma (zona /plataforma). Solo usa los tokens del sistema: marfil, superficie blanca, ciruela y los
-// pasteles con significado. Prefijo .pf- para no tocar el resto de la aplicación.
-.pf-grid { display: grid; gap: var(--space-4); margin-block-end: var(--space-4); }
-.pf-kpis { grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
-.pf-two { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
-.pf-even { grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); }
-@media (max-width: 62rem) { .pf-two { grid-template-columns: 1fr; } }
+.pf-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-block-end: 1.75rem; }
+.pf-head h1 { margin: 0; font-size: 1.75rem; letter-spacing: -0.01em; }
+.pf-head .sub { margin: 0.25rem 0 0; font-size: 0.875rem; color: var(--nutri-texto-suave); }
+.pf-head .acts { display: flex; gap: var(--space-2); flex-wrap: wrap; }
 
-.pf-card {
-  background: var(--surface);
-  border: 1px solid var(--nutri-borde);
-  border-radius: var(--radius-m);
-  padding: var(--space-5, 1.25rem);
-  min-inline-size: 0;
-  display: grid;
-  gap: var(--space-3);
-  align-content: start;
+.pf-sec { margin-block-end: 2.25rem; min-inline-size: 0; }
+.pf-sec > h2, .pf-h2 { margin: 0 0 0.75rem; padding-block-end: 0.5rem; border-block-end: 1px solid var(--nutri-borde); font-family: var(--nutri-font-ui); font-size: 0.9375rem; font-weight: 600; letter-spacing: 0.01em; color: var(--nutri-texto-fuerte); display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); }
+.pf-sec > h2 small, .pf-h2 small { font-weight: 400; font-size: 0.8125rem; color: var(--nutri-texto-suave); }
+.pf-cols { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 2.5rem; }
+.pf-cols--even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 62rem) { .pf-cols, .pf-cols--even { grid-template-columns: 1fr; gap: 0; } }
 
-  h2 { margin: 0; font-family: var(--nutri-font-ui); font-size: 1rem; font-weight: 600; color: var(--nutri-texto-fuerte); }
-  .head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
-  .sub { margin: 0; font-size: 0.8125rem; color: var(--nutri-texto-suave); }
-}
+.pf-note { margin: 0.75rem 0 0; font-size: 0.8125rem; color: var(--nutri-texto-suave); max-inline-size: 60ch; }
+.pf-empty { margin: 0; padding: 1rem 0; color: var(--nutri-texto-suave); }
 
-// Indicador: cifra grande con tabular-nums; el tono solo marca lo que pide atención.
-.pf-kpi {
-  position: relative;
-  .label { font-size: 0.8125rem; color: var(--nutri-texto-suave); font-weight: 500; }
-  .value { font-size: 1.875rem; line-height: 1.1; font-weight: 600; color: var(--brand-ink); font-variant-numeric: tabular-nums; }
-  .note { font-size: 0.8125rem; color: var(--nutri-texto-suave); }
-  &.warn { border-color: color-mix(in srgb, var(--nutri-mantequilla) 70%, var(--nutri-texto)); background: color-mix(in srgb, var(--nutri-mantequilla) 35%, var(--surface)); }
-  &.crit { border-color: color-mix(in srgb, var(--nutri-rosa) 70%, var(--nutri-texto)); background: color-mix(in srgb, var(--nutri-rosa) 30%, var(--surface)); }
-}
+// Pendientes: una fila por cosa que pide a una persona.
+.pf-todo { list-style: none; margin: 0; padding: 0; }
+.pf-todo li { display: grid; grid-template-columns: auto 1fr auto; gap: 0.25rem 0.875rem; align-items: center; padding: 0.75rem 0; border-block-end: 1px solid var(--nutri-borde); }
+.pf-todo li:last-child { border-block-end: 0; }
+.pf-todo strong { color: var(--nutri-texto-fuerte); font-weight: 600; }
+.pf-todo .why { grid-column: 2; font-size: 0.8125rem; color: var(--nutri-texto-suave); }
+.pf-todo a.go { grid-column: 3; grid-row: 1 / span 2; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; font-weight: 500; color: var(--brand-ink); text-decoration: none; padding: 0.5rem; margin: -0.5rem; border-radius: var(--radius-s); }
+.pf-todo a.go:hover { background: color-mix(in srgb, var(--nutri-lavanda) 50%, transparent); }
+.pf-dot { display: inline-block; inline-size: 0.625rem; block-size: 0.625rem; border-radius: 50%; background: var(--tone, var(--nutri-borde)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nutri-texto) 28%, transparent); flex: none; }
 
-.pf-rows { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.pf-row { display: grid; grid-template-columns: minmax(6rem, 9rem) 1fr auto; align-items: center; gap: var(--space-3); font-size: 0.9375rem; }
-.pf-row progress { inline-size: 100%; }
-.pf-row .n { font-variant-numeric: tabular-nums; font-weight: 600; min-inline-size: 5.5rem; text-align: end; }
+// Libro de cifras: etiqueta a la izquierda, valor a la derecha.
+.pf-ledger { margin: 0; display: grid; }
+.pf-ledger > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-3); padding: 0.5rem 0; border-block-end: 1px solid var(--nutri-borde); }
+.pf-ledger > div:last-child { border-block-end: 0; }
+.pf-ledger dt { color: var(--nutri-texto-suave); font-size: 0.9375rem; }
+.pf-ledger dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--nutri-texto-fuerte); text-align: end; }
+.pf-ledger .lead dd { font-size: 1.375rem; font-family: var(--nutri-font-display); color: var(--brand-ink); }
 
-.pf-list { display: grid; margin: 0; padding: 0; list-style: none; }
-.pf-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; border-block-end: 1px solid var(--nutri-borde); }
-.pf-list li:last-child { border-block-end: 0; }
-.pf-list .who { display: grid; gap: 0.125rem; min-inline-size: 0; }
-.pf-list .who a { font-weight: 600; color: var(--nutri-texto-fuerte); text-decoration: none; overflow-wrap: anywhere; }
-.pf-list .who a:hover { text-decoration: underline; }
-.pf-list .who small, .pf-empty { color: var(--nutri-texto-suave); font-size: 0.8125rem; }
-.pf-empty { padding: var(--space-4) 0; text-align: center; }
-
-.pf-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-3); margin-block-end: var(--space-4); }
-.pf-toolbar .grow { flex: 1 1 16rem; min-inline-size: 0; }
-.pf-toolbar .fixed { flex: 0 0 11rem; }
-
-.pf-table-card { padding: 0; overflow: hidden; }
-.pf-table-card .table-wrap { overflow-x: auto; }
-.pf-table-card .table th:first-child, .pf-table-card .table td:first-child { padding-inline-start: var(--space-5, 1.25rem); }
-.pf-table-card tbody tr.link { cursor: pointer; }
-.pf-table-card .foot { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-3) var(--space-5, 1.25rem); border-block-start: 1px solid var(--nutri-borde); font-size: 0.875rem; color: var(--nutri-texto-suave); }
-.pf-name { display: grid; gap: 0.125rem; }
-.pf-name strong { color: var(--nutri-texto-fuerte); }
-.pf-name small { color: var(--nutri-texto-suave); }
-
-.pf-detail { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: var(--space-4); margin: 0; }
-.pf-detail dt { font-size: 0.75rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--nutri-texto-suave); font-weight: 600; }
-.pf-detail dd { margin: 0.125rem 0 0; font-weight: 500; overflow-wrap: anywhere; }
-
-.pf-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.pf-timeline { display: grid; margin: 0; padding: 0; list-style: none; }
-.pf-timeline li { display: grid; grid-template-columns: 8.5rem 1fr; gap: var(--space-3); padding: var(--space-2) 0; font-size: 0.875rem; border-block-end: 1px solid var(--nutri-borde); }
-.pf-timeline li:last-child { border-block-end: 0; }
-.pf-timeline time { color: var(--nutri-texto-suave); font-variant-numeric: tabular-nums; }
-.pf-timeline small { display: block; color: var(--nutri-texto-suave); }
-@media (max-width: 40rem) { .pf-timeline li { grid-template-columns: 1fr; gap: 0; } .pf-row { grid-template-columns: 1fr auto; } .pf-row progress { grid-column: 1 / -1; order: 3; } }
+.pf-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pf-danger { border: 1px solid color-mix(in srgb, var(--nutri-rosa) 80%, var(--nutri-texto)); border-radius: var(--radius-m); padding: 1rem 1.25rem; display: grid; gap: 0.5rem; }
+.pf-danger h2 { margin: 0; font-family: var(--nutri-font-ui); font-size: 0.9375rem; font-weight: 600; color: var(--danger, #8a1c3b); }
+.pf-danger p { margin: 0; font-size: 0.875rem; color: var(--nutri-texto-suave); }
 
 .pf-form { display: grid; gap: var(--space-4); }
 .pf-error { color: var(--danger, #8a1c3b); font-size: 0.875rem; margin: 0; }
-.pf-back { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; color: var(--nutri-texto-suave); text-decoration: none; margin-block-end: var(--space-3); }
+.pf-hint { font-size: 0.8125rem; color: var(--nutri-texto-suave); margin: -0.5rem 0 0; }
+.pf-radios { display: grid; gap: 0.5rem; border: 0; padding: 0; margin: 0; }
+.pf-radios legend { font-size: 0.8125rem; color: var(--nutri-texto-suave); margin-block-end: 0.25rem; padding: 0; }
+.pf-radios label { display: flex; gap: 0.625rem; align-items: center; min-block-size: var(--tap, 2.75rem); padding: 0 0.75rem; border: 1px solid var(--nutri-borde); border-radius: var(--radius-s); cursor: pointer; font-variant-numeric: tabular-nums; }
+.pf-radios label:has(input:checked) { border-color: var(--brand-ink); background: color-mix(in srgb, var(--nutri-lavanda) 40%, transparent); }
+.pf-radios input { accent-color: var(--brand-ink); inline-size: 1.125rem; block-size: 1.125rem; }
+.pf-back { display: inline-flex; align-items: center; gap: 0.375rem; font-size: 0.875rem; color: var(--nutri-texto-suave); text-decoration: none; margin-block-end: 0.75rem; }
 .pf-back:hover { color: var(--nutri-texto-fuerte); text-decoration: underline; }
 .pf-sr { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-
-// Encabezados de página del panel: aire antes del contenido.
-app-platform-overview, app-platform-accounts, app-platform-account, app-platform-approvals { display: block; }
-app-platform-overview .page-header, app-platform-accounts .page-header, app-platform-account .page-header, app-platform-approvals .page-header { margin-block-end: var(--space-5, 1.25rem); }
-app-platform-account .page-header .actions, app-platform-overview .page-header .actions { align-self: flex-start; }
-.pf-kpis { grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); }
-.pf-kpi .value { font-size: 1.75rem; }
-.pf-row { grid-template-columns: 1fr auto; row-gap: 0.375rem; }
-.pf-row progress { grid-column: 1 / -1; grid-row: 2; inline-size: 100%; }
-.pf-row .n { min-inline-size: 0; }
+.pf-tabs { margin-block-end: 1rem; }
