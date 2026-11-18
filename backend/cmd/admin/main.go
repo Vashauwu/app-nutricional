@@ -2,7 +2,7 @@
 //
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin set-password -email a@b.mx    # cambia la contraseña y cierra sus sesiones
 //	NEW_USER_PASSWORD='...' go run ./cmd/admin create-user -email a@b.mx -name "Lic. X" -role nutritionist
-//	go run ./cmd/admin set-plan -email a@b.mx -plan pro [-period annual]   # cambia el plan de la consulta de esa cuenta (free|standard|pro)
+//	go run ./cmd/admin set-plan -email a@b.mx -plan pro [-period annual] [-status trialing -trial-days 14 | past_due | canceled -until 2026-12-31] [-comp 'cortesía']
 //	go run ./cmd/admin grant-platform-admin -email a@b.mx   # permite administrar el catálogo SMAE global
 //	go run ./cmd/admin seed-demo-catalog            # catálogo SMAE de EJEMPLO (no oficial), activo
 //	go run ./cmd/admin seed-demo-catalog -errata    # edición de ejemplo en borrador, para probar el recálculo
@@ -231,13 +231,36 @@ func setPlan(ctx context.Context, pool *pgxpool.Pool) {
 	email := fs.String("email", "", "correo de la cuenta")
 	plan := fs.String("plan", "", "free | standard | pro")
 	period := fs.String("period", "", "monthly | annual (opcional)")
+	status := fs.String("status", "active", "active | trialing | past_due | canceled | expired")
+	trialDays := fs.Int("trial-days", 0, "días de prueba (con -status trialing)")
+	graceDays := fs.Int("grace-days", plans.GraceDays, "días de gracia (con -status past_due)")
+	until := fs.String("until", "", "fin del periodo pagado AAAA-MM-DD (con active, canceled)")
+	comp := fs.String("comp", "", "motivo si el plan se concede sin cobro (cortesía, fundadora)")
 	_ = fs.Parse(os.Args[2:])
 	_, practice := practiceOf(ctx, pool, *email)
-	if err := plans.NewService(pool).SetPlan(tenant.With(ctx, practice), *plan, *period); err != nil {
+	ch := plans.Change{Plan: *plan, Period: *period, Status: *status, CompReason: *comp}
+	now := time.Now()
+	if *trialDays > 0 {
+		t := now.AddDate(0, 0, *trialDays)
+		ch.TrialEndsAt = &t
+	}
+	if *status == plans.StatusPastDue {
+		g := now.AddDate(0, 0, *graceDays)
+		ch.GraceUntil = &g
+	}
+	if *until != "" {
+		d, err := time.Parse("2006-01-02", *until)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "-until debe ser AAAA-MM-DD")
+			os.Exit(2)
+		}
+		ch.PeriodEnd = &d
+	}
+	if err := plans.NewService(pool).Apply(tenant.With(ctx, practice), ch); err != nil {
 		fmt.Fprintln(os.Stderr, "no se pudo cambiar el plan:", err)
 		os.Exit(1)
 	}
-	fmt.Printf("plan de la consulta de %s: %s\n", *email, *plan)
+	fmt.Printf("plan de la consulta de %s: %s (%s)\n", *email, *plan, *status)
 }
 
 func grantPlatformAdmin(ctx context.Context, pool *pgxpool.Pool) {

@@ -1,14 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { TuiButton } from '@taiga-ui/core';
-import { catchError, of } from 'rxjs';
+import { catchError, of, tap } from 'rxjs';
 import { BillingApi, BillingPeriod, BillingSummary, PlanCode, PlanInfo } from '../../core/api/billing-api';
 import { ApiClient } from '../../core/api/api-client';
 import { ToastService } from '../../core/services/ui.services';
 import { Icon } from '../../shared/components/icon';
 import { PageHeader } from '../../shared/components/page-header';
 import { EmptyState } from '../../shared/components/ui';
-import { formatBytes } from '../../shared/utils/format';
+import { formatBytes, formatDate } from '../../shared/utils/format';
+import { Entitlements } from '../../core/services/entitlements.service';
 
 const RANK: Record<PlanCode, number> = { free: 0, standard: 1, pro: 2 };
 const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
@@ -48,13 +49,16 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
       @if (error()) {
         <app-empty icon="alert-circle" title="No se pudo cargar tu plan" text="Revisa tu conexión e inténtalo de nuevo." />
       } @else if (summary(); as s) {
+        @if (notice(); as n) {
+          <div class="callout" [class.callout--warn]="n.warn" [attr.role]="n.warn ? 'alert' : 'status'"><app-icon [name]="n.warn ? 'alert' : 'info'" /><div class="callout-body"><p><strong>{{ n.title }}</strong></p><p class="small">{{ n.text }}</p></div></div>
+        }
         <section class="cur" aria-labelledby="b-cur">
           <div class="panel stack">
             <p class="eyebrow" id="b-cur">Tu plan actual</p>
             <p class="plan-name">{{ s.plan.name }}</p>
             <p class="muted m-0">{{ s.plan.tagline }}</p>
             @if (s.plan.code !== 'free') {
-              <p class="small m-0">{{ s.period === 'annual' ? 'Facturación anual' : s.period === 'monthly' ? 'Facturación mensual' : 'Cuenta con acceso completo' }}</p>
+              <p class="small m-0">{{ s.comped ? 'Plan concedido sin cobro' + (s.compReason ? ' · ' + s.compReason : '') : s.period === 'annual' ? 'Facturación anual' : s.period === 'monthly' ? 'Facturación mensual' : 'Cuenta con acceso completo' }}</p>
             }
           </div>
           <div class="panel meters" role="group" aria-label="Uso del plan">
@@ -66,6 +70,7 @@ const mxn = (n: number): string => new Intl.NumberFormat('es-MX', { style: 'curr
               <div class="top"><span>Archivos</span><span>{{ bytes(s.usage.storageBytes) }} de {{ s.plan.storageBytes < 0 ? 'sin tope' : bytes(s.plan.storageBytes) }}</span></div>
               <div class="track" role="progressbar" aria-label="Espacio de archivos" [attr.aria-valuenow]="storagePct()" aria-valuemin="0" aria-valuemax="100"><div class="fill" [class]="'fill ' + tone(storagePct())" [style.inline-size.%]="storagePct()"></div></div>
             </div>
+            @for (a of usageAlerts(); track a.key) { <p class="small m-0" [class.text-danger]="a.crit" role="status"><app-icon [name]="a.crit ? 'alert-circle' : 'alert'" [size]="14" /> {{ a.text }}</p> }
             <p class="small muted m-0">Fotografías de seguimiento: {{ s.plan.trackingPhotos ? 'incluidas' : 'no incluidas en este plan' }}.</p>
           </div>
         </section>
@@ -129,9 +134,37 @@ export class BillingPage {
   protected readonly sending = signal<PlanCode | null>(null);
 
   protected readonly summary = toSignal(
-    this.billing.summary().pipe(catchError(() => { this.error.set(true); return of(null as BillingSummary | null); })),
+    this.billing.summary().pipe(tap(() => this.ent.load(true)), catchError(() => { this.error.set(true); return of(null as BillingSummary | null); })),
     { initialValue: null as BillingSummary | null },
   );
+
+  private readonly ent = inject(Entitlements);
+
+  /** Aviso según el estado de la suscripción (prueba, cobro fallido, cancelada o vencida). */
+  protected readonly notice = computed<{ title: string; text: string; warn: boolean } | null>(() => {
+    const s = this.summary();
+    if (!s) return null;
+    const end = s.endsAt ? formatDate(s.endsAt.toISOString()) : '';
+    switch (s.state) {
+      case 'trialing': return { warn: false, title: `Prueba gratuita del plan ${s.plan.name}`, text: `Tienes acceso completo hasta el ${end}. No se hace ningún cobro durante la prueba.` };
+      case 'past_due': return { warn: true, title: 'No pudimos cobrar tu plan', text: `Conservas el plan ${s.plan.name} hasta el ${end}. Si el pago no se regulariza, pasarás al plan Gratuito; no se borra nada.` };
+      case 'canceled': return { warn: false, title: 'Tu suscripción está cancelada', text: `Conservas el plan ${s.plan.name} hasta el ${end}. Después pasarás al plan Gratuito; no se borra nada.` };
+      case 'expired': return s.downgraded ? { warn: true, title: `Tu plan ${s.contracted.name} ya no está vigente`, text: 'Operas con el plan Gratuito: conservas todo lo que ya tienes, pero no puedes crear por encima de sus cupos hasta contratar un plan.' } : null;
+      default: return null;
+    }
+  });
+
+  protected readonly usageAlerts = computed(() => {
+    const s = this.summary();
+    if (!s) return [];
+    const out: { key: string; text: string; crit: boolean }[] = [];
+    const pp = s.plan.activePatients;
+    if (pp >= 0 && s.usage.activePatients >= pp) out.push({ key: 'p', crit: true, text: s.usage.activePatients > pp ? `Tienes ${s.usage.activePatients} pacientes activos y tu plan incluye ${pp}: no podrás agregar más hasta archivar pacientes o cambiar de plan.` : `Llegaste al límite de ${pp} pacientes activos. Archiva pacientes o cambia de plan para agregar más.` });
+    else if (this.patientsPct() >= 80) out.push({ key: 'p', crit: false, text: 'Estás cerca del límite de pacientes activos de tu plan.' });
+    if (s.plan.storageBytes >= 0 && s.usage.storageBytes >= s.plan.storageBytes) out.push({ key: 's', crit: true, text: 'Ya no queda espacio de archivos en tu plan. Libera espacio o cambia de plan.' });
+    else if (this.storagePct() >= 80) out.push({ key: 's', crit: false, text: 'Estás cerca del límite de espacio de archivos de tu plan.' });
+    return out;
+  });
 
   protected readonly patientsPct = computed(() => {
     const s = this.summary();

@@ -14,6 +14,8 @@ import (
 type Querier interface {
 	ActivatePatientByUser(ctx context.Context, userID uuid.NullUUID) error
 	ActivateUser(ctx context.Context, id uuid.UUID) error
+	// Una fila por consulta (RLS): fija el estado completo de la suscripción.
+	ApplySubscription(ctx context.Context, arg ApplySubscriptionParams) error
 	AssignCustomEquivalence(ctx context.Context, arg AssignCustomEquivalenceParams) error
 	AssignRoleByCode(ctx context.Context, arg AssignRoleByCodeParams) error
 	BumpPlanRevision(ctx context.Context, arg BumpPlanRevisionParams) (MealPlan, error)
@@ -250,7 +252,7 @@ type Querier interface {
 	// Un paciente registrado a mano recibe cuenta e invitación: queda «invitado» hasta que cree su contraseña.
 	SetPatientInvited(ctx context.Context, id uuid.UUID) error
 	SetPlanStatus(ctx context.Context, arg SetPlanStatusParams) (MealPlan, error)
-	SetSubscriptionPlan(ctx context.Context, arg SetSubscriptionPlanParams) error
+	SetSubscriptionProvider(ctx context.Context, arg SetSubscriptionProviderParams) error
 	SetUserStatus(ctx context.Context, arg SetUserStatusParams) error
 	SlotPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]SlotPlanIDsRow, error)
 	SoftDeleteDietCalculation(ctx context.Context, id uuid.UUID) (int64, error)

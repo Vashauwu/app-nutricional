@@ -2,7 +2,9 @@ package plans
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,9 +16,15 @@ import (
 type Service struct {
 	pool *pgxpool.Pool
 	q    *db.Queries
+	now  func() time.Time
 }
 
-func NewService(pool *pgxpool.Pool) *Service { return &Service{pool: pool, q: db.New(pool)} }
+func NewService(pool *pgxpool.Pool) *Service {
+	return &Service{pool: pool, q: db.New(pool), now: time.Now}
+}
+
+// SetClock fija el reloj (pruebas del ciclo de vida).
+func (s *Service) SetClock(now func() time.Time) { s.now = now }
 
 type Usage struct {
 	ActivePatients int   `json:"active_patients"`
@@ -24,22 +32,38 @@ type Usage struct {
 }
 
 type Summary struct {
+	// Plan es el EFECTIVO: el que valida límites. Contracted es el elegido aunque ya no esté vigente.
 	Plan          Plan   `json:"plan"`
+	Contracted    Plan   `json:"contracted"`
 	BillingPeriod string `json:"billing_period"`
-	Status        string `json:"status"`
-	Usage         Usage  `json:"usage"`
-	Catalog       []Plan `json:"catalog"`
-	PaymentsReady bool   `json:"payments_ready"`
+	// State: free | trialing | active | past_due | canceled | expired.
+	State             string     `json:"state"`
+	EndsAt            *time.Time `json:"ends_at"`
+	Downgraded        bool       `json:"downgraded"`
+	Comped            bool       `json:"comped"`
+	CompReason        string     `json:"comp_reason,omitempty"`
+	CancelAtPeriodEnd bool       `json:"cancel_at_period_end"`
+	PendingPlan       string     `json:"pending_plan,omitempty"`
+	Usage             Usage      `json:"usage"`
+	Catalog           []Plan     `json:"catalog"`
+	PaymentsReady     bool       `json:"payments_ready"`
 }
 
-// Current devuelve el plan vigente de la consulta del contexto.
-func (s *Service) Current(ctx context.Context) (Plan, db.Subscription, error) {
+// Standing devuelve la situación de la consulta del contexto: plan contratado, plan efectivo y estado.
+func (s *Service) Standing(ctx context.Context) (Standing, db.Subscription, error) {
 	sub, err := s.q.GetSubscription(ctx)
 	if err != nil {
-		return Plan{}, db.Subscription{}, err
+		return Standing{}, db.Subscription{}, err
 	}
-	p, err := ByCode(sub.Plan)
-	return p, sub, err
+	st, err := Resolve(sub, s.now())
+	return st, sub, err
+}
+
+// Current devuelve el plan EFECTIVO de la consulta del contexto: la única puerta que consultan los límites. Si la
+// suscripción venció, es Gratuito; nada se borra, solo se bloquea crear por encima de sus cupos.
+func (s *Service) Current(ctx context.Context) (Plan, db.Subscription, error) {
+	st, sub, err := s.Standing(ctx)
+	return st.Plan, sub, err
 }
 
 func (s *Service) Usage(ctx context.Context) (Usage, error) {
@@ -55,7 +79,7 @@ func (s *Service) Usage(ctx context.Context) (Usage, error) {
 }
 
 func (s *Service) Summary(ctx context.Context) (Summary, error) {
-	p, sub, err := s.Current(ctx)
+	st, sub, err := s.Standing(ctx)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -63,7 +87,11 @@ func (s *Service) Summary(ctx context.Context) (Summary, error) {
 	if err != nil {
 		return Summary{}, err
 	}
-	return Summary{Plan: p, BillingPeriod: sub.BillingPeriod.String, Status: sub.Status, Usage: u, Catalog: Catalog}, nil
+	return Summary{
+		Plan: st.Plan, Contracted: st.Contracted, BillingPeriod: sub.BillingPeriod.String, State: st.State, EndsAt: st.EndsAt,
+		Downgraded: st.Downgraded, Comped: st.Comped, CompReason: sub.CompReason.String, CancelAtPeriodEnd: sub.CancelAtPeriodEnd,
+		PendingPlan: sub.PendingPlan.String, Usage: u, Catalog: Catalog,
+	}, nil
 }
 
 // CanAddPatient falla con *LimitError si un paciente más rebasaría el plan.
@@ -116,10 +144,71 @@ func (s *Service) CanUseTrackingPhotos(ctx context.Context) error {
 	return nil
 }
 
-// SetPlan cambia el plan de la consulta del contexto (operación de plataforma: CLI de administración y, más adelante, el cobro).
-func (s *Service) SetPlan(ctx context.Context, code, period string) error {
-	if _, err := ByCode(code); err != nil {
+// Change describe el estado completo de una suscripción. Lo usan la CLI de administración, el CRM y el cobro (webhooks).
+type Change struct {
+	Plan              string
+	Period            string // monthly | annual | ""
+	Status            string // por omisión: active
+	TrialEndsAt       *time.Time
+	GraceUntil        *time.Time
+	PeriodEnd         *time.Time
+	CancelAtPeriodEnd bool
+	PendingPlan       string
+	CompReason        string
+}
+
+var ErrInvalidChange = errors.New("cambio de suscripción inválido")
+
+func ts(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
+}
+
+// Apply fija el estado de la suscripción de la consulta del contexto. Valida que el estado tenga sus fechas: una prueba sin
+// fin, una gracia sin fin o una cancelada sin fin de periodo vencerían de inmediato.
+func (s *Service) Apply(ctx context.Context, c Change) error {
+	if _, err := ByCode(c.Plan); err != nil {
 		return err
 	}
-	return s.q.SetSubscriptionPlan(ctx, db.SetSubscriptionPlanParams{Plan: code, BillingPeriod: pgtype.Text{String: period, Valid: period != ""}})
+	if c.PendingPlan != "" {
+		if _, err := ByCode(c.PendingPlan); err != nil {
+			return err
+		}
+	}
+	if c.Status == "" {
+		c.Status = StatusActive
+	}
+	switch c.Status {
+	case StatusActive, StatusExpired:
+	case StatusTrialing:
+		if c.TrialEndsAt == nil {
+			return fmt.Errorf("%w: la prueba necesita fecha de fin", ErrInvalidChange)
+		}
+	case StatusPastDue:
+		if c.GraceUntil == nil {
+			return fmt.Errorf("%w: la gracia necesita fecha de fin", ErrInvalidChange)
+		}
+	case StatusCanceled:
+		if c.PeriodEnd == nil {
+			return fmt.Errorf("%w: la cancelada necesita el fin del periodo pagado", ErrInvalidChange)
+		}
+	default:
+		return fmt.Errorf("%w: estado %q", ErrInvalidChange, c.Status)
+	}
+	if c.Period != "" && c.Period != "monthly" && c.Period != "annual" {
+		return fmt.Errorf("%w: periodo %q", ErrInvalidChange, c.Period)
+	}
+	return s.q.ApplySubscription(ctx, db.ApplySubscriptionParams{
+		Plan: c.Plan, BillingPeriod: pgtype.Text{String: c.Period, Valid: c.Period != ""}, Status: c.Status,
+		TrialEndsAt: ts(c.TrialEndsAt), GraceUntil: ts(c.GraceUntil), CurrentPeriodEnd: ts(c.PeriodEnd),
+		CancelAtPeriodEnd: c.CancelAtPeriodEnd, PendingPlan: pgtype.Text{String: c.PendingPlan, Valid: c.PendingPlan != ""},
+		CompReason: pgtype.Text{String: c.CompReason, Valid: c.CompReason != ""},
+	})
+}
+
+// SetPlan asigna un plan sin cobro ni vencimiento (cuenta de ejemplo, ajuste manual). Conserva el motivo si ya lo había.
+func (s *Service) SetPlan(ctx context.Context, code, period string) error {
+	return s.Apply(ctx, Change{Plan: code, Period: period, Status: StatusActive})
 }
