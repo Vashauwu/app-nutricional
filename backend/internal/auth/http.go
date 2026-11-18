@@ -108,6 +108,9 @@ func (ct *Controller) login(c *gin.Context) {
 	case errors.Is(err, ErrInvalidCredentials):
 		shared.AbortWithError(c, http.StatusUnauthorized, "invalid_credentials", ErrInvalidCredentials.Error())
 		return
+	case errors.Is(err, ErrAccountSuspended):
+		shared.AbortWithError(c, http.StatusForbidden, "account_suspended", ErrAccountSuspended.Error()+".")
+		return
 	case errors.Is(err, ErrNotVerified):
 		shared.AbortWithError(c, http.StatusForbidden, "email_not_verified", "Confirma tu correo: te enviamos un enlace para activar tu cuenta. Si no lo encuentras, regístrate de nuevo con el mismo correo para recibir otro.")
 		return
@@ -260,6 +263,10 @@ func Authenticate(svc *Service) gin.HandlerFunc {
 				shared.AbortWithError(c, http.StatusUnauthorized, "unauthenticated", "Tu sesión terminó. Inicia sesión de nuevo.")
 				return
 			}
+			if errors.Is(err, ErrAccountSuspended) {
+				shared.AbortWithError(c, http.StatusForbidden, "account_suspended", ErrAccountSuspended.Error()+".")
+				return
+			}
 			shared.AbortWithError(c, http.StatusInternalServerError, "internal_error", "No se pudo validar la sesión.")
 			return
 		}
@@ -399,6 +406,8 @@ func (ct *Controller) google(c *gin.Context) {
 		shared.AbortWithError(c, http.StatusUnauthorized, "google_invalid", ErrGoogleToken.Error()+". Inténtalo de nuevo.")
 	case errors.Is(err, ErrGoogleNotAllowed):
 		shared.AbortWithError(c, http.StatusForbidden, "google_not_allowed", ErrGoogleNotAllowed.Error()+".")
+	case errors.Is(err, ErrAccountSuspended):
+		shared.AbortWithError(c, http.StatusForbidden, "account_suspended", ErrAccountSuspended.Error()+".")
 	case errors.Is(err, ErrSignupClosed):
 		shared.AbortWithError(c, http.StatusForbidden, "signup_closed", "No hay una cuenta con ese correo y el registro no está disponible por ahora.")
 	case errors.Is(err, ErrTermsRequired):

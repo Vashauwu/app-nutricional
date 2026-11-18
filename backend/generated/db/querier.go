@@ -86,11 +86,13 @@ type Querier interface {
 	GetPatientIndications(ctx context.Context, id uuid.UUID) (string, error)
 	// Solo el nombre y si está activo (agenda).
 	GetPatientName(ctx context.Context, id uuid.UUID) (GetPatientNameRow, error)
+	GetPayment(ctx context.Context, id uuid.UUID) (Payment, error)
 	GetPlan(ctx context.Context, id uuid.UUID) (MealPlan, error)
 	// ---------- Borrado permanente ----------
 	GetPlanAnyState(ctx context.Context, id uuid.UUID) (MealPlan, error)
 	// Correo de la nutrióloga titular de la consulta (para avisos de cobro).
 	GetPracticeOwnerEmail(ctx context.Context, practiceID uuid.UUID) (string, error)
+	GetPracticeStatus(ctx context.Context, id uuid.UUID) (string, error)
 	GetRecalcBatchForEdition(ctx context.Context, toEditionID uuid.UUID) (SmaeRecalcBatch, error)
 	GetRevision(ctx context.Context, arg GetRevisionParams) (MealPlanRevision, error)
 	GetSessionByID(ctx context.Context, id uuid.UUID) (UserSession, error)
@@ -233,6 +235,7 @@ type Querier interface {
 	// Pruebas que terminan entre $1 (ahora) y $2 y aún sin aviso previo al primer cobro (se corre saltando el aislamiento).
 	ListTrialsEnding(ctx context.Context, arg ListTrialsEndingParams) ([]ListTrialsEndingRow, error)
 	MarkEntryReviewed(ctx context.Context, id uuid.UUID) (int64, error)
+	MarkPaymentRefunded(ctx context.Context, id uuid.UUID) (int64, error)
 	MarkTrialNoticeSent(ctx context.Context, practiceID uuid.UUID) error
 	MarkTrialUsed(ctx context.Context) error
 	PatientEmailTaken(ctx context.Context, arg PatientEmailTakenParams) (bool, error)
@@ -241,6 +244,19 @@ type Querier interface {
 	PlansEndingSoon(ctx context.Context, arg PlansEndingSoonParams) ([]PlansEndingSoonRow, error)
 	// Cuántos planes no archivados usan un platillo (para avisar antes de desactivarlo).
 	PlansUsingDish(ctx context.Context, dishID uuid.UUID) (int64, error)
+	// Solo una solicitud pendiente se puede decidir (dos aprobaciones simultáneas no la ejecutan dos veces).
+	PlatformDecideAction(ctx context.Context, arg PlatformDecideActionParams) (int64, error)
+	PlatformFinishAction(ctx context.Context, arg PlatformFinishActionParams) error
+	PlatformGetAccount(ctx context.Context, id uuid.UUID) (PlatformGetAccountRow, error)
+	PlatformGetAction(ctx context.Context, id uuid.UUID) (PlatformAction, error)
+	PlatformInsertAction(ctx context.Context, arg PlatformInsertActionParams) (PlatformAction, error)
+	// Operaciones de plataforma: se ejecutan con tenant.Bypass y SIEMPRE filtran por consulta de forma explícita.
+	PlatformListAccounts(ctx context.Context, arg PlatformListAccountsParams) ([]PlatformListAccountsRow, error)
+	PlatformListActions(ctx context.Context, actionStatus string) ([]PlatformListActionsRow, error)
+	PlatformListAudit(ctx context.Context, practiceID uuid.NullUUID) ([]PlatformListAuditRow, error)
+	PlatformListPayments(ctx context.Context, practiceID uuid.UUID) ([]Payment, error)
+	PlatformRevokePracticeSessions(ctx context.Context, practiceID uuid.UUID) error
+	PlatformSetPracticeStatus(ctx context.Context, arg PlatformSetPracticeStatusParams) (int64, error)
 	PracticeStorageUsed(ctx context.Context) (int64, error)
 	PurgeMealPlan(ctx context.Context, pID uuid.UUID) ([]byte, error)
 	RemoveDaysNotIn(ctx context.Context, arg RemoveDaysNotInParams) error

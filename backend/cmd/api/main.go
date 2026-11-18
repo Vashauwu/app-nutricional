@@ -37,6 +37,7 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/patients"
 	"github.com/nutri/app-nutricional/backend/internal/payments"
 	"github.com/nutri/app-nutricional/backend/internal/plans"
+	"github.com/nutri/app-nutricional/backend/internal/platform"
 	"github.com/nutri/app-nutricional/backend/internal/reports"
 	"github.com/nutri/app-nutricional/backend/internal/settings"
 	"github.com/nutri/app-nutricional/backend/internal/shared"
@@ -295,6 +296,9 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 			billingSvc.SetNotifier(trialMailer{m: tm, link: cfg.AppBaseURL + "/facturacion"})
 		}
 	}
+	platformSvc := platform.NewService(pool, planSvc, billingSvc, logger)
+	platformSvc.AllowSelfApproval(cfg.PlatformAllowSelfApproval)
+	platform.NewController(platformSvc, authSvc, logger).Register(v1)
 	patientsSvc := patients.NewService(pool, authSvc, logger)
 	patientsSvc.SetLimits(planSvc)
 	patients.NewController(patientsSvc, authSvc, logger).Register(v1)

@@ -549,11 +549,29 @@ type Permission struct {
 	Description string    `json:"description"`
 }
 
+type PlatformAction struct {
+	ID           uuid.UUID          `json:"id"`
+	PracticeID   uuid.UUID          `json:"practice_id"`
+	Kind         string             `json:"kind"`
+	Params       []byte             `json:"params"`
+	Reason       string             `json:"reason"`
+	Status       string             `json:"status"`
+	RequestedBy  uuid.UUID          `json:"requested_by"`
+	RequestedAt  pgtype.Timestamptz `json:"requested_at"`
+	DecidedBy    uuid.NullUUID      `json:"decided_by"`
+	DecidedAt    pgtype.Timestamptz `json:"decided_at"`
+	DecisionNote pgtype.Text        `json:"decision_note"`
+	ExecutedAt   pgtype.Timestamptz `json:"executed_at"`
+	Error        pgtype.Text        `json:"error"`
+}
+
 type Practice struct {
-	ID        uuid.UUID          `json:"id"`
-	Name      string             `json:"name"`
-	Status    string             `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ID              uuid.UUID          `json:"id"`
+	Name            string             `json:"name"`
+	Status          string             `json:"status"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	SuspendedAt     pgtype.Timestamptz `json:"suspended_at"`
+	SuspendedReason pgtype.Text        `json:"suspended_reason"`
 }
 
 type Role struct {

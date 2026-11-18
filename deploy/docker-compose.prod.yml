@@ -59,6 +59,8 @@ services:
       # Cobro: vacío = sin cobro en línea; «sim» = pasarela SIMULADA (solo staging; no cobra nada).
       PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
       PAYMENTS_SIM_SECRET: ${PAYMENTS_SIM_SECRET:-}
+      # Operación de cuentas: true solo para equipos de UNA persona (pide y aprueba lo mismo). Por omisión la aprueba otra.
+      PLATFORM_ALLOW_SELF_APPROVAL: ${PLATFORM_ALLOW_SELF_APPROVAL:-false}
       # Catálogo SMAE oficial: apagado salvo que el .env del ambiente lo encienda (hay que contar con la licencia).
       SMAE_ENABLED: ${SMAE_ENABLED:-false}
       SMTP_HOST: ${SMTP_HOST:-}

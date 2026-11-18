@@ -27,6 +27,7 @@ var (
 	ErrBadResetToken      = errors.New("el enlace no es válido o ya expiró")
 	ErrBadEmail           = errors.New("correo electrónico inválido")
 	ErrNotFound           = errors.New("no encontrado")
+	ErrAccountSuspended   = errors.New("tu cuenta está suspendida; escríbenos para revisarla")
 	ErrNotVerified        = errors.New("confirma tu correo: te enviamos un enlace para activar tu cuenta")
 )
 
@@ -192,12 +193,19 @@ func (s *Service) Login(ctx context.Context, email, password string, m Meta) (*T
 		s.audit(ctx, nu(u.ID), "auth.login_failed", "user", nu(u.ID), m, nil)
 		return nil, ErrInvalidCredentials
 	}
+	if err := s.practiceActive(ctx, u.PracticeID); err != nil {
+		s.audit(ctx, nu(u.ID), "auth.login_blocked_suspended", "user", nu(u.ID), m, nil)
+		return nil, err
+	}
 	s.limiter.Reset(key)
 	return s.startSession(ctx, u, m)
 }
 
 // startSession abre una sesión para una cuenta ya autenticada (contraseña o Google) y emite los tokens.
 func (s *Service) startSession(ctx context.Context, u db.User, m Meta) (*Tokens, error) {
+	if err := s.practiceActive(ctx, u.PracticeID); err != nil { // también por Google: una consulta suspendida no abre sesión
+		return nil, err
+	}
 	raw, hash, err := NewOpaqueToken()
 	if err != nil {
 		return nil, err
@@ -257,6 +265,18 @@ func (s *Service) Refresh(ctx context.Context, raw string, m Meta) (*Tokens, err
 
 // Authenticate valida el access token y que su sesión siga vigente, de modo que
 // cerrar una sesión surta efecto de inmediato.
+// practiceActive falla con ErrAccountSuspended si la consulta de la persona fue suspendida o cerrada.
+func (s *Service) practiceActive(ctx context.Context, practice uuid.UUID) error {
+	st, err := s.q.GetPracticeStatus(tenant.With(ctx, practice), practice)
+	if err != nil {
+		return err
+	}
+	if st != "active" {
+		return ErrAccountSuspended
+	}
+	return nil
+}
+
 func (s *Service) Authenticate(ctx context.Context, access string) (*Identity, error) {
 	claims, err := s.Tokens.ParseAccess(access)
 	if err != nil {
@@ -269,6 +289,9 @@ func (s *Service) Authenticate(ctx context.Context, access string) (*Identity, e
 	u, err := s.q.GetUserByID(ctx, sess.UserID)
 	if err != nil || u.Status != "active" {
 		return nil, ErrSessionInvalid
+	}
+	if err := s.practiceActive(ctx, u.PracticeID); err != nil {
+		return nil, err
 	}
 	id, err := s.identity(ctx, u, sess.ID)
 	if err != nil {

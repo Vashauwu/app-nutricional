@@ -96,6 +96,8 @@ func (p *SimProvider) ChangePlan(_ context.Context, subID, _ string, period stri
 
 func (p *SimProvider) Cancel(context.Context, string) error { return nil }
 
+func (p *SimProvider) Refund(context.Context, string) error { return nil }
+
 // Sign firma un evento como lo haría el proveedor (HMAC-SHA256 del cuerpo). Lo usa la CLI de simulación y las pruebas.
 func (p *SimProvider) Sign(e Event) (body []byte, signature string) {
 	body, _ = json.Marshal(e)
