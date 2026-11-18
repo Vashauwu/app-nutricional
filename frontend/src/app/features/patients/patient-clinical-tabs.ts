@@ -27,6 +27,30 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
   selector: 'app-measurements-tab',
   imports: [ReactiveFormsModule, TuiButton, Icon, Modal, LineChart, EmptyState, FieldError],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: `
+    .link-btn { white-space: nowrap; }
+    .metric-pick { max-inline-size: 22rem; margin-block-end: var(--space-3); }
+    .sum { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); margin: 0 0 var(--space-5); }
+    .sum div { display: grid; }
+    .sum dt { font-size: .75rem; color: var(--muted); } .sum dd { margin: 0; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .dsec { margin: var(--space-5) 0 var(--space-2); font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+    .dsec:first-of-type { margin-block-start: 0; }
+    .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); gap: 0 var(--space-6); margin: 0; }
+    .kv div { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+    .kv dt { font-size: .875rem; } .kv dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+    .n { display: inline-flex; justify-content: flex-end; white-space: nowrap; }
+    .n .f { inline-size: 3ch; text-align: start; }
+    .u { display: inline-block; inline-size: 2.4ch; text-align: start; margin-inline-start: .25ch; color: var(--muted); font-weight: 500; font-size: .875em; }
+    .lt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--space-5) var(--space-8, 2rem); align-items: start; }
+    .lt { inline-size: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+    .lt th, .lt td { padding: var(--space-2) var(--space-3); border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); }
+    .lt thead th { font-size: .75rem; font-weight: 600; color: var(--muted); text-align: center; }
+    .lt tbody th[scope=row] { text-align: start; font-weight: 500; font-size: .875rem; }
+    .lt td { text-align: center; font-weight: 600; }
+    .lt .n { justify-content: center; }
+    .lt thead th.part { text-align: start; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--text, inherit); }
+    .lt .grp { text-align: start; font-size: .75rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: color-mix(in srgb, currentColor 6%, transparent); border-bottom: 0; }
+  `,
   template: `
     <div class="stack">
       <section class="panel" aria-labelledby="h-evo">
@@ -39,8 +63,13 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
           </div>
         </div>
         @if (sorted().length) {
-          <div class="chips" role="group" aria-label="Variables a graficar">
-            @for (m of metrics(); track m.key) { <button type="button" class="chip-toggle" [attr.aria-pressed]="selected() === m.key" (click)="selected.set(m.key)">{{ m.label }}</button> }
+          <div class="field metric-pick">
+            <label for="m-metric">Variable a graficar</label>
+            <select id="m-metric" class="select" (change)="selected.set($any($event.target).value)">
+              @for (g of metricGroups(); track g.title) {
+                <optgroup [label]="g.title">@for (m of g.items; track m.key) { <option [value]="m.key" [selected]="selected() === m.key">{{ m.label }}</option> }</optgroup>
+              }
+            </select>
           </div>
           <app-line-chart [series]="series()" [unit]="current().unit" [title]="'Evolución de ' + current().label.toLowerCase()" />
         } @else { <app-empty icon="scale" title="Sin mediciones" text="Registra la primera medición para ver su evolución." /> }
@@ -52,15 +81,46 @@ const RANGE_MSG = (label: string, min: number, max: number): Record<string, stri
           <div class="table-wrap"><table class="table"><thead><tr><th scope="col">Fecha</th><th scope="col" class="num">Peso (kg)</th><th scope="col" class="num">Talla (cm)</th><th scope="col" class="num">IMC</th><th scope="col" class="num">Cintura (cm)</th><th scope="col" class="num">Cadera (cm)</th><th scope="col" class="num">Grasa %</th><th scope="col">Notas</th><th scope="col"><span class="visually-hidden">Detalle</span></th></tr></thead><tbody>
             @for (m of desc(); track m.id) {
               <tr><td>{{ fd(m.measuredAt) }}</td><td class="num">{{ m.weightKg }}</td><td class="num">{{ m.heightCm }}</td><td class="num">{{ m.bmi }}</td><td class="num">{{ m.waistCm ?? '—' }}</td><td class="num">{{ m.hipCm ?? '—' }}</td><td class="num">{{ m.bodyFatPct ?? '—' }}</td><td class="small">{{ m.notes ?? '' }}</td>
-                <td>@if (details(m).length) { <button type="button" class="link-btn small" [attr.aria-expanded]="open() === m.id" (click)="open.set(open() === m.id ? '' : m.id)">{{ open() === m.id ? 'Ocultar' : 'Detalle' }}</button> }</td></tr>
-              @if (open() === m.id) {
-                <tr><td colspan="9"><div class="meas">@for (d of details(m); track d.label) { <div><b>{{ d.value }}</b><span>{{ d.label }}</span></div> }</div></td></tr>
-              }
+                <td>@if (hasDetail(m)) { <button type="button" class="link-btn small" (click)="showDetail(m)">Ver detalle</button> }</td></tr>
             }
           </tbody></table></div>
         }
       </section>
     </div>
+
+    <app-modal [(open)]="detailOpen" [title]="'Medición del ' + (detail() ? fd(detail()!.measuredAt) : '')" size="wide">
+      @if (detail(); as m) {
+        <dl class="sum">
+          <div><dt>Peso</dt><dd>{{ m.weightKg }} kg</dd></div><div><dt>Talla</dt><dd>{{ m.heightCm }} cm</dd></div><div><dt>IMC</dt><dd>{{ m.bmi }}</dd></div>
+          @if (m.bodyFatPct) { <div><dt>Grasa</dt><dd>{{ m.bodyFatPct }} %</dd></div> }
+          @if (m.waistCm) { <div><dt>Cintura</dt><dd>{{ m.waistCm }} cm</dd></div> }
+          @if (m.hipCm) { <div><dt>Cadera</dt><dd>{{ m.hipCm }} cm</dd></div> }
+        </dl>
+        @if (compRows(m).length) {
+          <h3 class="dsec">Composición corporal</h3>
+          <dl class="kv">@for (r of compRows(m); track r.label) { <div><dt>{{ r.label }}</dt><dd><span class="n"><span class="i">{{ ip(r.value) }}</span><span class="f">{{ fp(r.value) }}</span></span><span class="u">{{ r.unit }}</span></dd></div> }</dl>
+        }
+        @if (trunkRows(m).length) {
+          <h3 class="dsec">Tronco y muñeca (cm)</h3>
+          <dl class="kv">@for (r of trunkRows(m); track r.label) { <div><dt>{{ r.label }}</dt><dd><span class="n"><span class="i">{{ ip(r.value) }}</span><span class="f">{{ fp(r.value) }}</span></span><span class="u">{{ r.unit }}</span></dd></div> }</dl>
+        }
+        @if (limbRows(m).length) {
+          <h3 class="dsec">Brazos y piernas (cm)</h3>
+          <div class="lt-grid">
+            @for (l of limbRows(m); track l.name) {
+              <table class="lt">
+                <thead><tr><th scope="col" class="part">{{ l.name }}</th><th scope="col">Derecho</th><th scope="col">Izquierdo</th></tr></thead>
+                <tbody>
+                  <tr><th scope="row">No contraído</th><td><span class="n"><span class="i">{{ ip(l.cells[0].value) }}</span><span class="f">{{ fp(l.cells[0].value) }}</span></span></td><td><span class="n"><span class="i">{{ ip(l.cells[1].value) }}</span><span class="f">{{ fp(l.cells[1].value) }}</span></span></td></tr>
+                <tr><th scope="row">Contraído</th><td><span class="n"><span class="i">{{ ip(l.cells[2].value) }}</span><span class="f">{{ fp(l.cells[2].value) }}</span></span></td><td><span class="n"><span class="i">{{ ip(l.cells[3].value) }}</span><span class="f">{{ fp(l.cells[3].value) }}</span></span></td></tr>
+                </tbody>
+              </table>
+            }
+          </div>
+        }
+      }
+      <ng-container modalFooter><button tuiButton type="button" appearance="secondary" size="m" (click)="detailOpen.set(false)">Cerrar</button></ng-container>
+    </app-modal>
 
     <app-modal [(open)]="adding" title="Nueva medición">
       <form [formGroup]="form" id="meas-form" (ngSubmit)="save()" class="stack" novalidate>
@@ -117,7 +177,8 @@ export class MeasurementsTab {
   protected readonly girthGroups = GIRTH_GROUPS;
   protected readonly compMsg = Object.fromEntries(COMPOSITION_FIELDS.map((f) => [f.key, RANGE_MSG(f.label, f.min, f.max)]));
   protected readonly girthMsg = RANGE_MSG('Perímetro', 5, 250);
-  protected readonly open = signal('');
+  protected readonly detailOpen = signal(false);
+  protected readonly detail = signal<Measurement | null>(null);
 
   private static readonly ALL_METRICS: readonly { key: string; label: string; unit: string; get: (m: Measurement) => string | undefined }[] = [
     { key: 'weightKg', label: 'Peso', unit: 'kg', get: (m) => m.weightKg },
@@ -132,17 +193,46 @@ export class MeasurementsTab {
   /** Solo se ofrecen las variables que tienen al menos un dato; peso e IMC siempre. */
   protected readonly metrics = computed(() => MeasurementsTab.ALL_METRICS.filter((x) => ['weightKg', 'bmi'].includes(x.key) || this.sorted().some((m) => x.get(m) !== undefined)));
   protected readonly selected = signal('weightKg');
+  /** Las variables disponibles agrupadas por zona del cuerpo, para un selector corto en lugar de decenas de botones. */
+  protected readonly metricGroups = computed(() => {
+    const have = new Map(this.metrics().map((x) => [x.key, x]));
+    const pick = (keys: string[]) => keys.map((k) => have.get(k)).filter((x): x is NonNullable<typeof x> => !!x);
+    return [
+      { title: 'General', items: pick(['weightKg', 'bmi', 'waistCm', 'hipCm']) },
+      { title: 'Composición corporal', items: pick(COMPOSITION_FIELDS.map((f) => f.key as string)) },
+      ...GIRTH_GROUPS.map((g) => ({ title: g.title, items: pick(g.fields.map((f) => `g:${f.key}`)) })),
+    ].filter((g) => g.items.length);
+  });
   protected readonly current = computed(() => this.metrics().find((m) => m.key === this.selected()) ?? this.metrics()[0]);
   protected readonly series = computed<LineSeries[]>(() => {
     const cur = this.current();
     return [{ label: cur.label, points: this.sorted().filter((m) => cur.get(m) !== undefined).map((m) => ({ date: m.measuredAt, value: Number(cur.get(m)) })) }];
   });
 
-  /** Datos adicionales de una medición (composición y perímetros) para el detalle del historial. */
-  protected details(m: Measurement): { label: string; value: string }[] {
-    return MeasurementsTab.ALL_METRICS
-      .filter((x) => !['weightKg', 'bmi', 'waistCm', 'hipCm', 'bodyFatPct'].includes(x.key) && x.get(m) !== undefined)
-      .map((x) => ({ label: x.label, value: `${x.get(m)}${x.unit ? ' ' + x.unit : ''}` }));
+  private static readonly LIMBS = [['bicep', 'Bícep'], ['forearm', 'Antebrazo'], ['thigh', 'Muslo'], ['calf', 'Gemelo']] as const;
+  private static readonly TRUNK = GIRTH_FIELDS.filter((f) => !/_(relaxed|flexed)_/.test(f.key));
+
+  protected hasDetail(m: Measurement): boolean {
+    return this.compRows(m).length > 0 || Object.keys(m.girths ?? {}).length > 0;
+  }
+  /** Parte entera y decimal por separado: los decimales se alinean entre filas aunque unas tengan 25 y otras 25.45. */
+  protected ip(v: string): string { return v.split('.')[0]; }
+  protected fp(v: string): string { return v.includes('.') ? '.' + v.split('.')[1] : ''; }
+  protected showDetail(m: Measurement): void { this.detail.set(m); this.detailOpen.set(true); }
+  protected compRows(m: Measurement): { label: string; value: string; unit: string }[] {
+    return COMPOSITION_FIELDS.filter((f) => f.key !== 'bodyFatPct' && m[f.key] !== undefined).map((f) => ({ label: f.label, value: m[f.key]!, unit: f.unit }));
+  }
+  protected trunkRows(m: Measurement): { label: string; value: string; unit: string }[] {
+    return MeasurementsTab.TRUNK.filter((f) => m.girths?.[f.key] !== undefined).map((f) => ({ label: f.label, value: m.girths![f.key], unit: 'cm' }));
+  }
+  /** Una fila por parte del cuerpo: no contraído (der., izq.) y contraído (der., izq.). Cada celda conserva su lectura completa para lectores de pantalla. */
+  protected limbRows(m: Measurement): { name: string; cells: { label: string; value: string }[] }[] {
+    const g = m.girths ?? {};
+    return MeasurementsTab.LIMBS.map(([k, name]) => ({
+      name,
+      cells: ([['relaxed', 'r', 'derecho no contraído'], ['relaxed', 'l', 'izquierdo no contraído'], ['flexed', 'r', 'derecho contraído'], ['flexed', 'l', 'izquierdo contraído']] as const)
+        .map(([st, side, label]) => ({ label, value: g[`${k}_${st}_${side}`] ?? '—' })),
+    })).filter((r) => r.cells.some((c) => c.value !== '—'));
   }
 
   protected readonly form = this.fb.nonNullable.group({
