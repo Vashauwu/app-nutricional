@@ -5,6 +5,7 @@ import {
   provideAppInitializer,
   LOCALE_ID,
   isDevMode,
+  signal,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { registerLocaleData } from '@angular/common';
@@ -13,6 +14,8 @@ import localeEsMx from '@angular/common/locales/es-MX';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideServiceWorker } from '@angular/service-worker';
 import { provideTaiga } from '@taiga-ui/core';
+import { tuiDateFormatProvider } from '@taiga-ui/core/tokens';
+import { TUI_DEFAULT_LANGUAGE, TUI_LANGUAGE } from '@taiga-ui/i18n/tokens';
 
 import { routes } from './app.routes';
 import { credentialsInterceptor } from './core/interceptors/credentials.interceptor';
@@ -34,6 +37,17 @@ export const appConfig: ApplicationConfig = {
       withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
     ),
     provideTaiga(),
+    // Textos de Taiga (calendario, paginación…) en español. El idioma se descarga aparte y solo cuando un componente de Taiga lo pide:
+    // no entra en el paquete inicial. Mientras llega se usa el predeterminado.
+    {
+      provide: TUI_LANGUAGE,
+      useFactory: () => {
+        const lang = signal(inject(TUI_DEFAULT_LANGUAGE));
+        void import('@taiga-ui/i18n/languages/spanish').then((m) => lang.set(m.TUI_SPANISH_LANGUAGE));
+        return lang;
+      },
+    },
+    tuiDateFormatProvider({ mode: 'dd/mm/yyyy', separator: '/' }),
     { provide: ErrorHandler, useClass: ReportingErrorHandler },
     // Modo API: recupera la sesión (cookies HttpOnly) antes de resolver las rutas protegidas.
     provideAppInitializer(() => inject(AuthService).restore()),

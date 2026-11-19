@@ -17,8 +17,21 @@ export const PAYMENT_TONE: Record<PaymentRow['status'], Tone> = { paid: 'positiv
 export const AUDIT_LABEL: Record<string, string> = {
   'platform.suspend': 'Cuenta suspendida', 'platform.reactivate': 'Cuenta reactivada', 'platform.action_requested': 'Solicitud creada',
   'platform.action_approved': 'Solicitud aprobada', 'platform.action_rejected': 'Solicitud rechazada', 'platform.action_executed': 'Solicitud ejecutada',
-  'platform.action_failed': 'La solicitud falló al ejecutarse',
+  'platform.action_failed': 'La solicitud falló al ejecutarse', 'platform.provider_subscription_canceled': 'Cobro automático cancelado (por cortesía)',
+  'auth.signup': 'Cuenta creada', 'auth.login': 'Inicio de sesión', 'auth.login_failed': 'Inicio de sesión fallido', 'auth.login_blocked': 'Inicio de sesión bloqueado',
+  'auth.login_blocked_suspended': 'Intento de acceso a cuenta suspendida', 'auth.logout': 'Cierre de sesión', 'auth.password_reset_requested': 'Recuperación de contraseña pedida',
+  'auth.password_reset': 'Contraseña restablecida', 'auth.password_set_by_admin': 'Contraseña fijada por administración', 'auth.email_verified': 'Correo confirmado',
+  'auth.google_failed': 'Acceso con Google rechazado', 'auth.refresh_reuse': 'Posible reutilización de sesión', 'auth.account_disabled': 'Cuenta deshabilitada',
+  'billing.checkout': 'Contratación de plan', 'billing.upgrade': 'Cambio a un plan superior', 'billing.downgrade_scheduled': 'Baja de plan programada', 'billing.cancel': 'Suscripción cancelada',
+  'billing.card_updated': 'Tarjeta actualizada', 'billing.card_rejected': 'Tarjeta rechazada', 'billing.payment_succeeded': 'Cobro exitoso', 'billing.payment_failed': 'Cobro fallido',
+  'billing.charge_failed': 'Cobro fallido', 'billing.refund': 'Reembolso', 'billing.plan_interest': 'Interés en un plan',
 };
+export const auditLabel = (a: string): string => AUDIT_LABEL[a] ?? a;
+
+export const CATEGORY_LABEL: Record<string, string> = { auth: 'Accesos', billing: 'Cobros', platform: 'Plataforma' };
+/** Familia del evento («billing.refund» → «billing») y su tono, para ubicarlo de un vistazo (siempre va con el texto). */
+export const categoryOf = (a: string): string => a.split('.')[0];
+export const ACTIVITY_TONE: Record<string, Tone> = { auth: 'neutral', billing: 'info', platform: 'warning' };
 
 /** Apariencia de Taiga para cada tono. El color siempre va acompañado de texto (no se depende solo del color). */
 export const TONE_APPEARANCE: Record<Tone, string> = { positive: 'positive', info: 'info', warning: 'warning', negative: 'negative', neutral: 'neutral' };

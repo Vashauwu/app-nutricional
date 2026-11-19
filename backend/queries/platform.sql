@@ -13,7 +13,15 @@ WHERE (sqlc.arg(search)::text = '' OR p.name ILIKE '%' || sqlc.arg(search)::text
        OR EXISTS (SELECT 1 FROM users u WHERE u.practice_id = p.id AND u.email ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'))
   AND (sqlc.arg(plan)::text = '' OR s.plan = sqlc.arg(plan)::text)
   AND (sqlc.arg(practice_status)::text = '' OR p.status = sqlc.arg(practice_status)::text)
-ORDER BY p.created_at DESC
+ORDER BY
+  CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_desc)::bool = false THEN lower(p.name) END ASC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'name' AND sqlc.arg(sort_desc)::bool THEN lower(p.name) END DESC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'plan' AND sqlc.arg(sort_desc)::bool = false THEN (CASE s.plan WHEN 'free' THEN 0 WHEN 'standard' THEN 1 ELSE 2 END) END ASC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'plan' AND sqlc.arg(sort_desc)::bool THEN (CASE s.plan WHEN 'free' THEN 0 WHEN 'standard' THEN 1 ELSE 2 END) END DESC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'patients' AND sqlc.arg(sort_desc)::bool = false THEN (SELECT count(*) FROM patients pa WHERE pa.practice_id = p.id AND pa.deleted_at IS NULL AND pa.status <> 'inactive') END ASC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'patients' AND sqlc.arg(sort_desc)::bool THEN (SELECT count(*) FROM patients pa WHERE pa.practice_id = p.id AND pa.deleted_at IS NULL AND pa.status <> 'inactive') END DESC,
+  CASE WHEN sqlc.arg(sort_key)::text = 'created' AND sqlc.arg(sort_desc)::bool = false THEN p.created_at END ASC,
+  p.created_at DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: PlatformGetAccount :one
@@ -35,6 +43,23 @@ SELECT * FROM payments WHERE practice_id = $1 ORDER BY occurred_at DESC LIMIT 20
 SELECT a.id, a.action, a.resource_type, a.occurred_at, a.metadata, COALESCE(u.email, '')::text AS actor_email
 FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_user_id
 WHERE a.practice_id = $1 ORDER BY a.occurred_at DESC LIMIT 40;
+
+-- Bitácora global de la plataforma. Solo eventos operativos (las categorías las fija el servicio): nunca se mezclan datos clínicos.
+-- name: PlatformListActivity :many
+SELECT a.id, a.action, a.occurred_at, a.metadata, a.practice_id, COALESCE(p.name, '')::text AS practice_name,
+       COALESCE(u.email, '')::text AS actor_email, count(*) OVER ()::bigint AS total
+FROM audit_logs a
+LEFT JOIN practices p ON p.id = a.practice_id
+LEFT JOIN users u ON u.id = a.actor_user_id
+WHERE split_part(a.action, '.', 1) = ANY(sqlc.arg(categories)::text[])
+  AND (sqlc.arg(category)::text = '' OR split_part(a.action, '.', 1) = sqlc.arg(category)::text)
+  AND (sqlc.arg(practice)::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR a.practice_id = sqlc.arg(practice)::uuid)
+  AND (sqlc.arg(search)::text = '' OR a.action ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+       OR p.name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\' OR u.email ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\')
+  AND a.occurred_at >= sqlc.arg(since)::timestamptz
+  AND a.occurred_at < sqlc.arg(until)::timestamptz
+ORDER BY a.occurred_at DESC
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: PlatformSetPracticeStatus :execrows
 UPDATE practices SET status = $2, suspended_at = $3, suspended_reason = $4 WHERE id = $1;

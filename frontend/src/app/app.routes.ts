@@ -77,6 +77,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', title: 'Plataforma · Resumen', loadComponent: () => import('./features/platform/overview').then((m) => m.PlatformOverview) },
       { path: 'cuentas', title: 'Plataforma · Cuentas', loadComponent: () => import('./features/platform/accounts').then((m) => m.PlatformAccounts) },
       { path: 'cuentas/:id', title: 'Plataforma · Cuenta', loadComponent: () => import('./features/platform/account-detail').then((m) => m.PlatformAccountPage) },
+      { path: 'actividad', title: 'Plataforma · Actividad', loadComponent: () => import('./features/platform/activity').then((m) => m.PlatformActivity) },
       { path: 'aprobaciones', title: 'Plataforma · Aprobaciones', loadComponent: () => import('./features/platform/approvals').then((m) => m.PlatformApprovals) },
     ],
   },

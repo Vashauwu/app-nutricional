@@ -36,8 +36,8 @@ export interface Bar { day: string; total: number }
         </div>
       </div>
       <div class="x" aria-hidden="true"><span>{{ fd(first()) }}</span><span>{{ fd(mid()) }}</span><span>hoy</span></div>
-      <table class="sr"><caption>{{ label() }}</caption><thead><tr><th>Día</th><th>Altas</th></tr></thead>
-        <tbody>@for (d of data(); track d.day) { <tr><td>{{ fd(d.day) }}</td><td>{{ d.total }}</td></tr> }</tbody></table>
+      <div class="sr"><table><caption>{{ label() }}</caption><thead><tr><th>Día</th><th>Altas</th></tr></thead>
+        <tbody>@for (d of data(); track d.day) { <tr><td>{{ fd(d.day) }}</td><td>{{ d.total }}</td></tr> }</tbody></table></div>
     </figure>
   `,
 })

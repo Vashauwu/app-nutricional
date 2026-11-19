@@ -62,6 +62,7 @@ export class PlatformShell implements OnInit {
   protected readonly items: Item[] = [
     { path: '/plataforma', label: 'Resumen', icon: 'layout', exact: true },
     { path: '/plataforma/cuentas', label: 'Cuentas', icon: 'users' },
+    { path: '/plataforma/actividad', label: 'Actividad', icon: 'file-text' },
     { path: '/plataforma/aprobaciones', label: 'Aprobaciones', icon: 'shield', badge: () => this.api.pending() },
   ];
 

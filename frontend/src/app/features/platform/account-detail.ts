@@ -110,6 +110,7 @@ const limited = (n: number | undefined): n is number => n !== undefined && n >= 
                 <button tuiButton appearance="flat" size="s" type="button" (click)="allAudit.set(!allAudit())">{{ allAudit() ? 'Ver menos' : 'Ver las ' + (a.audit.length - shown) + ' anteriores' }}</button>
               }
             } @else { <p class="pf-empty">Sin actividad registrada.</p> }
+            <p class="pf-more"><a class="pf-link" routerLink="/plataforma/actividad" [queryParams]="{ cuenta: a.id }">Ver en la bitácora global (accesos, cobros y operación)</a></p>
           </section>
         </div>
 

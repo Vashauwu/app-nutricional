@@ -384,3 +384,96 @@ func TestOverviewCountsWhatIsThere(t *testing.T) {
 	require.NotEmpty(t, acts)
 	require.Equal(t, "beto@plataforma.mx", acts[0].DeciderMail, "el historial dice quién decidió")
 }
+
+func TestListAccountsSorting(t *testing.T) {
+	e := start(t, false)
+	e.staff(t, "ana@plataforma.mx")
+	_, p1 := e.account(t, "Zeta Nutrición", "zeta@clinica.mx")
+	e.account(t, "Alfa Nutrición", "alfa@clinica.mx")
+	_, err := e.pool.Exec(tenant.Bypass(context.Background()), `UPDATE subscriptions SET plan = 'pro', status = 'active' WHERE practice_id = $1`, p1)
+	require.NoError(t, err)
+	bg := context.Background()
+
+	names := func(q platform.ListQuery) []string {
+		q.Search = "Nutrición"
+		r, err := e.svc.ListAccounts(bg, q)
+		require.NoError(t, err)
+		var out []string
+		for _, it := range r.Items {
+			out = append(out, it.Name)
+		}
+		return out
+	}
+	require.Equal(t, []string{"Alfa Nutrición", "Zeta Nutrición"}, names(platform.ListQuery{Sort: "name"}))
+	require.Equal(t, []string{"Zeta Nutrición", "Alfa Nutrición"}, names(platform.ListQuery{Sort: "name", Desc: true}))
+	require.Equal(t, []string{"Zeta Nutrición", "Alfa Nutrición"}, names(platform.ListQuery{Sort: "plan", Desc: true}), "pro antes que gratuito")
+	require.Len(t, names(platform.ListQuery{Sort: "'; DROP TABLE practices;--"}), 2, "una columna desconocida cae al orden por omisión")
+}
+
+func TestActivityIsGlobalFilterableAndOperationalOnly(t *testing.T) {
+	e := start(t, false)
+	ana, beto := e.staff(t, "ana@plataforma.mx"), e.staff(t, "beto@plataforma.mx")
+	_, p1 := e.account(t, "Consulta Luna", "luna@clinica.mx")
+	_, p2 := e.account(t, "Consulta Sol", "sol@clinica.mx")
+	bg := context.Background()
+	require.NoError(t, e.svc.Suspend(bg, ana, p1, "Subida masiva de archivos ajenos"))
+	require.NoError(t, e.svc.Reactivate(bg, beto, p1))
+	require.NoError(t, e.svc.Suspend(bg, beto, p2, "Uso de la cuenta para spam"))
+	// Un evento clínico de la misma consulta no debe aparecer jamás.
+	_, err := e.pool.Exec(tenant.Bypass(bg), `INSERT INTO audit_logs (action, resource_type, practice_id) VALUES ('patient.create', 'patient', $1)`, p1)
+	require.NoError(t, err)
+
+	all, err := e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Category: "platform"})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, all.Total, int64(3))
+	for _, it := range all.Items {
+		require.Equal(t, "platform", it.Action[:8], it.Action)
+	}
+
+	every, err := e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Limit: 100})
+	require.NoError(t, err)
+	for _, it := range every.Items {
+		require.NotEqual(t, "patient.create", it.Action, "los eventos clínicos no se listan")
+	}
+
+	one, err := e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Practice: p2})
+	require.NoError(t, err)
+	require.Len(t, one.Items, 1)
+	require.Equal(t, "platform.suspend", one.Items[0].Action)
+	require.Equal(t, "Consulta Sol", one.Items[0].PracticeName)
+
+	byText, err := e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Search: "reactivate"})
+	require.NoError(t, err)
+	require.Len(t, byText.Items, 1)
+
+	future, err := e.svc.Activity(bg, platform.ActivityQuery{Since: time.Now().AddDate(0, 0, 3), Until: time.Now().AddDate(0, 0, 4)})
+	require.NoError(t, err)
+	require.Empty(t, future.Items)
+
+	_, err = e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Category: "patient"})
+	require.ErrorIs(t, err, platform.ErrInvalid, "no se puede pedir una categoría clínica")
+}
+
+func TestCompOverPayingAccountCancelsProviderFirst(t *testing.T) {
+	e := start(t, true)
+	ana, beto := e.staff(t, "ana@plataforma.mx"), e.staff(t, "beto@plataforma.mx")
+	ctx, pid := e.account(t, "Consulta Mar", "mar@clinica.mx")
+	bg := context.Background()
+	_, err := e.pool.Exec(ctx, `UPDATE subscriptions SET trial_used = true WHERE practice_id = $1`, pid)
+	require.NoError(t, err)
+	require.NoError(t, e.pay.Checkout(ctx, payments.Actor{Email: "mar@clinica.mx"}, payments.CheckoutInput{Plan: "standard", Period: "monthly", CardToken: "sim:4242:12/2030"}))
+	_, sub, err := e.ps.Standing(ctx)
+	require.NoError(t, err)
+	require.True(t, sub.ProviderSubscriptionID.Valid, "la cuenta paga con suscripción en la pasarela")
+
+	r, err := e.svc.Request(bg, ana, pid, platform.KindCompPlan, platform.Params{Plan: "pro", Days: 30}, why)
+	require.NoError(t, err)
+	res, err := e.svc.Decide(bg, beto, r.ID, true, "")
+	require.NoError(t, err)
+	require.Equal(t, "executed", res.Status, res.Error)
+	require.Equal(t, "pro", e.standing(t, ctx).Plan.Code)
+
+	act, err := e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Practice: pid, Search: "provider_subscription_canceled"})
+	require.NoError(t, err)
+	require.Len(t, act.Items, 1, "queda en la bitácora que se canceló el cobro automático")
+}

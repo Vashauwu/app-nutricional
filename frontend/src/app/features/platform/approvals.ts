@@ -4,6 +4,10 @@ import { RouterLink } from '@angular/router';
 import { TuiAppearance } from '@taiga-ui/core/directives/appearance';
 import { TuiBadge } from '@taiga-ui/kit/components/badge';
 import { TuiButton } from '@taiga-ui/core/components/button';
+import { TuiChevron } from '@taiga-ui/kit/directives/chevron';
+import { TuiDataListWrapper } from '@taiga-ui/kit/components/data-list-wrapper';
+import { TuiInput } from '@taiga-ui/core/components/input';
+import { TuiSelect } from '@taiga-ui/kit/components/select';
 import { TuiDialog } from '@taiga-ui/core/portals/dialog';
 import { TuiSkeleton } from '@taiga-ui/kit/directives/skeleton';
 import { TuiTabs } from '@taiga-ui/kit/components/tabs';
@@ -16,7 +20,7 @@ import { ACTION_LABEL, ACTION_TONE, KIND_LABEL, PLAN_LABEL, TONE_VAR, fdt } from
 
 @Component({
   selector: 'app-platform-approvals',
-  imports: [FormsModule, RouterLink, TuiAppearance, TuiBadge, TuiButton, TuiDialog, TuiSkeleton, TuiTabs, TuiTextarea, Icon, PfHead],
+  imports: [FormsModule, RouterLink, TuiAppearance, TuiBadge, TuiButton, TuiChevron, TuiDataListWrapper, TuiDialog, TuiInput, TuiSelect, TuiSkeleton, TuiTabs, TuiTextarea, Icon, PfHead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-pf-head title="Aprobaciones" sub="Lo que cuesta dinero lo pide una persona y lo aprueba otra" />
@@ -25,6 +29,14 @@ import { ACTION_LABEL, ACTION_TONE, KIND_LABEL, PLAN_LABEL, TONE_VAR, fdt } from
       <button tuiTab type="button">Pendientes{{ pendingCount() ? ' (' + pendingCount() + ')' : '' }}</button>
       <button tuiTab type="button">Historial</button>
     </tui-tabs>
+
+    <form class="pf-toolbar" (submit)="$event.preventDefault()">
+      <tui-textfield tuiChevron class="wide" [tuiTextfieldCleaner]="false">
+        <label tuiLabel for="ap-kind">Tipo de solicitud</label>
+        <input id="ap-kind" tuiSelect name="tipo" [ngModel]="kindLabel()" (ngModelChange)="kind.set(kindCode[$event ?? 'Todas'] ?? '')" />
+        <tui-data-list-wrapper *tuiDropdown new [items]="kindItems" />
+      </tui-textfield>
+    </form>
 
     @if (error()) {
       <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body"><strong>No se pudo cargar.</strong><span>{{ error() }}</span><span><button tuiButton appearance="secondary" size="s" type="button" (click)="load()">Reintentar</button></span></div></div>
@@ -94,8 +106,12 @@ export class PlatformApprovals {
   protected readonly labels = ACTION_LABEL;
   protected readonly tone = ACTION_TONE;
   protected readonly fdt = fdt;
+  protected readonly kind = signal('');
+  protected readonly kindItems = ['Todas', ...Object.values(KIND_LABEL)];
+  protected readonly kindCode: Record<string, string> = { Todas: '', ...Object.fromEntries(Object.entries(KIND_LABEL).map(([k, v]) => [v, k])) };
+  protected readonly kindLabel = computed(() => (this.kind() ? KIND_LABEL[this.kind() as keyof typeof KIND_LABEL] : 'Todas'));
   protected readonly pendingCount = computed(() => this.all().filter((r) => r.status === 'pending').length);
-  protected readonly shown = computed(() => this.all().filter((r) => (this.tab() === 0 ? r.status === 'pending' : r.status !== 'pending')));
+  protected readonly shown = computed(() => this.all().filter((r) => (this.tab() === 0 ? r.status === 'pending' : r.status !== 'pending') && (!this.kind() || r.kind === this.kind())));
 
   constructor() { this.load(); }
 

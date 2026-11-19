@@ -192,6 +192,21 @@ func (s *Service) execute(ctx context.Context, a Actor, act db.PlatformAction) e
 	pctx := tenant.With(ctx, act.PracticeID)
 	switch act.Kind {
 	case KindCompPlan:
+		// Una cuenta con suscripción viva en la pasarela seguiría cobrando (y un cobro posterior volvería a cambiar el plan):
+		// se cancela primero allá. Si no se puede cancelar, la cortesía no se concede.
+		_, sub, err := s.plans.Standing(pctx)
+		if err != nil {
+			return err
+		}
+		if sub.ProviderSubscriptionID.Valid && sub.Status != plans.StatusCanceled && sub.Status != plans.StatusExpired {
+			if s.pay == nil {
+				return ErrNoPayments
+			}
+			if err := s.pay.Provider().Cancel(pctx, sub.ProviderSubscriptionID.String); err != nil {
+				return fmt.Errorf("no se pudo cancelar la suscripción de pago antes de la cortesía: %w", err)
+			}
+			s.rec(ctx, act.PracticeID, a, "platform.provider_subscription_canceled", map[string]any{"action": act.ID, "plan": sub.Plan})
+		}
 		end := s.now().AddDate(0, 0, p.Days)
 		return s.plans.Apply(pctx, plans.Change{Plan: p.Plan, Period: p.Period, Status: plans.StatusActive, PeriodEnd: &end, CompReason: act.Reason})
 	case KindExtendTrial:

@@ -39,7 +39,14 @@ export interface Overview {
   usage: { active_patients: number; users: number; storage_bytes: number };
 }
 
-export interface AccountQuery { q?: string; plan?: string; status?: string; limit?: number; offset?: number }
+export type AccountSort = 'name' | 'plan' | 'patients' | 'created';
+export interface AccountQuery { q?: string; plan?: string; status?: string; sort?: AccountSort | ''; dir?: 'asc' | 'desc'; limit?: number; offset?: number }
+
+/** Bitácora global: solo eventos operativos (accesos, cobros y plataforma); los clínicos nunca llegan aquí. */
+export type ActivityCategory = '' | 'auth' | 'billing' | 'platform';
+export interface ActivityRow { id: string; action: string; occurred_at: string; actor: string; practice_id?: string; practice_name?: string; metadata: Record<string, unknown> }
+export interface ActivityPage { items: ActivityRow[]; total: number; limit: number; offset: number }
+export interface ActivityQuery { q?: string; category?: ActivityCategory; practice?: string; from?: string; to?: string; limit?: number; offset?: number }
 
 @Injectable({ providedIn: 'root' })
 export class PlatformApi {
@@ -49,6 +56,7 @@ export class PlatformApi {
   overview(): Observable<Overview> { return this.api.get<Overview>('/platform/overview').pipe(tap((o) => this.pending.set(o.pending_actions))); }
   accounts(q: AccountQuery): Observable<AccountsPage> { return this.api.get<AccountsPage>('/platform/accounts', { ...q }); }
   account(id: string): Observable<AccountDetail> { return this.api.get<AccountDetail>(`/platform/accounts/${id}`); }
+  activity(q: ActivityQuery): Observable<ActivityPage> { return this.api.get<ActivityPage>('/platform/activity', { ...q }); }
   actions(status = ''): Observable<{ items: ActionRow[] }> { return this.api.get<{ items: ActionRow[] }>('/platform/actions', { status }); }
   suspend(id: string, reason: string): Observable<void> { return this.api.post(`/platform/accounts/${id}/suspend`, { reason }); }
   reactivate(id: string): Observable<void> { return this.api.post(`/platform/accounts/${id}/reactivate`); }
