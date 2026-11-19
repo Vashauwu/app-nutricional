@@ -321,8 +321,8 @@ func (q *Queries) PlatformListAccounts(ctx context.Context, arg PlatformListAcco
 }
 
 const platformListActions = `-- name: PlatformListActions :many
-SELECT a.id, a.practice_id, a.kind, a.params, a.reason, a.status, a.requested_by, a.requested_at, a.decided_by, a.decided_at, a.decision_note, a.executed_at, a.error, p.name AS practice_name, COALESCE(u.email, '')::text AS requester_email
-FROM platform_actions a JOIN practices p ON p.id = a.practice_id LEFT JOIN users u ON u.id = a.requested_by
+SELECT a.id, a.practice_id, a.kind, a.params, a.reason, a.status, a.requested_by, a.requested_at, a.decided_by, a.decided_at, a.decision_note, a.executed_at, a.error, p.name AS practice_name, COALESCE(u.email, '')::text AS requester_email, COALESCE(d.email, '')::text AS decider_email
+FROM platform_actions a JOIN practices p ON p.id = a.practice_id LEFT JOIN users u ON u.id = a.requested_by LEFT JOIN users d ON d.id = a.decided_by
 WHERE ($1::text = '' OR a.status = $1::text)
 ORDER BY a.requested_at DESC LIMIT 100
 `
@@ -343,6 +343,7 @@ type PlatformListActionsRow struct {
 	Error          pgtype.Text        `json:"error"`
 	PracticeName   string             `json:"practice_name"`
 	RequesterEmail string             `json:"requester_email"`
+	DeciderEmail   string             `json:"decider_email"`
 }
 
 func (q *Queries) PlatformListActions(ctx context.Context, actionStatus string) ([]PlatformListActionsRow, error) {
@@ -370,6 +371,7 @@ func (q *Queries) PlatformListActions(ctx context.Context, actionStatus string) 
 			&i.Error,
 			&i.PracticeName,
 			&i.RequesterEmail,
+			&i.DeciderEmail,
 		); err != nil {
 			return nil, err
 		}

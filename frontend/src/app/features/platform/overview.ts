@@ -1,154 +1,138 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TuiBadge } from '@taiga-ui/kit/components/badge';
-import { TuiProgressBar } from '@taiga-ui/kit/components/progress';
 import { TuiAppearance } from '@taiga-ui/core/directives/appearance';
+import { TuiBadge } from '@taiga-ui/kit/components/badge';
 import { TuiButton } from '@taiga-ui/core/components/button';
-import { TuiLoader } from '@taiga-ui/core/components/loader';
-import { Overview, PlatformApi, SubState } from '../../core/api/platform-api';
+import { TuiSkeleton } from '@taiga-ui/kit/directives/skeleton';
+import { Overview, PlanCode, PlatformApi, SubState } from '../../core/api/platform-api';
 import { formatBytes } from '../../shared/utils/format';
 import { Icon } from '../../shared/components/icon';
-import { LineChart, LineSeries } from '../../shared/components/charts';
-import { PageHeader } from '../../shared/components/page-header';
-import { PAYMENT_LABEL, PAYMENT_TONE, PLAN_LABEL, STATE_LABEL, STATE_TONE, delta, mxn, pct, fd, fdt, nf } from './labels';
+import { PfBars } from './bars';
+import { PfHead } from './head';
+import { PAYMENT_LABEL, PAYMENT_TONE, PLAN_LABEL, STATE_LABEL, STATE_TONE, TONE_VAR, Tone, fd, fdt, mxn, nf, pct, when } from './labels';
 
 const STATES: SubState[] = ['active', 'trialing', 'past_due', 'canceled', 'expired', 'free'];
+const PLANS: PlanCode[] = ['free', 'standard', 'pro'];
+
+interface Todo { tone: Tone; title: string; why: string; link: unknown[]; query?: Record<string, string>; cta: string }
 
 @Component({
   selector: 'app-platform-overview',
-  imports: [RouterLink, TuiAppearance, TuiBadge, TuiButton, TuiLoader, TuiProgressBar, Icon, LineChart, PageHeader],
+  imports: [RouterLink, TuiAppearance, TuiBadge, TuiButton, TuiSkeleton, Icon, PfBars, PfHead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="Resumen" [sub]="updated()">
-      <button tuiButton appearance="secondary" size="m" type="button" (click)="load()" [disabled]="loading()"><app-icon name="refresh" [size]="16" /> Actualizar</button>
-    </app-page-header>
+    <app-pf-head title="Resumen" [sub]="updated()">
+      <button tuiButton appearance="secondary" size="s" type="button" (click)="load()" [disabled]="loading()"><app-icon name="refresh" [size]="16" /> Actualizar</button>
+    </app-pf-head>
 
     @if (error()) {
-      <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body"><strong>No se pudo cargar el resumen.</strong><span>{{ error() }}</span></div></div>
+      <div class="callout callout--crit" role="alert">
+        <app-icon name="alert-circle" />
+        <div class="callout-body"><strong>No se pudo cargar el resumen.</strong><span>{{ error() }}</span><span><button tuiButton appearance="secondary" size="s" type="button" (click)="load()">Reintentar</button></span></div>
+      </div>
     }
 
-    <tui-loader [loading]="loading() && !o()" [overlay]="true">
-      @if (o(); as d) {
-        <section class="pf-grid pf-kpis" aria-label="Indicadores">
-          <article class="pf-card pf-kpi">
-            <span class="label">Cuentas</span>
-            <span class="value">{{ nf(d.accounts) }}</span>
-            <span class="note">{{ d.suspended }} suspendida{{ d.suspended === 1 ? '' : 's' }} · {{ d.comped }} con cortesía</span>
-          </article>
-          <article class="pf-card pf-kpi">
-            <span class="label">Ingreso mensual estimado</span>
-            <span class="value">{{ money(d.mrr_mxn) }}</span>
-            <span class="note">{{ d.paying_accounts }} cuenta{{ d.paying_accounts === 1 ? '' : 's' }} que pagan · precio de lista</span>
-          </article>
-          <article class="pf-card pf-kpi">
-            <span class="label">Altas (30 días)</span>
-            <span class="value">{{ nf(d.signups_30d) }}</span>
-            <span class="note">{{ dlt(d.signups_30d, d.signups_prev_30d) }}</span>
-          </article>
-          <article class="pf-card pf-kpi" [class.warn]="d.trials_ending_soon > 0">
-            <span class="label">Pruebas activas</span>
-            <span class="value">{{ d.by_state.trialing ?? 0 }}</span>
-            <span class="note">{{ d.trials_ending_soon }} termina{{ d.trials_ending_soon === 1 ? '' : 'n' }} en 7 días</span>
-          </article>
-          <article class="pf-card pf-kpi" [class.crit]="(d.by_state.past_due ?? 0) > 0">
-            <span class="label">Cobros fallidos</span>
-            <span class="value">{{ d.by_state.past_due ?? 0 }}</span>
-            <span class="note">cuentas en gracia · {{ d.payments_30d.failed_count }} intento{{ d.payments_30d.failed_count === 1 ? '' : 's' }} fallido{{ d.payments_30d.failed_count === 1 ? '' : 's' }} en 30 días</span>
-          </article>
-          <article class="pf-card pf-kpi" [class.warn]="d.pending_actions > 0">
-            <span class="label">Por aprobar</span>
-            <span class="value">{{ d.pending_actions }}</span>
-            <span class="note"><a routerLink="/plataforma/aprobaciones">Ver solicitudes</a></span>
-          </article>
-        </section>
+    <div class="pf-cols">
+      <section class="pf-sec" aria-labelledby="h-todo">
+        <h2 id="h-todo">Necesita atención</h2>
+        @if (!o()) {
+          <ul class="pf-todo" aria-hidden="true">@for (i of [1, 2, 3]; track i) { <li><span class="pf-dot"></span><strong [tuiSkeleton]="true">Cuenta de ejemplo</strong><span class="why" [tuiSkeleton]="true">Detalle del pendiente</span></li> }</ul>
+        } @else if (todos().length) {
+          <ul class="pf-todo">
+            @for (t of todos(); track t.title) {
+              <li>
+                <span class="pf-dot" [style.--tone]="tone(t.tone)" aria-hidden="true"></span>
+                <strong>{{ t.title }}</strong>
+                <span class="why">{{ t.why }}</span>
+                <a class="go" [routerLink]="t.link" [queryParams]="t.query">{{ t.cta }} <app-icon name="arrow-right" [size]="14" /></a>
+              </li>
+            }
+          </ul>
+        } @else {
+          <p class="pf-empty">Todo en orden: no hay cobros fallidos, pruebas por vencer ni solicitudes pendientes.</p>
+        }
+      </section>
 
-        <section class="pf-grid pf-two">
-          <article class="pf-card">
-            <div class="head"><h2>Altas por día</h2><span class="sub">Últimos 30 días · hora de la Ciudad de México</span></div>
-            <app-line-chart [series]="signups()" [yMin]="0" [yMax]="signupsMax()" title="Altas de cuentas por día" />
-          </article>
-          <article class="pf-card">
-            <div class="head"><h2>Cuentas por plan</h2><span class="sub">Plan vigente</span></div>
-            <ul class="pf-rows">
-              @for (p of plans(); track p.code) {
-                <li class="pf-row">
-                  <span>{{ p.label }}</span>
-                  <progress tuiProgressBar size="m" [value]="p.n" [max]="d.accounts || 1"></progress>
-                  <span class="n">{{ p.n }} · {{ p.pct }}%</span>
-                </li>
-              }
-            </ul>
-            <h2>Suscripciones por estado</h2>
-            <ul class="pf-rows">
-              @for (s of states(); track s.code) {
-                <li class="pf-row">
-                  <span><span tuiBadge [tuiAppearance]="s.tone" size="s">{{ s.label }}</span></span>
-                  <progress tuiProgressBar size="s" [value]="s.n" [max]="d.accounts || 1"></progress>
-                  <span class="n">{{ s.n }}</span>
-                </li>
-              }
-            </ul>
-          </article>
-        </section>
+      <section class="pf-sec" aria-labelledby="h-ing">
+        <h2 id="h-ing">Ingresos <small>precio de lista</small></h2>
+        <dl class="pf-ledger">
+          <div class="lead"><dt>Ingreso mensual estimado</dt><dd [tuiSkeleton]="!o()">{{ o() ? money(o()!.mrr_mxn) : '$0,000' }}</dd></div>
+          <div><dt>Cuentas que pagan</dt><dd [tuiSkeleton]="!o()">{{ o()?.paying_accounts ?? 0 }}</dd></div>
+          <div><dt>Cobrado en 30 días</dt><dd [tuiSkeleton]="!o()">{{ o() ? money(o()!.payments_30d.paid_mxn) : '$00,000' }}</dd></div>
+          @if (o() && o()!.payments_30d.returned_mxn > 0) { <div><dt>Devuelto en 30 días</dt><dd>{{ money(o()!.payments_30d.returned_mxn) }}</dd></div> }
+          <div><dt>Cobros fallidos en 30 días</dt><dd [tuiSkeleton]="!o()">{{ o()?.payments_30d?.failed_count ?? 0 }}</dd></div>
+        </dl>
+        <p class="pf-note">Estimación: anual ÷ 12, sin cortesías ni pruebas.</p>
+      </section>
+    </div>
 
-        <section class="pf-grid pf-even">
-          <article class="pf-card">
-            <div class="head"><h2>Requieren atención</h2><span class="sub">Cobro fallido o prueba por vencer</span></div>
-            @if (d.attention.length) {
-              <ul class="pf-list">
-                @for (a of d.attention; track a.id) {
-                  <li>
-                    <span class="who">
-                      <a [routerLink]="['/plataforma/cuentas', a.id]">{{ a.name }}</a>
-                      <small>{{ a.owner_email }}</small>
-                    </span>
-                    <span class="who" style="text-align:end">
-                      <span tuiBadge [tuiAppearance]="a.reason === 'past_due' ? 'negative' : 'warning'" size="m">{{ a.reason === 'past_due' ? 'Cobro fallido' : 'Prueba por vencer' }}</span>
-                      @if (a.ends_at) { <small>hasta {{ fd(a.ends_at) }}</small> }
-                    </span>
-                  </li>
+    @if (o(); as d) {
+      <div class="pf-cols pf-cols--even">
+        <section class="pf-sec" aria-labelledby="h-est">
+          <h2 id="h-est">Estado de las suscripciones <small>{{ nf(d.accounts) }} cuentas</small></h2>
+          <div class="pf-seg" role="img" [attr.aria-label]="segLabel()">
+            @for (s of states(); track s.code) { @if (s.n > 0) { <span [style.--tone]="tone(s.tone)" [style.--n]="s.n"></span> } }
+          </div>
+          <div class="pf-table-wrap">
+            <table class="pf-table pf-legend">
+              <caption class="pf-sr">Cuentas por estado de la suscripción</caption>
+              <thead class="pf-sr"><tr><th>Color</th><th>Estado</th><th>Cuentas</th><th>Parte</th></tr></thead>
+              <tbody>
+                @for (s of states(); track s.code) {
+                  <tr><td><span class="pf-dot" [style.--tone]="tone(s.tone)" aria-hidden="true"></span></td><td>{{ s.label }}</td><td class="num">{{ s.n }}</td><td class="num pf-muted">{{ s.pct }}%</td></tr>
                 }
-              </ul>
-            } @else { <p class="pf-empty">Nada pendiente por ahora.</p> }
-          </article>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          <article class="pf-card">
-            <div class="head"><h2>Cobros recientes</h2><span class="sub">{{ money(d.payments_30d.paid_mxn) }} cobrados en 30 días</span></div>
-            @if (d.recent_payments.length) {
-              <ul class="pf-list">
+        <section class="pf-sec" aria-labelledby="h-plan">
+          <h2 id="h-plan">Por plan</h2>
+          <div class="pf-table-wrap">
+            <table class="pf-table">
+              <thead><tr><th scope="col">Plan vigente</th><th scope="col" class="num">Cuentas</th><th scope="col" class="num">Ingreso mensual est.</th></tr></thead>
+              <tbody>
+                @for (p of plans(); track p.code) {
+                  <tr><td>{{ p.label }}</td><td class="num">{{ p.n }} <span class="pf-muted">· {{ p.pct }}%</span></td><td class="num">{{ p.mrr ? money(p.mrr) : '—' }}</td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="pf-note">{{ nf(d.usage.active_patients) }} pacientes activos · {{ nf(d.usage.users) }} usuarios · {{ bytes(d.usage.storage_bytes) }} en archivos.</p>
+        </section>
+      </div>
+
+      <section class="pf-sec" aria-labelledby="h-altas">
+        <h2 id="h-altas">Altas de cuentas <small>últimos 30 días, hora de la Ciudad de México</small></h2>
+        <app-pf-bars [data]="d.signups_daily" label="Altas de cuentas por día, últimos 30 días" />
+        <p class="pf-note">{{ d.signups_30d }} altas en los últimos 30 días; {{ d.signups_prev_30d }} en los 30 anteriores.</p>
+      </section>
+
+      <section class="pf-sec" aria-labelledby="h-cob">
+        <h2 id="h-cob">Cobros recientes</h2>
+        @if (d.recent_payments.length) {
+          <div class="pf-table-wrap">
+            <table class="pf-table pf-table--cards">
+              <thead><tr><th scope="col">Cuenta</th><th scope="col">Fecha</th><th scope="col">Plan</th><th scope="col" class="num">Importe</th><th scope="col">Estado</th></tr></thead>
+              <tbody>
                 @for (p of d.recent_payments; track p.id) {
-                  <li>
-                    <span class="who">
-                      <a [routerLink]="['/plataforma/cuentas', p.practice_id]">{{ p.practice_name }}</a>
-                      <small>{{ planLabel[p.plan] }} · {{ fdt(p.occurred_at) }}</small>
-                    </span>
-                    <span class="who" style="text-align:end">
-                      <strong>{{ money(p.amount_mxn) }}</strong>
-                      <span tuiBadge [tuiAppearance]="payTone[p.status]" size="s">{{ payLabel[p.status] }}</span>
-                    </span>
-                  </li>
+                  <tr>
+                    <td class="main"><a class="rowlink" [routerLink]="['/plataforma/cuentas', p.practice_id]">{{ p.practice_name }}</a></td>
+                    <td data-label="Fecha" class="pf-muted">{{ fdt(p.occurred_at) }}</td>
+                    <td data-label="Plan">{{ planLabel[p.plan] }}</td>
+                    <td data-label="Importe" class="num">{{ money(p.amount_mxn) }}</td>
+                    <td data-label="Estado"><span tuiBadge [tuiAppearance]="payTone[p.status]" size="m">{{ payLabel[p.status] }}</span></td>
+                  </tr>
                 }
-              </ul>
-            } @else { <p class="pf-empty">Todavía no hay cobros.</p> }
-            @if (d.payments_30d.returned_mxn > 0) { <p class="sub">Devuelto en 30 días: {{ money(d.payments_30d.returned_mxn) }}</p> }
-          </article>
-
-          <article class="pf-card">
-            <div class="head"><h2>Uso de la plataforma</h2></div>
-            <dl class="pf-detail">
-              <div><dt>Pacientes activos</dt><dd>{{ nf(d.usage.active_patients) }}</dd></div>
-              <div><dt>Usuarios</dt><dd>{{ nf(d.usage.users) }}</dd></div>
-              <div><dt>Archivos</dt><dd>{{ bytes(d.usage.storage_bytes) }}</dd></div>
-            </dl>
-            <p class="sub">El ingreso mensual es una estimación con el precio de lista (anual ÷ 12). No incluye cortesías ni pruebas.</p>
-          </article>
-        </section>
-      }
-    </tui-loader>
+              </tbody>
+            </table>
+          </div>
+        } @else { <p class="pf-empty">Todavía no hay cobros.</p> }
+      </section>
+    }
   `,
 })
 export class PlatformOverview {
-  protected readonly fd = fd; protected readonly fdt = fdt; protected readonly nf = nf;
   private readonly api = inject(PlatformApi);
   protected readonly o = signal<Overview | null>(null);
   protected readonly loading = signal(false);
@@ -157,23 +141,39 @@ export class PlatformOverview {
   protected readonly payLabel = PAYMENT_LABEL;
   protected readonly payTone = PAYMENT_TONE;
   protected readonly money = mxn;
-  protected readonly dlt = delta;
   protected readonly bytes = formatBytes;
+  protected readonly nf = nf;
+  protected readonly fdt = fdt;
+  protected readonly tone = (t: Tone): string => TONE_VAR[t];
 
   protected readonly updated = computed(() => {
     const d = this.o();
-    return d ? `Actualizado ${new Date(d.generated_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}` : 'Estado de la plataforma';
+    return d ? `Actualizado a las ${new Date(d.generated_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}` : 'Estado de la plataforma';
   });
-  protected readonly signups = computed<LineSeries[]>(() => [{ label: 'Altas', points: (this.o()?.signups_daily ?? []).map((d) => ({ date: d.day, value: d.total })) }]);
-  /** Tope del eje Y: múltiplo de 4 (mínimo 4) para que las marcas queden en números enteros. */
-  protected readonly signupsMax = computed(() => Math.max(4, Math.ceil(Math.max(0, ...(this.o()?.signups_daily ?? []).map((d) => d.total)) / 4) * 4));
-  protected readonly plans = computed(() => {
+
+  /** Lo que pide a una persona, en orden de urgencia: solicitudes, cobros fallidos, pruebas por vencer, suspendidas. */
+  protected readonly todos = computed<Todo[]>(() => {
     const d = this.o();
-    return (['free', 'standard', 'pro'] as const).map((code) => ({ code, label: PLAN_LABEL[code], n: d?.by_plan[code] ?? 0, pct: pct(d?.by_plan[code] ?? 0, d?.accounts ?? 0) }));
+    if (!d) return [];
+    const out: Todo[] = [];
+    if (d.pending_actions > 0) out.push({ tone: 'warning', title: `${d.pending_actions} solicitud${d.pending_actions === 1 ? '' : 'es'} por aprobar`, why: 'Cuestan dinero: las aprueba una persona distinta a quien las pidió.', link: ['/plataforma/aprobaciones'], cta: 'Revisar' });
+    const rank = (a: Overview['attention'][number]) => (a.reason === 'past_due' ? 0 : 1);
+    for (const a of [...d.attention].sort((x, y) => rank(x) - rank(y))) {
+      const w = when(a.ends_at);
+      out.push({ tone: a.reason === 'past_due' ? 'negative' : 'warning', title: a.name, why: a.reason === 'past_due' ? `Cobro fallido · el plan completo termina ${w.text} (${fd(a.ends_at)})` : `La prueba termina ${w.text} (${fd(a.ends_at)})`, link: ['/plataforma/cuentas', a.id], cta: 'Abrir' });
+    }
+    if (d.suspended > 0) out.push({ tone: 'neutral', title: `${d.suspended} cuenta${d.suspended === 1 ? '' : 's'} suspendida${d.suspended === 1 ? '' : 's'}`, why: 'No pueden iniciar sesión hasta que alguien las reactive.', link: ['/plataforma/cuentas'], query: { acceso: 'suspended' }, cta: 'Ver' });
+    return out;
   });
+
   protected readonly states = computed(() => {
     const d = this.o();
-    return STATES.map((code) => ({ code, label: STATE_LABEL[code], tone: STATE_TONE[code], n: d?.by_state[code] ?? 0 }));
+    return STATES.map((code) => ({ code, label: STATE_LABEL[code], tone: STATE_TONE[code], n: d?.by_state[code] ?? 0, pct: pct(d?.by_state[code] ?? 0, d?.accounts ?? 0) }));
+  });
+  protected readonly segLabel = computed(() => this.states().filter((s) => s.n > 0).map((s) => `${s.label}: ${s.n}`).join(', '));
+  protected readonly plans = computed(() => {
+    const d = this.o();
+    return PLANS.map((code) => ({ code, label: PLAN_LABEL[code], n: d?.by_plan[code] ?? 0, pct: pct(d?.by_plan[code] ?? 0, d?.accounts ?? 0), mrr: d?.mrr_by_plan?.[code] ?? 0 }));
   });
 
   constructor() { this.load(); }

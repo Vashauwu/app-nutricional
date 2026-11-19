@@ -66,6 +66,7 @@ type Overview struct {
 	ByState          map[string]int  `json:"by_state"`
 	ByPlan           map[string]int  `json:"by_plan"`
 	PayingAccounts   int             `json:"paying_accounts"`
+	MRRByPlan        map[string]int  `json:"mrr_by_plan"`
 	MRRMXN           int             `json:"mrr_mxn"`
 	TrialsEndingSoon int             `json:"trials_ending_soon"`
 	PendingActions   int64           `json:"pending_actions"`
@@ -81,7 +82,7 @@ type Overview struct {
 func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	b := tenant.Bypass(ctx)
 	now := s.now()
-	o := Overview{GeneratedAt: now, ByState: map[string]int{}, ByPlan: map[string]int{}, SignupsDaily: []DayCount{}, RecentPayments: []RecentPayment{}, Attention: []Attention{}}
+	o := Overview{GeneratedAt: now, ByState: map[string]int{}, ByPlan: map[string]int{}, MRRByPlan: map[string]int{}, SignupsDaily: []DayCount{}, RecentPayments: []RecentPayment{}, Attention: []Attention{}}
 
 	subs, err := s.q.PlatformOverviewSubs(b)
 	if err != nil {
@@ -105,11 +106,12 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 		}
 		if (st.State == "active" || st.State == "past_due") && !st.Comped && st.Plan.MonthlyMXN > 0 {
 			o.PayingAccounts++
+			m := st.Plan.MonthlyMXN
 			if r.BillingPeriod.String == "annual" {
-				o.MRRMXN += st.Plan.AnnualMXN / 12
-			} else {
-				o.MRRMXN += st.Plan.MonthlyMXN
+				m = st.Plan.AnnualMXN / 12
 			}
+			o.MRRMXN += m
+			o.MRRByPlan[st.Plan.Code] += m
 		}
 		trialEnding := st.State == "trialing" && st.EndsAt != nil && !st.EndsAt.After(soon)
 		if trialEnding {

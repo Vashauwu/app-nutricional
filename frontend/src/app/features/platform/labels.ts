@@ -34,3 +34,20 @@ export const delta = (now: number, before: number): string => {
 export const fd = (v: string | null | undefined): string => formatDate(v);
 export const fdt = (v: string | null | undefined): string => formatDateTime(v);
 export const nf = (n: number): string => n.toLocaleString('es-MX');
+
+/** Color de cada tono como superficie (pastel con significado) para puntos y barras. */
+export const TONE_VAR: Record<Tone, string> = {
+  positive: 'var(--nutri-salvia)', info: 'var(--nutri-cielo)', warning: 'var(--nutri-mantequilla)', negative: 'var(--nutri-rosa)',
+  neutral: 'color-mix(in srgb, var(--nutri-texto) 22%, var(--surface))',
+};
+
+/** «en 3 días», «mañana», «hoy», «venció hace 2 días». Más allá de dos meses solo la fecha. */
+export function when(iso: string | null | undefined, now = Date.now()): { text: string; urgent: boolean } {
+  if (!iso) return { text: '—', urgent: false };
+  const days = Math.ceil((new Date(iso).getTime() - now) / 86_400_000);
+  if (days < 0) return { text: `venció hace ${-days} día${days === -1 ? '' : 's'}`, urgent: true };
+  if (days === 0) return { text: 'hoy', urgent: true };
+  if (days === 1) return { text: 'mañana', urgent: true };
+  if (days <= 60) return { text: `en ${days} días`, urgent: days <= 3 };
+  return { text: formatDate(iso), urgent: false };
+}
