@@ -4,11 +4,12 @@ import { TuiBadge } from '@taiga-ui/kit/components/badge';
 import { TuiAppearance } from '@taiga-ui/core/directives/appearance';
 import { TuiButton } from '@taiga-ui/core/components/button';
 import { PlatformApi } from '../../core/api/platform-api';
+import { AuthService } from '../../core/auth/auth.service';
 import { Icon, IconName } from '../../shared/components/icon';
 import { ThemeToggle } from '../../shared/components/theme-toggle';
 import { PfStyles } from './styles-host';
 
-interface Item { path: string; label: string; icon: IconName; exact?: boolean; badge?: () => number }
+interface Item { path: string; label: string; icon: IconName; exact?: boolean; badge?: () => number; needs: string | string[] }
 
 /**
  * Marco del panel de plataforma. Es una zona aparte de la consulta: mismo sistema visual (marfil, ciruela, Inter y
@@ -54,19 +55,24 @@ interface Item { path: string; label: string; icon: IconName; exact?: boolean; b
 })
 export class PlatformShell implements OnInit {
   private readonly api = inject(PlatformApi);
+  private readonly auth = inject(AuthService);
   /** Nombre del ambiente según el dominio, para no confundir staging con producción. */
   protected readonly env: { label: string; tone: string } | null = typeof location === 'undefined' ? null
     : location.hostname.startsWith('staging') ? { label: 'Staging', tone: 'warning' }
     : /^(localhost|127\.)/.test(location.hostname) ? { label: 'Local', tone: 'info' }
     : { label: 'Producción', tone: 'negative' };
-  protected readonly items: Item[] = [
-    { path: '/plataforma', label: 'Resumen', icon: 'layout', exact: true },
-    { path: '/plataforma/cuentas', label: 'Cuentas', icon: 'users' },
-    { path: '/plataforma/actividad', label: 'Actividad', icon: 'file-text' },
-    { path: '/plataforma/aprobaciones', label: 'Aprobaciones', icon: 'shield', badge: () => this.api.pending() },
+  private readonly all: Item[] = [
+    { path: '/plataforma', label: 'Resumen', icon: 'layout', exact: true, needs: 'platform:read' },
+    { path: '/plataforma/cuentas', label: 'Cuentas', icon: 'users', needs: 'platform:read' },
+    { path: '/plataforma/actividad', label: 'Actividad', icon: 'file-text', needs: 'platform:read' },
+    { path: '/plataforma/aprobaciones', label: 'Aprobaciones', icon: 'shield', badge: () => this.api.pending(), needs: 'platform:read' },
+    { path: '/plataforma/landing', label: 'Landing', icon: 'eye', needs: ['platform:landing:edit', 'platform:landing:publish'] },
+    { path: '/plataforma/equipo', label: 'Equipo', icon: 'user-plus', needs: 'platform:staff' },
   ];
+  /** Solo lo que esta persona puede abrir: el menú nunca ofrece una pantalla que el servidor le va a negar. */
+  protected readonly items = this.all.filter((i) => [i.needs].flat().some((p) => this.auth.can(p)));
 
   ngOnInit(): void {
-    this.api.overview().subscribe({ error: () => undefined });
+    if (this.auth.can('platform:read')) this.api.overview().subscribe({ error: () => undefined });
   }
 }

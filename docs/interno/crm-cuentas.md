@@ -1,11 +1,11 @@
-# CRM de cuentas y suscripciones (fase 1)
+# CRM de la plataforma: cuentas, equipo y landing
 
 Documento interno. Operación de la plataforma sobre las cuentas (consultas) y sus suscripciones. Es la primera fase del CRM
-descrito en la hoja de ruta (M6); el CRM de contenido de la landing está **propuesto** en [`crm-landing.md`](crm-landing.md) y **no** está construido.
+descrito en la hoja de ruta (M6). El **equipo propio** del CRM (roles finos) y la **landing gestionada con cuatro ojos** también están construidos; ver [`crm-landing.md`](crm-landing.md).
 
 ## Panel (Angular + Taiga UI)
 
-Entrada: `/plataforma` en la propia aplicación (menú de la cuenta → «Panel de plataforma», solo con el permiso `platform:accounts`).
+Entrada: `/plataforma` en la propia aplicación. Las personas del equipo entran directo ahí al iniciar sesión; una nutrióloga con rol de plataforma lo ve en el menú de la cuenta → «Panel de plataforma» (permiso `platform:read`). El menú de la zona solo ofrece lo que cada rol puede abrir.
 Es una zona lazy con el mismo sistema visual (marfil, ciruela, Inter/Playfair, modo oscuro) y componentes de Taiga UI.
 
 - **Resumen**: cuentas, ingreso mensual **estimado** (precio de lista; anual ÷ 12; sin cortesías ni pruebas), altas por día (30 días),
@@ -15,6 +15,8 @@ Es una zona lazy con el mismo sistema visual (marfil, ciruela, Inter/Playfair, m
 - **Ficha**: plan, uso frente a límites, cobros, solicitudes y bitácora; acciones (cortesía, prórroga, reembolso, suspender/reactivar).
 - **Aprobaciones**: pendientes e historial; aprobar/rechazar con nota, y filtro por tipo de solicitud. El error de autoaprobación se muestra tal cual.
 - **Actividad** (`/plataforma/actividad`, `GET /api/v1/platform/activity`): bitácora **global** de todas las cuentas, filtrable por texto (evento, consulta o correo), tipo (accesos, cobros, plataforma), rango de fechas y cuenta (`?cuenta=<id>`, enlazada desde la ficha). Solo muestra eventos **operativos** (`auth`, `billing`, `platform`): el servidor nunca entrega eventos clínicos, aunque se pidan. Ventana máxima de un año.
+- **Equipo** (`/plataforma/equipo`, `GET/POST /platform/staff`): invitar a una persona (correo, nombre y rol), cambiar su rol, reenviar la invitación, deshabilitarla o habilitarla. Solo con `platform:staff`. Ver «Equipo y roles».
+- **Landing** (`/plataforma/landing`): editor del texto de la página pública, revisión con cuatro ojos, historial y vista previa. Ver [`crm-landing.md`](crm-landing.md).
 - **Cuentas ordenables** por consulta, plan, pacientes y alta (clic en el encabezado; `aria-sort` y orden fijado en el servidor con lista cerrada de columnas).
 
 La consola ligera de abajo (`/api/v1/platform/console`) sigue existiendo como respaldo; el panel la sustituye en el uso diario.
@@ -38,28 +40,34 @@ Sin sesión de plataforma ni siquiera se entrega el HTML (401/403).
 - **Bitácora**: cada paso (pedir, aprobar, rechazar, ejecutar, suspender) queda en la bitácora de la consulta con quién lo hizo.
   Una autoaprobación (solo posible con `PLATFORM_ALLOW_SELF_APPROVAL=true`) queda marcada.
 
-## Permisos
+## Equipo y roles
 
-Permiso nuevo `platform:accounts`, solo del rol `platform_admin` (el mismo que administra el catálogo SMAE). Las cuentas con
-ese rol se dan por CLI: `admin grant-platform-admin -email a@b.mx`. Las solicitudes viven en `platform_actions`, con seguridad
-por filas que solo deja pasar a la plataforma: la consulta afectada no ve que se pidió algo sobre ella.
+Las personas del CRM **no son nutriólogas**: viven en una «consulta de plataforma» propia (una sola, `practices.is_platform`), sin pacientes ni plan, y **no** aparece como cliente en Cuentas, el resumen ni las métricas ni se puede suspender. No tienen el rol de nutrióloga, así que no ven ningún dato clínico. Se invitan con un enlace de un solo uso (7 días); sin correo configurado el enlace se muestra a quien invita para que lo comparta.
 
-## Qué NO está (pendiente antes de dar acceso a más gente)
+| Rol | Puede |
+|---|---|
+| **Dueño** (`platform_owner`) | Todo: cuentas, aprobar, equipo, landing. |
+| **Soporte** (`platform_support`) | Ver cuentas y operar (suspender, pedir cortesías/prórrogas/reembolsos). **No aprueba.** |
+| **Solo lectura** (`platform_viewer`) | Ver el panel; no cambia nada. |
+| **Contenido** (`platform_content`) | Editar la landing y pedir su publicación; no ve cuentas. |
+| **Administrador heredado** (`platform_admin`) | Equivale a dueño. Es el rol que ya existía (`admin grant-platform-admin`); nadie lo pierde. Se puede reasignar. |
 
-La especificación (`crm-landing.md`) pide cosas que esta fase **no** cumple todavía:
+Permisos (migración 000021): `platform:read` (ver), `platform:accounts` (operar), `platform:approve` (aprobar solicitudes de dinero), `platform:staff` (administrar el equipo), `platform:landing:edit` y `platform:landing:publish`. El servidor valida cada uno; la interfaz solo oculta lo que no se puede usar. Quien pidió una acción puede **retirarla** sin tener permiso de aprobar.
 
-1. **Usuarios propios del CRM**, distintos de los de la aplicación. Hoy se entra con una cuenta de la aplicación que tenga el rol
-   `platform_admin`. Debe limitarse a quien sea dueño o desarrollador del producto.
-2. **Verificación en dos pasos (MFA)** para esos usuarios.
-3. **Vista de varios ambientes** (staging y producción en una pantalla, con token por ambiente): hoy cada ambiente tiene su consola.
-4. **Cuatro ojos en publicaciones** y el resto del ciclo de contenido: el **CRM de contenido de la landing** no existe (propuesta y fases en `crm-landing.md`).
-5. Roles finos (`owner`, soporte, solo lectura). *(El registro de actividad global filtrable ya existe: ver **Actividad**.)*
-6. ~~Cortesía sobre una cuenta que paga~~ **Resuelto**: al ejecutar una cortesía, si la cuenta tiene una suscripción viva en la pasarela se **cancela primero** allá (queda en la bitácora como `platform.provider_subscription_canceled`). Si la cancelación falla, la cortesía **no se concede** y la solicitud queda como «falló» con la causa.
+Reglas del equipo: nadie cambia ni deshabilita **su propio** acceso; nunca queda la plataforma sin **al menos una persona activa con control total**; deshabilitar cierra sus sesiones (no borra nada); todo queda en **Actividad** (`platform.staff_*`). El primer dueño se crea con la CLI: `admin create-platform-staff -email a@b.mx -name "Nombre" -role platform_owner` (contraseña en `NEW_USER_PASSWORD`; ver `deploy/README.md` para producción) y desde ahí se invita al resto desde **Equipo**. `admin grant-platform-admin` sigue existiendo para dar el rol heredado a una cuenta de nutrióloga que ya existe.
+
+## Qué NO está
+
+1. **Verificación en dos pasos (MFA)**: descartada por ahora (decisión de producto). Se retoma antes de dar acceso a terceros fuera del equipo.
+2. **Vista de varios ambientes** (staging y producción en una pantalla, con token por ambiente): cada ambiente tiene su panel.
+3. Un rol de **aprobación de contenido** distinto del de dueño (hoy aprueba quien tenga `platform:landing:publish`, o sea dueño y administrador heredado).
+4. ~~Cortesía sobre una cuenta que paga~~ **Resuelto**: al ejecutar una cortesía, si la cuenta tiene una suscripción viva en la pasarela se **cancela primero** allá (queda en la bitácora como `platform.provider_subscription_canceled`). Si la cancelación falla, la cortesía **no se concede** y la solicitud queda como «falló» con la causa.
 
 ## Probarlo
 
 ```bash
 admin grant-platform-admin -email a@b.mx           # dos personas distintas, para ver los cuatro ojos
 ./dc.sh staging exec api /app/admin grant-platform-admin -email otra@b.mx
-# luego, con la sesión abierta en la aplicación: https://staging.nutrintegral.mx/api/v1/platform/console
+# luego, con la sesión abierta en la aplicación: https://staging.nutrintegral.mx/plataforma
+# desde «Equipo» el dueño invita a soporte, lectura o contenido (cada uno entra por su enlace)
 ```

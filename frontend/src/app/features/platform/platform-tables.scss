@@ -66,3 +66,11 @@ th[aria-sort='ascending'] .pf-sort, th[aria-sort='descending'] .pf-sort { color:
 .pf-table .nowrap { white-space: nowrap; }
 .pf-filterchip { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 1rem; }
 .pf-more { margin: 0.75rem 0 0; font-size: 0.875rem; }
+
+// Acciones por fila (equipo) y enlace de invitación.
+.pf-table .acts { display: flex; flex-wrap: wrap; gap: 0.375rem; justify-content: flex-end; }
+.callout + .pf-table-wrap, .callout + .callout { margin-block-start: 1rem; }
+.pf-table-wrap + .pf-sec { margin-block-start: 2rem; }
+.pf-linkbox { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.pf-linkbox code { flex: 1 1 18rem; min-inline-size: 0; white-space: normal; word-break: break-all; font-size: 0.8125rem; }
+@media (max-width: 48rem) { .pf-table--cards td.go-acts { display: block; text-align: start; } .pf-table--cards .acts { justify-content: flex-start; } }

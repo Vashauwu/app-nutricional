@@ -1,6 +1,6 @@
-# CRM de contenido de la landing (propuesta, no construido)
+# CRM de contenido de la landing
 
-Documento interno. **Este documento no existía** aunque `crm-cuentas.md` y `analisis-flujo-consulta.md` lo citaban. Se redactó el
+Documento interno. **Estado: construido (fases L1 a L3 y restaurar versiones de L4).** Falta el rol de aprobación separado del de dueño. **Este documento no existía** aunque `crm-cuentas.md` y `analisis-flujo-consulta.md` lo citaban. Se redactó el
 18/11/2026 **a partir de lo que ya hay en el código** (la landing, el patrón de cuatro ojos y la bitácora), no de una especificación
 anterior: si existe una versión original, hay que reconciliarla con esta. Lo marcado como **decisión abierta** necesita respuesta
 de producto antes de construir.
@@ -118,29 +118,35 @@ Al inicio, el mismo `platform_admin`. Cuando existan **usuarios propios del CRM 
 módulo pasa a un rol de **contenido** (puede editar y pedir) distinto del de **aprobación** (puede publicar). La separación pedir ≠
 aprobar ya está resuelta por persona; el rol fino solo añade quién *puede* aprobar.
 
-## Fases de construcción
+## Qué se construyó
 
-| Fase | Entrega | Depende de |
+| Fase | Entrega | Estado |
 |---|---|---|
-| **L1** | Tabla, validación de reglas, `GET/PUT draft`, versión publicada pública y consumo con respaldo en la landing | — |
-| **L2** | Pedir publicación, aprobar/rechazar con cuatro ojos, historial y bitácora | L1 |
-| **L3** | Pantallas del CRM: lista, editor por tipo, vista previa y revisión | L1, L2 |
-| **L4** | Restaurar versiones, rol de contenido separado del de aprobación | usuarios propios del CRM |
+| **L1** | Tabla `landing_versions` (migración 000022), validación en el servidor, `GET/PUT draft`, `GET /api/v1/public/landing` (ETag) y consumo con respaldo en la landing | Hecho |
+| **L2** | Pedir publicación con motivo, aprobar o rechazar con cuatro ojos, retirar, historial y bitácora (`platform.landing_*`) | Hecho |
+| **L3** | Pantalla **Landing** del CRM: estado, editor por tipo de sección (reordenar, ocultar, agregar y quitar), errores por campo, revisión con las diferencias, historial y vista previa (`/vista-previa-landing`) | Hecho |
+| **L4** | Restaurar una versión anterior como borrador | Hecho |
+| **L4** | Rol de contenido (`platform_content`: edita y pide) separado del de aprobación (`platform:landing:publish`) | Hecho en permisos; falta un rol «aprobador» que no sea dueño |
+
+Cómo se comporta:
+- La landing sigue funcionando **sin la API**: `landing.content.ts` es el contenido de respaldo. Al cargar pide `GET /public/landing`; con un 404 (aún no hay nada publicado) o un error, no cambia nada.
+- El servidor valida las reglas de arriba **al guardar, al pedir y otra vez al publicar**, y responde `422` con `error.fields` (campo → mensaje) para que la pantalla marque cada campo.
+- Guardar el borrador borra el último rechazo (ya es otro texto). Rechazar devuelve el texto a borrador con la nota de quien rechazó. Solo quien pidió puede retirar su solicitud.
+- Un borrador viejo restaurado puede no cumplir las reglas actuales: se detecta al pedir su publicación.
+
+## Decisiones tomadas (revisables)
+
+1. **Quién aprueba**: otra persona con `platform:landing:publish` (dueño y administrador heredado). Quien pidió nunca aprueba (`PLATFORM_ALLOW_SELF_APPROVAL` aplica igual que en dinero y deja marca).
+2. **Publicación programada**: no. Se publica al aprobar.
+3. **SEO**: la página carga primero el texto de respaldo y reemplaza por lo publicado; el contenido **no** se incrusta en el HTML en el despliegue. Si el SEO lo exige, es una fase aparte.
+4. **Sección de precios**: no. La regla actual prohíbe precios (el servidor rechaza `$`, «mxn», «gratis»…) hasta aprobar los planes. Cuando se aprueben, lo recomendable es una sección `pricing` que lea de `plans/catalog.go`, para que la página nunca discrepe de lo que se cobra.
+5. **Revisión legal**: no hay segunda aprobación especial para el pie legal ni las preguntas sobre datos de salud. Si se necesita, se agrega como un permiso más.
 
 ## Fuera de alcance (a propósito)
 
 - Subir imágenes o logotipos desde el CRM (las ilustraciones son del código).
 - HTML o Markdown libre, scripts de analítica o píxeles de terceros.
-- Páginas nuevas (blog, precios, tarjeta pública del profesional). La **tarjeta pública** (`analisis-flujo-consulta.md`, fase B) es un
-  producto aparte que puede reutilizar este flujo de aprobación, pero define su propio contenido por profesional.
+- Páginas nuevas (blog, precios, tarjeta pública del profesional).
 - Pruebas A/B y programación de publicaciones por fecha.
 - Multi-idioma.
-
-## Decisiones abiertas
-
-1. ¿Quién aprueba textos? ¿Basta otra persona con `platform_admin`, o debe ser el dueño del producto?
-2. ¿Publicación **programada** (p. ej. coordinada con un lanzamiento) o solo inmediata?
-3. ¿La landing debe servirse con el contenido incrustado en el HTML (SEO) o basta con cargarlo al abrir?
-4. Precios en la landing: la regla actual los prohíbe hasta aprobar los planes (`registro-y-planes-mvp.md`). ¿Se habilita una sección
-   `pricing` que lea de `plans/catalog.go` para que **nunca** discrepe de lo que se cobra?
-5. ¿Se necesita revisión legal obligatoria (segunda aprobación) cuando cambian el pie legal o las FAQ sobre datos de salud?
+- Tipos de sección nuevos (siguen siendo trabajo de código: componente, tipo y validación en el servidor).

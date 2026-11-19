@@ -162,6 +162,20 @@ type Querier interface {
 	InsertTrackingPhoto(ctx context.Context, arg InsertTrackingPhotoParams) (TrackingPhoto, error)
 	InvalidateUserResetTokens(ctx context.Context, userID uuid.UUID) error
 	ItemPlanIDs(ctx context.Context, dollar_1 []uuid.UUID) ([]ItemPlanIDsRow, error)
+	LandingDeleteDraft(ctx context.Context) (int64, error)
+	// Landing gestionada desde el CRM. Todas se ejecutan con tenant.Bypass (tabla global de la plataforma).
+	// Una versión: la abierta (borrador o pendiente), la publicada o una por número.
+	LandingFind(ctx context.Context, arg LandingFindParams) (LandingFindRow, error)
+	LandingInsertDraft(ctx context.Context, arg LandingInsertDraftParams) (LandingVersion, error)
+	LandingListVersions(ctx context.Context) ([]LandingListVersionsRow, error)
+	LandingNextNumber(ctx context.Context) (int32, error)
+	LandingPublish(ctx context.Context, arg LandingPublishParams) (LandingVersion, error)
+	LandingReject(ctx context.Context, arg LandingRejectParams) (LandingVersion, error)
+	LandingRequest(ctx context.Context, arg LandingRequestParams) (LandingVersion, error)
+	LandingSupersedePublished(ctx context.Context) error
+	// Guardar el borrador borra el último rechazo: ya es otro texto.
+	LandingUpdateDraft(ctx context.Context, arg LandingUpdateDraftParams) (LandingVersion, error)
+	LandingWithdraw(ctx context.Context, id uuid.UUID) (LandingVersion, error)
 	LastPlanEvent(ctx context.Context, planID uuid.UUID) (MealPlanEvent, error)
 	LinkPatientUser(ctx context.Context, arg LinkPatientUserParams) error
 	ListAcceptances(ctx context.Context, patientID uuid.UUID) ([]ListAcceptancesRow, error)
@@ -244,6 +258,8 @@ type Querier interface {
 	PlansEndingSoon(ctx context.Context, arg PlansEndingSoonParams) ([]PlansEndingSoonRow, error)
 	// Cuántos planes no archivados usan un platillo (para avisar antes de desactivarlo).
 	PlansUsingDish(ctx context.Context, dishID uuid.UUID) (int64, error)
+	// Personas activas con control total (dueños y el rol heredado): nunca debe quedar la plataforma sin ninguna.
+	PlatformCountActiveOwners(ctx context.Context) (int64, error)
 	// Solo una solicitud pendiente se puede decidir (dos aprobaciones simultáneas no la ejecutan dos veces).
 	PlatformDecideAction(ctx context.Context, arg PlatformDecideActionParams) (int64, error)
 	PlatformFinishAction(ctx context.Context, arg PlatformFinishActionParams) error
@@ -257,13 +273,18 @@ type Querier interface {
 	PlatformListActivity(ctx context.Context, arg PlatformListActivityParams) ([]PlatformListActivityRow, error)
 	PlatformListAudit(ctx context.Context, practiceID uuid.NullUUID) ([]PlatformListAuditRow, error)
 	PlatformListPayments(ctx context.Context, practiceID uuid.UUID) ([]Payment, error)
+	PlatformListStaff(ctx context.Context) ([]PlatformListStaffRow, error)
+	PlatformMarkPracticePlatform(ctx context.Context, id uuid.UUID) error
 	// Resumen del panel: todas las suscripciones (el estado efectivo se resuelve en Go con plans.Resolve).
 	PlatformOverviewSubs(ctx context.Context) ([]PlatformOverviewSubsRow, error)
 	PlatformPaymentStats(ctx context.Context, occurredAt pgtype.Timestamptz) (PlatformPaymentStatsRow, error)
 	PlatformRecentPayments(ctx context.Context) ([]PlatformRecentPaymentsRow, error)
+	PlatformRemoveStaffRoles(ctx context.Context, userID uuid.UUID) error
 	PlatformRevokePracticeSessions(ctx context.Context, practiceID uuid.UUID) error
 	PlatformSetPracticeStatus(ctx context.Context, arg PlatformSetPracticeStatusParams) (int64, error)
 	PlatformSignupsByDay(ctx context.Context, arg PlatformSignupsByDayParams) ([]PlatformSignupsByDayRow, error)
+	// Equipo del CRM. Las personas viven en la «consulta de plataforma» (una sola, marcada is_platform).
+	PlatformStaffPractice(ctx context.Context) (uuid.UUID, error)
 	PlatformUsageTotals(ctx context.Context) (PlatformUsageTotalsRow, error)
 	PracticeStorageUsed(ctx context.Context) (int64, error)
 	PurgeMealPlan(ctx context.Context, pID uuid.UUID) ([]byte, error)

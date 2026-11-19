@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input } from '@angular/core';
 import { Meta, MetaDefinition } from '@angular/platform-browser';
-import { LANDING_FOOTER, LANDING_META, LANDING_SECTIONS, LandingSection } from './landing.content';
+import { LandingContent } from './landing.content';
+import { LandingContentService } from './landing-content.service';
 import { LandingHeader } from './landing-header';
 import { LpCta } from './sections/cta';
 import { LpFaq } from './sections/faq';
@@ -24,9 +25,9 @@ import { LpSteps } from './sections/steps';
   template: `
     <div class="lp">
       <a class="lp-skip" href="#contenido-landing" (click)="skip($event)">Saltar al contenido</a>
-      <app-lp-header [links]="nav" />
+      <app-lp-header [links]="nav()" />
       <main id="contenido-landing" tabindex="-1">
-        @for (s of sections; track s.id) {
+        @for (s of sections(); track s.id) {
           @switch (s.type) {
             @case ('hero') { <app-lp-hero [s]="s" /> }
             @case ('intro') { <app-lp-intro [s]="s" /> }
@@ -39,7 +40,7 @@ import { LpSteps } from './sections/steps';
           }
         }
       </main>
-      <app-lp-footer [f]="footer" />
+      <app-lp-footer [f]="footer()" />
     </div>
   `,
   styles: `
@@ -50,19 +51,30 @@ import { LpSteps } from './sections/steps';
 })
 export class Landing {
   private readonly meta = inject(Meta);
-  protected readonly sections: LandingSection[] = LANDING_SECTIONS.filter((s) => s.enabled !== false);
-  protected readonly nav = this.sections.filter((s) => s.nav).map((s) => ({ id: s.id, label: s.nav as string }));
-  protected readonly footer = LANDING_FOOTER;
+  private readonly content = inject(LandingContentService);
+  /** Vista previa del CRM: dibuja este contenido (un borrador) en lugar del publicado. */
+  readonly preview = input<LandingContent | null>(null);
+  private readonly data = computed(() => this.preview() ?? this.content.content());
+  protected readonly sections = computed(() => this.data().sections.filter((s) => s.enabled !== false));
+  protected readonly nav = computed(() => this.sections().filter((s) => s.nav).map((s) => ({ id: s.id, label: s.nav as string })));
+  protected readonly footer = computed(() => this.data().footer);
 
   constructor() {
-    const tags: { selector: string; def: MetaDefinition }[] = [
-      { selector: "name='description'", def: { name: 'description', content: LANDING_META.description } },
-      { selector: "property='og:title'", def: { property: 'og:title', content: LANDING_META.title } },
-      { selector: "property='og:description'", def: { property: 'og:description', content: LANDING_META.description } },
-      { selector: "property='og:type'", def: { property: 'og:type', content: 'website' } },
-    ];
-    this.meta.addTags(tags.map((t) => t.def));
-    inject(DestroyRef).onDestroy(() => tags.forEach((t) => this.meta.removeTag(t.selector)));
+    this.content.load();
+    const selectors = ["name='description'", "property='og:title'", "property='og:description'", "property='og:type'"];
+    // La vista previa no toca las etiquetas de la página (no es la página pública).
+    effect(() => {
+      if (this.preview()) return;
+      const m = this.data().meta;
+      const defs: MetaDefinition[] = [
+        { name: 'description', content: m.description },
+        { property: 'og:title', content: m.title },
+        { property: 'og:description', content: m.description },
+        { property: 'og:type', content: 'website' },
+      ];
+      defs.forEach((d, i) => this.meta.updateTag(d, selectors[i]));
+    });
+    inject(DestroyRef).onDestroy(() => selectors.forEach((s) => this.meta.removeTag(s)));
   }
 
   protected skip(e: Event): void {

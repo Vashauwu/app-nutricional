@@ -41,6 +41,15 @@ cd /opt/nutri/staging/deploy        # o /opt/nutri/prod/deploy
 ```
 Las cuentas **no se comparten** entre ambientes: hay que crearlas en cada uno.
 
+**Equipo del CRM (panel de plataforma).** Las personas del CRM no son nutriólogas: se crean con `create-platform-staff` (sin consulta clínica). Crea **solo al primer dueño** por aquí; después, desde el panel (`/plataforma` → **Equipo**) ese dueño invita al resto (soporte, solo lectura, contenido) y no hace falta volver a entrar al servidor. La contraseña se teclea sin que quede en el historial:
+```bash
+cd /opt/nutri/prod/deploy
+read -rsp 'Contraseña del dueño: ' P; echo
+./dc.sh prod exec -e NEW_USER_PASSWORD="$P" api /app/admin create-platform-staff -email tu@correo.mx -name "Tu Nombre" -role platform_owner
+unset P
+```
+Entra por `https://app.nutrintegral.mx/ingresar` (el mismo ingreso de siempre): esa cuenta cae directo en `/plataforma`. Requiere una imagen que ya incluya el comando (la que libera este cambio). Mientras no haya correo verificado en producción, las invitaciones muestran el enlace en pantalla para compartirlo.
+
 **Cuentas de ejemplo solo en staging.** El ingreso de staging muestra tres botones de demostración (`config.staging.js`);
 para que funcionen, créalas una vez en staging (el comando se niega a correr donde `ALLOW_DEMO_ACCOUNTS` no sea `true`):
 ```bash

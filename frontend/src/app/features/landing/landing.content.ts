@@ -124,6 +124,9 @@ export const LANDING_SECTIONS: LandingSection[] = [
   },
 ];
 
+/** El contenido completo de la página: lo que edita el CRM y lo que entrega `GET /public/landing`. */
+export interface LandingContent { meta: LandingMeta; sections: LandingSection[]; footer: LandingFooter }
+
 export const LANDING_FOOTER: LandingFooter = {
   legal: 'Herramienta de apoyo profesional: no sustituye el criterio clínico.',
   links: [
@@ -132,3 +135,6 @@ export const LANDING_FOOTER: LandingFooter = {
     { label: 'Términos de uso', to: '/terminos' },
   ],
 };
+
+/** Contenido de respaldo: se usa mientras no haya nada publicado desde el CRM o si la API no responde. */
+export const BUNDLED_LANDING: LandingContent = { meta: LANDING_META, sections: LANDING_SECTIONS, footer: LANDING_FOOTER };

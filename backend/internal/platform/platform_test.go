@@ -54,6 +54,7 @@ func start(t *testing.T, withPayments bool) *env {
 	}
 	e.svc = platform.NewService(pool, e.ps, pay, log)
 	e.svc.SetClock(now)
+	e.svc.SetAuth(e.auth)
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	r.Use(middleware.RequestID())
@@ -476,4 +477,167 @@ func TestCompOverPayingAccountCancelsProviderFirst(t *testing.T) {
 	act, err := e.svc.Activity(bg, platform.ActivityQuery{Until: time.Now().Add(time.Hour), Practice: pid, Search: "provider_subscription_canceled"})
 	require.NoError(t, err)
 	require.Len(t, act.Items, 1, "queda en la bitácora que se canceló el cobro automático")
+}
+
+// join invita a una persona, usa su enlace para crear la contraseña y devuelve su sesión.
+func (e *env) join(t *testing.T, owner platform.Actor, email, name, role string) (*testsupport.Client, uuid.UUID) {
+	t.Helper()
+	inv, err := e.svc.InviteStaff(context.Background(), owner, email, name, role)
+	require.NoError(t, err)
+	require.NotEmpty(t, inv.Link, "sin correo configurado el enlace se entrega a quien invita")
+	require.Equal(t, "invited", inv.Staff.Status)
+	token := inv.Link[len("http://app.test/restablecer/"):]
+	require.NoError(t, e.auth.ResetPassword(context.Background(), token, "clave-nueva-1", auth.Meta{}))
+	c := testsupport.NewClient(t, e.srv.URL)
+	c.Login(email, "clave-nueva-1")
+	return c, inv.Staff.ID
+}
+
+func TestStaffRolesAndPermissions(t *testing.T) {
+	e := start(t, false)
+	owner := e.staff(t, "dueno@plataforma.mx")
+	_, cuenta := e.account(t, "Consulta Luna", "luna@clinica.mx")
+	bg := context.Background()
+
+	support, _ := e.join(t, owner, "soporte@plataforma.mx", "Soporte", platform.RoleSupport)
+	viewer, _ := e.join(t, owner, "lector@plataforma.mx", "Lector", platform.RoleViewer)
+	content, _ := e.join(t, owner, "contenido@plataforma.mx", "Contenido", platform.RoleContent)
+
+	type probe struct {
+		who           string
+		c             *testsupport.Client
+		read, act, ok int
+	}
+	// read = GET /overview, act = suspender, ok = aprobar (el id no existe: 404 si pasó el permiso, 403 si no)
+	for _, p := range []probe{
+		{"soporte", support, 200, 204, 403},
+		{"lector", viewer, 200, 403, 403},
+		{"contenido", content, 403, 403, 403},
+	} {
+		code, _ := p.c.Do("GET", "/api/v1/platform/overview", nil)
+		require.Equal(t, p.read, code, p.who+" ve el resumen")
+		code, _ = p.c.Do("POST", "/api/v1/platform/accounts/"+cuenta.String()+"/suspend", map[string]string{"reason": "Motivo suficientemente largo"})
+		require.Equal(t, p.act, code, p.who+" suspende")
+		if p.act == 204 {
+			code, _ = p.c.Do("POST", "/api/v1/platform/accounts/"+cuenta.String()+"/reactivate", nil)
+			require.Equal(t, 204, code)
+		}
+		code, _ = p.c.Do("POST", "/api/v1/platform/actions/"+uuid.NewString()+"/decision", map[string]any{"approve": true})
+		require.Equal(t, p.ok, code, p.who+" aprueba")
+		code, _ = p.c.Do("GET", "/api/v1/platform/staff", nil)
+		require.Equal(t, 403, code, p.who+" no administra el equipo")
+	}
+
+	// El dueño sí aprueba (404: pasó el permiso, la solicitud no existe) y ve al equipo.
+	oc := testsupport.NewClient(t, e.srv.URL)
+	oc.Login("dueno@plataforma.mx", "demo1234")
+	code, _ := oc.Do("POST", "/api/v1/platform/actions/"+uuid.NewString()+"/decision", map[string]any{"approve": true})
+	require.Equal(t, 404, code)
+	code, body := oc.Do("GET", "/api/v1/platform/staff", nil)
+	require.Equal(t, 200, code)
+	require.Len(t, body["items"], 4)
+
+	// Las personas del equipo no son clientes: no salen en Cuentas y no se pueden suspender como cuenta.
+	page, err := e.svc.ListAccounts(bg, platform.ListQuery{Search: "@plataforma.mx"})
+	require.NoError(t, err)
+	for _, it := range page.Items {
+		require.Equal(t, "dueno@plataforma.mx", it.OwnerEmail, "solo la consulta de prueba del dueño; el equipo invitado no es cliente")
+	}
+	var staffPractice uuid.UUID
+	require.NoError(t, e.pool.QueryRow(tenant.Bypass(bg), `SELECT id FROM practices WHERE is_platform`).Scan(&staffPractice))
+	require.ErrorIs(t, e.svc.Suspend(bg, owner, staffPractice, "Intento de suspender al equipo"), platform.ErrNotFound)
+
+	// Una persona del equipo no tiene acceso clínico (no es nutrióloga).
+	code, me := support.Do("GET", "/api/v1/auth/me", nil)
+	require.Equal(t, 200, code)
+	perms := fmt.Sprint(me["user"])
+	require.Contains(t, perms, "platform:read")
+	for _, clinical := range []string{"patients", "plans:", "dishes", "smae"} {
+		require.NotContains(t, perms, clinical, "el equipo no recibe permisos clínicos")
+	}
+}
+
+func TestCreateStaffFromCLI(t *testing.T) {
+	e := start(t, false)
+	bg := context.Background()
+	_, err := e.svc.CreateStaff(bg, platform.Actor{Email: "cli"}, "primero@plataforma.mx", "Primer Dueño", "nutritionist", "clave-segura-1")
+	require.ErrorIs(t, err, platform.ErrInvalid, "solo roles de plataforma")
+	_, err = e.svc.CreateStaff(bg, platform.Actor{Email: "cli"}, "primero@plataforma.mx", "Primer Dueño", platform.RoleOwner, "corta")
+	require.Error(t, err, "la contraseña cumple la política")
+	_, err = e.svc.CreateStaff(bg, platform.Actor{Email: "cli"}, "primero@plataforma.mx", "Primer Dueño", platform.RoleOwner, "clave-segura-1")
+	require.NoError(t, err)
+
+	// Entra de inmediato, con control total y sin ser nutrióloga; y desde ahí puede invitar al resto.
+	c := testsupport.NewClient(t, e.srv.URL)
+	c.Login("primero@plataforma.mx", "clave-segura-1")
+	code, body := c.Do("GET", "/api/v1/platform/staff", nil)
+	require.Equal(t, 200, code)
+	require.Len(t, body["items"], 1)
+	code, _ = c.Do("POST", "/api/v1/platform/staff", map[string]string{"email": "soporte@plataforma.mx", "name": "Soporte", "role": platform.RoleSupport})
+	require.Equal(t, 201, code)
+	_, err = e.svc.CreateStaff(bg, platform.Actor{Email: "cli"}, "primero@plataforma.mx", "Repetido", platform.RoleOwner, "clave-segura-1")
+	require.ErrorIs(t, err, auth.ErrEmailInUse, "un correo ya registrado no se repite")
+}
+
+func TestStaffGuards(t *testing.T) {
+	e := start(t, false)
+	owner := e.staff(t, "dueno@plataforma.mx")
+	bg := context.Background()
+
+	_, err := e.svc.InviteStaff(bg, owner, "x@plataforma.mx", "X", "platform_nada")
+	require.ErrorIs(t, err, platform.ErrInvalid)
+	_, err = e.svc.InviteStaff(bg, owner, "x@plataforma.mx", " ", platform.RoleViewer)
+	require.ErrorIs(t, err, platform.ErrInvalid)
+	_, err = e.svc.InviteStaff(bg, owner, "dueno@plataforma.mx", "Repetido", platform.RoleViewer)
+	require.ErrorIs(t, err, auth.ErrEmailInUse, "un correo con cuenta no se invita")
+
+	// Quien invita y aún no acepta no puede entrar.
+	inv, err := e.svc.InviteStaff(bg, owner, "nuevo@plataforma.mx", "Nuevo", platform.RoleSupport)
+	require.NoError(t, err)
+	c := testsupport.NewClient(t, e.srv.URL)
+	code, _ := c.Do("POST", "/api/v1/auth/login", map[string]string{"email": "nuevo@plataforma.mx", "password": "lo-que-sea-1"})
+	require.Equal(t, 401, code)
+
+	// Nadie se cambia a sí mismo ni deja la plataforma sin dueño.
+	_, err = e.svc.SetStaffRole(bg, owner, owner.ID, platform.RoleViewer)
+	require.ErrorIs(t, err, platform.ErrSelfStaff)
+	_, err = e.svc.SetStaffEnabled(bg, owner, owner.ID, false)
+	require.ErrorIs(t, err, platform.ErrSelfStaff)
+
+	second := e.staff(t, "segundo@plataforma.mx") // otro con control total (rol heredado)
+	_, err = e.svc.SetStaffRole(bg, second, owner.ID, platform.RoleViewer)
+	require.NoError(t, err, "con dos personas con control total una puede bajarse")
+	_, err = e.svc.SetStaffRole(bg, owner, second.ID, platform.RoleViewer)
+	require.ErrorIs(t, err, platform.ErrLastOwner, "la última persona con control total no se degrada")
+	_, err = e.svc.SetStaffEnabled(bg, owner, second.ID, false)
+	require.ErrorIs(t, err, platform.ErrLastOwner)
+
+	// Volver a nombrar dueño a quien se bajó restablece el equilibrio, y entonces el otro sí puede bajarse.
+	_, err = e.svc.SetStaffRole(bg, second, owner.ID, platform.RoleOwner)
+	require.NoError(t, err)
+	_, err = e.svc.SetStaffRole(bg, owner, second.ID, platform.RoleViewer)
+	require.NoError(t, err)
+
+	// Deshabilitar impide entrar (aunque ya tuviera contraseña) y volver a habilitar lo devuelve a su estado.
+	c2, id2 := e.join(t, owner, "temporal@plataforma.mx", "Temporal", platform.RoleSupport)
+	code, _ = c2.Do("GET", "/api/v1/platform/overview", nil)
+	require.Equal(t, 200, code)
+	row, err := e.svc.SetStaffEnabled(bg, owner, id2, false)
+	require.NoError(t, err)
+	require.Equal(t, "disabled", row.Status)
+	code, _ = c2.Do("GET", "/api/v1/platform/overview", nil)
+	require.Equal(t, 401, code, "se cerraron sus sesiones")
+	code, _ = testsupport.NewClient(t, e.srv.URL).Do("POST", "/api/v1/auth/login", map[string]string{"email": "temporal@plataforma.mx", "password": "clave-nueva-1"})
+	require.Equal(t, 401, code)
+	row, err = e.svc.SetStaffEnabled(bg, owner, id2, true)
+	require.NoError(t, err)
+	require.Equal(t, "active", row.Status, "había entrado antes: vuelve activa")
+
+	// Reenviar la invitación solo sirve a quien aún no creó su contraseña, y el enlace anterior deja de funcionar.
+	again, err := e.svc.ResendStaffInvite(bg, owner, inv.Staff.ID)
+	require.NoError(t, err)
+	require.NotEqual(t, inv.Link, again.Link)
+	require.Error(t, e.auth.ResetPassword(bg, inv.Link[len("http://app.test/restablecer/"):], "clave-nueva-1", auth.Meta{}), "el enlace viejo ya no sirve")
+	_, err = e.svc.ResendStaffInvite(bg, owner, id2)
+	require.ErrorIs(t, err, platform.ErrInvalid, "quien ya entró no necesita invitación")
 }

@@ -15,6 +15,7 @@ import { TuiSkeleton } from '@taiga-ui/kit/directives/skeleton';
 import { TuiTextarea } from '@taiga-ui/kit/components/textarea';
 import { AccountDetail, ActionKind, ActionRow, PaymentRow, PlanCode, PlatformApi } from '../../core/api/platform-api';
 import { formatBytes } from '../../shared/utils/format';
+import { AuthService } from '../../core/auth/auth.service';
 import { Icon } from '../../shared/components/icon';
 import { PfHead } from './head';
 import { AUDIT_LABEL, KIND_LABEL, PAYMENT_LABEL, PAYMENT_TONE, PLAN_LABEL, STATE_LABEL, STATE_TONE, fd, fdt, mxn, when } from './labels';
@@ -51,9 +52,11 @@ const limited = (n: number | undefined): n is number => n !== undefined && n >= 
           @if (a.comped) { <span tuiBadge tuiAppearance="info" size="m">Cortesía</span> }
           @if (a.status === 'suspended') { <span tuiBadge tuiAppearance="negative" size="m">Suspendida</span> }
         </p>
-        <button tuiButton appearance="secondary" size="s" type="button" (click)="show('comp')">Plan de cortesía</button>
-        @if (a.state === 'trialing') { <button tuiButton appearance="secondary" size="s" type="button" (click)="show('trial')">Prorrogar prueba</button> }
-        @if (paid().length) { <button tuiButton appearance="secondary" size="s" type="button" (click)="show('refund')">Reembolsar</button> }
+        @if (canOperate) {
+          <button tuiButton appearance="secondary" size="s" type="button" (click)="show('comp')">Plan de cortesía</button>
+          @if (a.state === 'trialing') { <button tuiButton appearance="secondary" size="s" type="button" (click)="show('trial')">Prorrogar prueba</button> }
+          @if (paid().length) { <button tuiButton appearance="secondary" size="s" type="button" (click)="show('refund')">Reembolsar</button> }
+        }
       </app-pf-head>
 
       @if (a.status === 'suspended') {
@@ -148,6 +151,7 @@ const limited = (n: number | undefined): n is number => n !== undefined && n >= 
             } @else { <p class="pf-empty">No hay solicitudes pendientes para esta cuenta.</p> }
           </section>
 
+          @if (canOperate) {
           <section class="pf-danger" aria-labelledby="h-peligro">
             @if (a.status === 'suspended') {
               <h2 id="h-peligro">Acceso suspendido</h2>
@@ -159,6 +163,7 @@ const limited = (n: number | undefined): n is number => n !== undefined && n >= 
               <div><button tuiButton appearance="secondary-destructive" size="s" type="button" (click)="show('suspend')">Suspender cuenta…</button></div>
             }
           </section>
+          }
         </div>
       </div>
     }
@@ -213,6 +218,7 @@ const limited = (n: number | undefined): n is number => n !== undefined && n >= 
 })
 export class PlatformAccountPage {
   private readonly api = inject(PlatformApi);
+  protected readonly canOperate = inject(AuthService).can('platform:accounts');
   readonly id = input.required<string>();
   protected readonly d = signal<AccountDetail | null>(null);
   protected readonly error = signal('');

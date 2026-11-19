@@ -57,6 +57,20 @@ func (q *Queries) MarkPaymentRefunded(ctx context.Context, id uuid.UUID) (int64,
 	return result.RowsAffected(), nil
 }
 
+const platformCountActiveOwners = `-- name: PlatformCountActiveOwners :one
+SELECT count(DISTINCT u.id)::bigint FROM users u
+JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
+WHERE u.status = 'active' AND r.code IN ('platform_owner', 'platform_admin')
+`
+
+// Personas activas con control total (dueños y el rol heredado): nunca debe quedar la plataforma sin ninguna.
+func (q *Queries) PlatformCountActiveOwners(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, platformCountActiveOwners)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const platformDecideAction = `-- name: PlatformDecideAction :execrows
 UPDATE platform_actions SET status = $2, decided_by = $3, decided_at = now(), decision_note = $4 WHERE id = $1 AND status = 'pending'
 `
@@ -107,7 +121,7 @@ SELECT p.id, p.name, p.status, p.suspended_reason, p.suspended_at, p.created_at,
        (SELECT COALESCE(sum(f.size_bytes), 0) FROM file_objects f WHERE f.practice_id = p.id AND f.deleted_at IS NULL)::bigint AS storage_bytes,
        (SELECT count(*) FROM users u WHERE u.practice_id = p.id)::bigint AS users
 FROM practices p JOIN subscriptions s ON s.practice_id = p.id
-WHERE p.id = $1
+WHERE p.id = $1 AND NOT p.is_platform
 `
 
 type PlatformGetAccountRow struct {
@@ -239,7 +253,7 @@ SELECT p.id, p.name, p.status, p.suspended_reason, p.created_at,
        (SELECT count(*) FROM patients pa WHERE pa.practice_id = p.id AND pa.deleted_at IS NULL AND pa.status <> 'inactive')::bigint AS active_patients,
        count(*) OVER ()::bigint AS total
 FROM practices p JOIN subscriptions s ON s.practice_id = p.id
-WHERE ($1::text = '' OR p.name ILIKE '%' || $1::text || '%' ESCAPE '\'
+WHERE NOT p.is_platform AND ($1::text = '' OR p.name ILIKE '%' || $1::text || '%' ESCAPE '\'
        OR EXISTS (SELECT 1 FROM users u WHERE u.practice_id = p.id AND u.email ILIKE '%' || $1::text || '%' ESCAPE '\'))
   AND ($2::text = '' OR s.plan = $2::text)
   AND ($3::text = '' OR p.status = $3::text)
@@ -550,12 +564,68 @@ func (q *Queries) PlatformListPayments(ctx context.Context, practiceID uuid.UUID
 	return items, nil
 }
 
+const platformListStaff = `-- name: PlatformListStaff :many
+SELECT u.id, u.email, u.display_name, u.status, u.last_login_at, u.created_at,
+       (array_agg(r.code ORDER BY r.code))::text[] AS roles
+FROM users u JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
+WHERE r.code IN ('platform_admin', 'platform_owner', 'platform_support', 'platform_viewer', 'platform_content')
+GROUP BY u.id ORDER BY u.created_at
+`
+
+type PlatformListStaffRow struct {
+	ID          uuid.UUID          `json:"id"`
+	Email       string             `json:"email"`
+	DisplayName string             `json:"display_name"`
+	Status      string             `json:"status"`
+	LastLoginAt pgtype.Timestamptz `json:"last_login_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Roles       []string           `json:"roles"`
+}
+
+func (q *Queries) PlatformListStaff(ctx context.Context) ([]PlatformListStaffRow, error) {
+	rows, err := q.db.Query(ctx, platformListStaff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlatformListStaffRow
+	for rows.Next() {
+		var i PlatformListStaffRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.DisplayName,
+			&i.Status,
+			&i.LastLoginAt,
+			&i.CreatedAt,
+			&i.Roles,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const platformMarkPracticePlatform = `-- name: PlatformMarkPracticePlatform :exec
+UPDATE practices SET is_platform = true WHERE id = $1
+`
+
+func (q *Queries) PlatformMarkPracticePlatform(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, platformMarkPracticePlatform, id)
+	return err
+}
+
 const platformOverviewSubs = `-- name: PlatformOverviewSubs :many
 SELECT p.id, p.name, p.status, p.created_at,
        s.plan, s.status AS sub_status, s.billing_period, s.trial_ends_at, s.grace_until, s.current_period_end, s.comp_reason,
        COALESCE((SELECT u.email FROM users u JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
                  WHERE u.practice_id = p.id AND r.code = 'nutritionist' ORDER BY u.created_at LIMIT 1), '')::text AS owner_email
 FROM practices p JOIN subscriptions s ON s.practice_id = p.id
+WHERE NOT p.is_platform
 `
 
 type PlatformOverviewSubsRow struct {
@@ -678,6 +748,16 @@ func (q *Queries) PlatformRecentPayments(ctx context.Context) ([]PlatformRecentP
 	return items, nil
 }
 
+const platformRemoveStaffRoles = `-- name: PlatformRemoveStaffRoles :exec
+DELETE FROM user_role_assignments
+WHERE user_id = $1 AND role_id IN (SELECT id FROM roles WHERE code IN ('platform_admin', 'platform_owner', 'platform_support', 'platform_viewer', 'platform_content'))
+`
+
+func (q *Queries) PlatformRemoveStaffRoles(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, platformRemoveStaffRoles, userID)
+	return err
+}
+
 const platformRevokePracticeSessions = `-- name: PlatformRevokePracticeSessions :exec
 UPDATE user_sessions SET revoked_at = now() WHERE revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE practice_id = $1)
 `
@@ -688,7 +768,7 @@ func (q *Queries) PlatformRevokePracticeSessions(ctx context.Context, practiceID
 }
 
 const platformSetPracticeStatus = `-- name: PlatformSetPracticeStatus :execrows
-UPDATE practices SET status = $2, suspended_at = $3, suspended_reason = $4 WHERE id = $1
+UPDATE practices SET status = $2, suspended_at = $3, suspended_reason = $4 WHERE id = $1 AND NOT is_platform
 `
 
 type PlatformSetPracticeStatusParams struct {
@@ -714,7 +794,7 @@ func (q *Queries) PlatformSetPracticeStatus(ctx context.Context, arg PlatformSet
 const platformSignupsByDay = `-- name: PlatformSignupsByDay :many
 SELECT g::date AS day, count(p.id)::bigint AS total
 FROM generate_series($1::date, $2::date, interval '1 day') g
-LEFT JOIN practices p ON (p.created_at AT TIME ZONE 'America/Mexico_City')::date = g::date
+LEFT JOIN practices p ON (p.created_at AT TIME ZONE 'America/Mexico_City')::date = g::date AND NOT p.is_platform
 GROUP BY 1 ORDER BY 1
 `
 
@@ -746,6 +826,18 @@ func (q *Queries) PlatformSignupsByDay(ctx context.Context, arg PlatformSignupsB
 		return nil, err
 	}
 	return items, nil
+}
+
+const platformStaffPractice = `-- name: PlatformStaffPractice :one
+SELECT id FROM practices WHERE is_platform LIMIT 1
+`
+
+// Equipo del CRM. Las personas viven en la «consulta de plataforma» (una sola, marcada is_platform).
+func (q *Queries) PlatformStaffPractice(ctx context.Context) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, platformStaffPractice)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const platformUsageTotals = `-- name: PlatformUsageTotals :one

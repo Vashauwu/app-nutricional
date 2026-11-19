@@ -133,6 +133,8 @@ export class Login {
   private enter(role: string): void {
     const back = this.route.snapshot.queryParamMap.get('volver');
     const safe = back && back.startsWith('/') && !back.startsWith('//') ? back : null;
+    // El equipo del CRM entra directo a su zona (no tiene consulta clínica).
+    if (role.startsWith('platform_')) { void this.router.navigateByUrl(safe?.startsWith('/plataforma') ? safe : '/plataforma'); return; }
     void this.router.navigateByUrl(safe && (role === 'patient') === safe.startsWith('/paciente') ? safe : role === 'patient' ? '/paciente' : '/');
   }
 

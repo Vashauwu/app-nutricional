@@ -62,6 +62,8 @@ export class AuthService {
     return s ? (this.data.db().users.find((u) => u.id === s.userId && u.status === 'active') ?? null) : null;
   });
   readonly role = computed<Role | null>(() => this.user()?.role ?? null);
+  /** Persona del equipo del CRM (rol de plataforma): no usa la consulta clínica, solo /plataforma. */
+  readonly isPlatformStaff = computed(() => String(this.user()?.role ?? '').startsWith('platform_'));
   readonly isAuthenticated = computed(() => this.user() !== null);
   /** ¿La sesión tiene este permiso? Solo mejora la interfaz (oculta o muestra); el servidor decide siempre. */
   can(permission: string): boolean { return this.apiMode && this.apiPerms().includes(permission); }

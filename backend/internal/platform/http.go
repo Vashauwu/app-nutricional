@@ -30,22 +30,70 @@ func NewController(svc *Service, a *auth.Service, log *slog.Logger) *Controller 
 }
 
 func (ct *Controller) Register(v1 *gin.RouterGroup) {
-	g := v1.Group("/platform", auth.Authenticate(ct.auth), auth.RequirePermission("platform:accounts"))
+	// Contenido público de la landing: sin sesión, solo la versión publicada.
+	v1.GET("/public/landing", ct.publicLanding)
+	// Permisos finos (migración 000021): ver, operar, aprobar y administrar al equipo son cosas distintas.
+	g := v1.Group("/platform", auth.Authenticate(ct.auth))
+	read, operate, staff := auth.RequirePermission("platform:read"), auth.RequirePermission("platform:accounts"), auth.RequirePermission("platform:staff")
 	// La consola se sirve desde el binario de la API (no dentro del paquete de la aplicación pública) y con la misma
 	// protección que la API: sin sesión de plataforma no se entrega ni el HTML.
-	g.GET("/console", ct.asset("console/index.html", "text/html; charset=utf-8"))
-	g.GET("/console.js", ct.asset("console/console.js", "text/javascript; charset=utf-8"))
-	g.GET("/console.css", ct.asset("console/console.css", "text/css; charset=utf-8"))
-	g.GET("/overview", ct.overview)
-	g.GET("/accounts", ct.list)
-	g.GET("/accounts/:id", ct.account)
-	g.GET("/actions", ct.actions)
-	g.GET("/activity", ct.activity)
+	g.GET("/console", read, ct.asset("console/index.html", "text/html; charset=utf-8"))
+	g.GET("/console.js", read, ct.asset("console/console.js", "text/javascript; charset=utf-8"))
+	g.GET("/console.css", read, ct.asset("console/console.css", "text/css; charset=utf-8"))
+	g.GET("/overview", read, ct.overview)
+	g.GET("/accounts", read, ct.list)
+	g.GET("/accounts/:id", read, ct.account)
+	g.GET("/actions", read, ct.actions)
+	g.GET("/activity", read, ct.activity)
+	g.GET("/staff", staff, ct.staffList)
+	// Landing: editar y pedir publicación (landing:edit) y aprobar (landing:publish) son permisos distintos.
+	landingSee, landingEdit, landingPublish := anyOf("platform:landing:edit", "platform:landing:publish"), auth.RequirePermission("platform:landing:edit"), auth.RequirePermission("platform:landing:publish")
+	g.GET("/landing", landingSee, ct.landingState)
+	g.GET("/landing/versions", landingSee, ct.landingVersions)
+	g.GET("/landing/versions/:n", landingSee, ct.landingVersion)
 	w := g.Group("", auth.CSRF())
-	w.POST("/accounts/:id/suspend", ct.suspend)
-	w.POST("/accounts/:id/reactivate", ct.reactivate)
-	w.POST("/accounts/:id/actions", ct.request)
-	w.POST("/actions/:id/decision", ct.decide)
+	w.POST("/accounts/:id/suspend", operate, ct.suspend)
+	w.POST("/accounts/:id/reactivate", operate, ct.reactivate)
+	w.POST("/accounts/:id/actions", operate, ct.request)
+	// Retirar o rechazar lo puede hacer quien opera; APROBAR exige el permiso de aprobación (se revisa en el controlador).
+	w.POST("/actions/:id/decision", anyOf("platform:approve", "platform:accounts"), ct.decide)
+	w.PUT("/landing/draft", landingEdit, ct.landingSaveDraft)
+	w.POST("/landing/request", landingEdit, ct.landingRequest)
+	w.POST("/landing/withdraw", landingEdit, ct.landingWithdraw)
+	w.POST("/landing/versions/:n/restore", landingEdit, ct.landingRestore)
+	w.POST("/landing/decision", landingPublish, ct.landingDecide)
+	w.POST("/staff", staff, ct.staffInvite)
+	w.POST("/staff/:id/invite", staff, ct.staffResend)
+	w.PUT("/staff/:id/role", staff, ct.staffRole)
+	w.POST("/staff/:id/disable", staff, ct.staffEnable(false))
+	w.POST("/staff/:id/enable", staff, ct.staffEnable(true))
+}
+
+// hasPermission: ¿la sesión tiene este permiso?
+func hasPermission(c *gin.Context, code string) bool {
+	id := auth.IdentityFrom(c)
+	if id == nil {
+		return false
+	}
+	for _, p := range id.Permissions {
+		if p == code {
+			return true
+		}
+	}
+	return false
+}
+
+// anyOf deja pasar a quien tenga cualquiera de los permisos.
+func anyOf(codes ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		for _, code := range codes {
+			if hasPermission(c, code) {
+				c.Next()
+				return
+			}
+		}
+		shared.AbortWithError(c, http.StatusForbidden, "forbidden", "No tienes permiso para esta operación.")
+	}
 }
 
 func (ct *Controller) asset(path, ctype string) gin.HandlerFunc {
@@ -75,6 +123,14 @@ func (ct *Controller) fail(c *gin.Context, err error) {
 		shared.AbortWithError(c, http.StatusUnprocessableEntity, "invalid_request", capitalize(err.Error())+".")
 	case errors.Is(err, ErrSelfApproval):
 		shared.AbortWithError(c, http.StatusForbidden, "self_approval", capitalize(ErrSelfApproval.Error())+".")
+	case errors.Is(err, ErrLastOwner), errors.Is(err, ErrSelfStaff):
+		shared.AbortWithError(c, http.StatusConflict, "staff_guard", capitalize(err.Error())+".")
+	case errors.Is(err, auth.ErrEmailInUse):
+		shared.AbortWithError(c, http.StatusConflict, "email_taken", "Ese correo ya tiene una cuenta.")
+	case errors.Is(err, auth.ErrBadEmail):
+		shared.AbortWithError(c, http.StatusUnprocessableEntity, "invalid_request", "El correo no es válido.")
+	case errors.Is(err, ErrNoAuth):
+		shared.AbortWithError(c, http.StatusServiceUnavailable, "unavailable", capitalize(err.Error())+".")
 	case errors.Is(err, ErrAlreadyDecided):
 		shared.AbortWithError(c, http.StatusConflict, "already_decided", capitalize(ErrAlreadyDecided.Error())+".")
 	default:
@@ -253,6 +309,10 @@ func (ct *Controller) decide(c *gin.Context) {
 	}
 	if c.ShouldBindJSON(&in) != nil {
 		shared.AbortWithError(c, http.StatusBadRequest, "invalid_request", "Indica si apruebas o rechazas.")
+		return
+	}
+	if in.Approve && !hasPermission(c, "platform:approve") {
+		shared.AbortWithError(c, http.StatusForbidden, "forbidden", "No tienes permiso para aprobar solicitudes.")
 		return
 	}
 	a, err := ct.svc.Decide(c.Request.Context(), ct.actor(c), id, in.Approve, in.Note)

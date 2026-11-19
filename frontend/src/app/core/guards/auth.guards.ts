@@ -7,6 +7,10 @@ import { Role } from '../../shared/models/domain';
  * Los guards solo mejoran la experiencia: la autorización real vive en el
  * backend en cada operación (§2.2).
  */
+/** Primera pantalla de la plataforma que esta sesión puede ver (null si no tiene ninguna). */
+export const platformHome = (auth: AuthService): string | null =>
+  auth.can('platform:read') ? '/plataforma' : auth.can('platform:landing:edit') || auth.can('platform:landing:publish') ? '/plataforma/landing' : null;
+
 export const roleGuard =
   (role: Role): CanActivateFn =>
   () => {
@@ -14,6 +18,8 @@ export const roleGuard =
     const router = inject(Router);
     if (!auth.isAuthenticated()) return router.createUrlTree(['/ingresar']);
     if (auth.role() === role) return true;
+    // El equipo del CRM no tiene consulta: va a su zona (o, sin ningún permiso, de vuelta al ingreso, sin ciclos).
+    if (auth.isPlatformStaff()) return router.createUrlTree([platformHome(auth) ?? '/ingresar']);
     return router.createUrlTree([auth.role() === 'patient' ? '/paciente' : '/']);
   };
 
@@ -21,6 +27,7 @@ export const guestGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   if (!auth.isAuthenticated()) return true;
+  if (auth.isPlatformStaff()) { const home = platformHome(auth); return home ? router.createUrlTree([home]) : true; }
   return router.createUrlTree([auth.role() === 'patient' ? '/paciente' : '/']);
 };
 
@@ -33,10 +40,12 @@ export const consentGuard: CanActivateFn = () => {
 
 /** Zona de la plataforma: solo quien tiene el permiso. El servidor valida igual en cada llamada. */
 export const permissionGuard =
-  (permission: string): CanActivateFn =>
+  (...permissions: string[]): CanActivateFn =>
   () => {
     const auth = inject(AuthService);
     const router = inject(Router);
     if (!auth.isAuthenticated()) return router.createUrlTree(['/ingresar']);
-    return auth.can(permission) ? true : router.createUrlTree(['/']);
+    if (permissions.some((p) => auth.can(p))) return true;
+    // Sin el permiso: a lo que sí puede ver (el equipo) o al inicio (una nutrióloga).
+    return router.createUrlTree([auth.isPlatformStaff() ? (platformHome(auth) ?? '/ingresar') : '/']);
   };
