@@ -18,7 +18,7 @@ import (
 var globalTables = map[string]bool{
 	"users": true, "roles": true, "permissions": true, "user_role_assignments": true, "role_permissions": true,
 	"user_sessions": true, "password_reset_tokens": true,
-	"smae_editions": true, "smae_import_batches": true, "smae_food_groups": true, "smae_food_subgroups": true, "smae_foods": true, "smae_portions": true,
+	"smae_editions": true, "landing_versions": true, "smae_import_batches": true, "smae_food_groups": true, "smae_food_subgroups": true, "smae_foods": true, "smae_portions": true,
 	"practices": true, "schema_migrations": true,
 }
 

@@ -28,13 +28,14 @@ import (
 	"github.com/nutri/app-nutricional/backend/internal/dishes"
 	"github.com/nutri/app-nutricional/backend/internal/payments"
 	"github.com/nutri/app-nutricional/backend/internal/plans"
+	"github.com/nutri/app-nutricional/backend/internal/platform"
 	"github.com/nutri/app-nutricional/backend/internal/smae"
 	"github.com/nutri/app-nutricional/backend/internal/smae/sample"
 	"github.com/nutri/app-nutricional/backend/internal/tenant"
 )
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "uso:\n  admin set-password -email <correo>  (nueva contraseña en NEW_USER_PASSWORD)\n  admin create-user -email <correo> -name <nombre> -role <nutritionist|patient>  (contraseña en NEW_USER_PASSWORD)\n  admin set-plan -email <correo> -plan <free|standard|pro> [-period monthly|annual]\n  admin grant-platform-admin -email <correo>\n  admin seed-demo-catalog [-errata]\n  admin seed-demo-accounts   (solo con ALLOW_DEMO_ACCOUNTS=true)")
+	fmt.Fprintln(os.Stderr, "uso:\n  admin set-password -email <correo>  (nueva contraseña en NEW_USER_PASSWORD)\n  admin create-user -email <correo> -name <nombre> -role <nutritionist|patient>  (contraseña en NEW_USER_PASSWORD)\n  admin set-plan -email <correo> -plan <free|standard|pro> [-period monthly|annual]\n  admin grant-platform-admin -email <correo>\n  admin create-platform-staff -email <correo> -name <nombre> [-role platform_owner|platform_support|platform_viewer|platform_content]  (contraseña en NEW_USER_PASSWORD)\n  admin seed-demo-catalog [-errata]\n  admin seed-demo-accounts   (solo con ALLOW_DEMO_ACCOUNTS=true)")
 	os.Exit(2)
 }
 
@@ -71,6 +72,8 @@ func main() {
 		setPlan(ctx, pool)
 	case "grant-platform-admin":
 		grantPlatformAdmin(ctx, pool)
+	case "create-platform-staff":
+		createPlatformStaff(ctx, pool, cfg, log)
 	case "billing-sim":
 		billingSim(ctx, pool, log)
 	case "seed-demo-catalog":
@@ -302,6 +305,30 @@ func billingSim(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
 		os.Exit(1)
 	}
 	fmt.Printf("evento %s aplicado a la consulta de %s\n", *kind, *email)
+}
+
+// createPlatformStaff da de alta a una persona del equipo del CRM (sin consulta clínica) con su contraseña. Es la forma de crear al
+// primer dueño de un ambiente; después se invita al resto desde el panel (Equipo).
+func createPlatformStaff(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, log *slog.Logger) {
+	fs := flag.NewFlagSet("create-platform-staff", flag.ExitOnError)
+	email := fs.String("email", "", "correo")
+	name := fs.String("name", "", "nombre para mostrar")
+	role := fs.String("role", platform.RoleOwner, "rol: platform_owner, platform_support, platform_viewer o platform_content")
+	_ = fs.Parse(os.Args[2:])
+	pw := os.Getenv("NEW_USER_PASSWORD") // por variable de entorno: por flag quedaría en el historial del shell
+	if *email == "" || *name == "" || pw == "" {
+		fmt.Fprintln(os.Stderr, "faltan -email, -name y/o la variable NEW_USER_PASSWORD")
+		os.Exit(2)
+	}
+	a := auth.NewService(pool, cfg, auth.LogMailer{Log: log}, log)
+	svc := platform.NewService(pool, plans.NewService(pool), nil, log)
+	svc.SetAuth(a)
+	id, err := svc.CreateStaff(ctx, platform.Actor{Email: "cli"}, *email, *name, *role, pw)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "no se pudo crear:", err)
+		os.Exit(1)
+	}
+	fmt.Println("persona del equipo creada:", id, "·", *role)
 }
 
 func grantPlatformAdmin(ctx context.Context, pool *pgxpool.Pool) {

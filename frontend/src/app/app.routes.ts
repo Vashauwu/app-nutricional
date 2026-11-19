@@ -71,15 +71,19 @@ export const routes: Routes = [
   },
   {
     path: 'plataforma',
-    canActivate: [permissionGuard('platform:accounts')],
+    canActivate: [permissionGuard('platform:read', 'platform:landing:edit', 'platform:landing:publish')],
     loadComponent: () => import('./features/platform/shell').then((m) => m.PlatformShell),
     children: [
-      { path: '', pathMatch: 'full', title: 'Plataforma · Resumen', loadComponent: () => import('./features/platform/overview').then((m) => m.PlatformOverview) },
-      { path: 'cuentas', title: 'Plataforma · Cuentas', loadComponent: () => import('./features/platform/accounts').then((m) => m.PlatformAccounts) },
-      { path: 'cuentas/:id', title: 'Plataforma · Cuenta', loadComponent: () => import('./features/platform/account-detail').then((m) => m.PlatformAccountPage) },
-      { path: 'actividad', title: 'Plataforma · Actividad', loadComponent: () => import('./features/platform/activity').then((m) => m.PlatformActivity) },
-      { path: 'aprobaciones', title: 'Plataforma · Aprobaciones', loadComponent: () => import('./features/platform/approvals').then((m) => m.PlatformApprovals) },
+      { path: '', pathMatch: 'full', canActivate: [permissionGuard('platform:read')], title: 'Plataforma · Resumen', loadComponent: () => import('./features/platform/overview').then((m) => m.PlatformOverview) },
+      { path: 'cuentas', canActivate: [permissionGuard('platform:read')], title: 'Plataforma · Cuentas', loadComponent: () => import('./features/platform/accounts').then((m) => m.PlatformAccounts) },
+      { path: 'cuentas/:id', canActivate: [permissionGuard('platform:read')], title: 'Plataforma · Cuenta', loadComponent: () => import('./features/platform/account-detail').then((m) => m.PlatformAccountPage) },
+      { path: 'actividad', canActivate: [permissionGuard('platform:read')], title: 'Plataforma · Actividad', loadComponent: () => import('./features/platform/activity').then((m) => m.PlatformActivity) },
+      { path: 'landing', canActivate: [permissionGuard('platform:landing:edit', 'platform:landing:publish')], title: 'Plataforma · Landing', loadComponent: () => import('./features/platform/landing-admin').then((m) => m.PlatformLanding) },
+      { path: 'equipo', canActivate: [permissionGuard('platform:staff')], title: 'Plataforma · Equipo', loadComponent: () => import('./features/platform/staff').then((m) => m.PlatformStaff) },
+      { path: 'aprobaciones', canActivate: [permissionGuard('platform:read')], title: 'Plataforma · Aprobaciones', loadComponent: () => import('./features/platform/approvals').then((m) => m.PlatformApprovals) },
     ],
   },
+  // Vista previa del borrador de la landing: la página real con el contenido del borrador, fuera del marco del panel.
+  { path: 'vista-previa-landing', title: 'Vista previa de la landing', canActivate: [permissionGuard('platform:landing:edit', 'platform:landing:publish')], loadComponent: () => import('./features/platform/landing-preview').then((m) => m.PlatformLandingPreview) },
   { path: '**', title: 'Página no encontrada', loadComponent: () => import('./features/misc/not-found').then((m) => m.NotFound) },
 ];

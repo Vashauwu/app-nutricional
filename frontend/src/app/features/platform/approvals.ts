@@ -60,9 +60,11 @@ import { ACTION_LABEL, ACTION_TONE, KIND_LABEL, PLAN_LABEL, TONE_VAR, fdt } from
                 @if (isMine(r)) {
                   <span class="pf-muted" style="font-size:.8125rem">Espera a otra persona</span>
                   <button tuiButton appearance="secondary" size="s" type="button" (click)="ask(r, false)">Retirar</button>
-                } @else {
+                } @else if (canApprove) {
                   <button tuiButton appearance="primary" size="s" type="button" (click)="ask(r, true)">Aprobar</button>
                   <button tuiButton appearance="secondary" size="s" type="button" (click)="ask(r, false)">Rechazar</button>
+                } @else {
+                  <span class="pf-muted" style="font-size:.8125rem">Solo quien tiene permiso de aprobación la resuelve</span>
                 }
               </span>
             } @else { <span tuiBadge [tuiAppearance]="tone[r.status]" size="m" style="grid-column: 3; grid-row: 1">{{ labels[r.status] }}</span> }
@@ -102,6 +104,7 @@ export class PlatformApprovals {
   protected readonly busy = signal(false);
   protected readonly formError = signal('');
   protected note = '';
+  protected readonly canApprove = this.auth.can('platform:approve');
   protected readonly kinds = KIND_LABEL;
   protected readonly labels = ACTION_LABEL;
   protected readonly tone = ACTION_TONE;

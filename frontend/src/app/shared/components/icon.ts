@@ -95,6 +95,8 @@ const ICONS = {
 } as const;
 
 export type IconName = keyof typeof ICONS;
+/** Todos los íconos disponibles (el editor de la landing los ofrece). */
+export const ICON_NAMES = Object.keys(ICONS) as IconName[];
 
 @Component({
   selector: 'app-icon',

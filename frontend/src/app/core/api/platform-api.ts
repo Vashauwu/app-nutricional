@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { ApiClient } from './api-client';
+import { LandingContent } from '../../features/landing/landing.content';
 
 // Formas de la API de plataforma (backend/internal/platform). Los importes son MXN enteros.
 export type SubState = 'free' | 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired';
@@ -26,6 +27,20 @@ export interface AccountDetail extends AccountRow {
   billing_period?: string; comp_reason?: string; cancel_at_period_end: boolean; trial_used: boolean; provider?: string; card?: string;
   storage_bytes: number; users: number; limits: Limits; payments: PaymentRow[]; audit: AuditRow[]; actions: ActionRow[];
 }
+
+/** Equipo del CRM (backend/internal/platform/staff.go). platform_admin es el rol heredado y equivale a dueño. */
+export type StaffRole = 'platform_owner' | 'platform_support' | 'platform_viewer' | 'platform_content' | 'platform_admin';
+export interface StaffRow { id: string; email: string; name: string; status: 'active' | 'invited' | 'disabled'; role: StaffRole; last_login_at: string | null; created_at: string }
+export interface StaffInvite { staff: StaffRow; link?: string; emailed: boolean }
+
+/** Landing gestionada desde el CRM (backend/internal/platform/landing.go). */
+export type LandingStatus = 'draft' | 'pending' | 'published' | 'superseded';
+export interface LandingVersion {
+  id: string; number: number | null; status: LandingStatus; content: LandingContent; base_number: number | null; reason?: string;
+  requested_by?: string; requested_at?: string; decided_by?: string; decided_at?: string; decision_note?: string; published_at?: string;
+}
+export interface LandingState { published: LandingVersion | null; draft: LandingVersion | null }
+export interface LandingVersionRow { number: number; status: LandingStatus; reason?: string; requested_by?: string; requested_at?: string; decided_by?: string; decided_at?: string; decision_note?: string; published_at?: string }
 
 export interface DayCount { day: string; total: number }
 export interface Overview {
@@ -57,6 +72,18 @@ export class PlatformApi {
   accounts(q: AccountQuery): Observable<AccountsPage> { return this.api.get<AccountsPage>('/platform/accounts', { ...q }); }
   account(id: string): Observable<AccountDetail> { return this.api.get<AccountDetail>(`/platform/accounts/${id}`); }
   activity(q: ActivityQuery): Observable<ActivityPage> { return this.api.get<ActivityPage>('/platform/activity', { ...q }); }
+  staff(): Observable<{ items: StaffRow[]; roles: StaffRole[] }> { return this.api.get<{ items: StaffRow[]; roles: StaffRole[] }>('/platform/staff'); }
+  inviteStaff(email: string, name: string, role: StaffRole): Observable<StaffInvite> { return this.api.post<StaffInvite>('/platform/staff', { email, name, role }); }
+  resendStaffInvite(id: string): Observable<StaffInvite> { return this.api.post<StaffInvite>(`/platform/staff/${id}/invite`); }
+  setStaffRole(id: string, role: StaffRole): Observable<StaffRow> { return this.api.put<StaffRow>(`/platform/staff/${id}/role`, { role }); }
+  setStaffEnabled(id: string, enabled: boolean): Observable<StaffRow> { return this.api.post<StaffRow>(`/platform/staff/${id}/${enabled ? 'enable' : 'disable'}`); }
+  landing(): Observable<LandingState> { return this.api.get<LandingState>('/platform/landing'); }
+  landingSaveDraft(content: LandingContent): Observable<LandingVersion> { return this.api.put<LandingVersion>('/platform/landing/draft', content); }
+  landingRequest(reason: string): Observable<LandingVersion> { return this.api.post<LandingVersion>('/platform/landing/request', { reason }); }
+  landingWithdraw(): Observable<LandingVersion> { return this.api.post<LandingVersion>('/platform/landing/withdraw'); }
+  landingDecide(approve: boolean, note: string): Observable<LandingState> { return this.api.post<LandingState>('/platform/landing/decision', { approve, note }); }
+  landingVersions(): Observable<{ items: LandingVersionRow[] }> { return this.api.get<{ items: LandingVersionRow[] }>('/platform/landing/versions'); }
+  landingRestore(n: number): Observable<LandingVersion> { return this.api.post<LandingVersion>(`/platform/landing/versions/${n}/restore`); }
   actions(status = ''): Observable<{ items: ActionRow[] }> { return this.api.get<{ items: ActionRow[] }>('/platform/actions', { status }); }
   suspend(id: string, reason: string): Observable<void> { return this.api.post(`/platform/accounts/${id}/suspend`, { reason }); }
   reactivate(id: string): Observable<void> { return this.api.post(`/platform/accounts/${id}/reactivate`); }

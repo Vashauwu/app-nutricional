@@ -240,6 +240,24 @@ type FileObject struct {
 	PracticeID      uuid.UUID          `json:"practice_id"`
 }
 
+type LandingVersion struct {
+	ID           uuid.UUID          `json:"id"`
+	Number       pgtype.Int4        `json:"number"`
+	Status       string             `json:"status"`
+	Content      []byte             `json:"content"`
+	BaseNumber   pgtype.Int4        `json:"base_number"`
+	Reason       pgtype.Text        `json:"reason"`
+	RequestedBy  uuid.NullUUID      `json:"requested_by"`
+	RequestedAt  pgtype.Timestamptz `json:"requested_at"`
+	DecidedBy    uuid.NullUUID      `json:"decided_by"`
+	DecidedAt    pgtype.Timestamptz `json:"decided_at"`
+	DecisionNote pgtype.Text        `json:"decision_note"`
+	PublishedAt  pgtype.Timestamptz `json:"published_at"`
+	CreatedBy    uuid.NullUUID      `json:"created_by"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
+}
+
 type MealComment struct {
 	ID           uuid.UUID          `json:"id"`
 	EntryID      uuid.UUID          `json:"entry_id"`
@@ -572,6 +590,7 @@ type Practice struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 	SuspendedAt     pgtype.Timestamptz `json:"suspended_at"`
 	SuspendedReason pgtype.Text        `json:"suspended_reason"`
+	IsPlatform      bool               `json:"is_platform"`
 }
 
 type Role struct {

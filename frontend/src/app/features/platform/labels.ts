@@ -6,6 +6,16 @@ export type Tone = 'positive' | 'info' | 'warning' | 'negative' | 'neutral';
 
 export const STATE_LABEL: Record<SubState, string> = { free: 'Gratuita', trialing: 'En prueba', active: 'Activa', past_due: 'Cobro fallido', canceled: 'Cancelada', expired: 'Vencida' };
 export const STATE_TONE: Record<SubState, Tone> = { free: 'neutral', trialing: 'info', active: 'positive', past_due: 'negative', canceled: 'warning', expired: 'warning' };
+export const ROLE_LABEL: Record<string, string> = { platform_owner: 'Dueño', platform_support: 'Soporte', platform_viewer: 'Solo lectura', platform_content: 'Contenido', platform_admin: 'Administrador (heredado)' };
+export const ROLE_HELP: Record<string, string> = {
+  platform_owner: 'Todo: cuentas, aprobaciones, equipo y contenido.',
+  platform_support: 'Ve las cuentas y opera (suspender, pedir cortesías y reembolsos), pero no aprueba.',
+  platform_viewer: 'Solo mira el panel; no cambia nada.',
+  platform_content: 'Edita la landing y pide publicarla; no ve cuentas.',
+  platform_admin: 'Rol anterior a los roles finos; equivale a dueño.',
+};
+export const STAFF_STATUS_LABEL: Record<string, string> = { active: 'Activo', invited: 'Invitación pendiente', disabled: 'Deshabilitado' };
+export const STAFF_STATUS_TONE: Record<string, Tone> = { active: 'positive', invited: 'warning', disabled: 'neutral' };
 export const PLAN_LABEL: Record<PlanCode, string> = { free: 'Gratuito', standard: 'Estándar', pro: 'Pro' };
 export const KIND_LABEL: Record<ActionKind, string> = { comp_plan: 'Plan de cortesía', extend_trial: 'Prórroga de prueba', refund: 'Reembolso' };
 export const ACTION_LABEL: Record<ActionStatus, string> = { pending: 'Pendiente', approved: 'Aprobada', rejected: 'Rechazada', executed: 'Ejecutada', failed: 'Falló' };
@@ -18,6 +28,10 @@ export const AUDIT_LABEL: Record<string, string> = {
   'platform.suspend': 'Cuenta suspendida', 'platform.reactivate': 'Cuenta reactivada', 'platform.action_requested': 'Solicitud creada',
   'platform.action_approved': 'Solicitud aprobada', 'platform.action_rejected': 'Solicitud rechazada', 'platform.action_executed': 'Solicitud ejecutada',
   'platform.action_failed': 'La solicitud falló al ejecutarse', 'platform.provider_subscription_canceled': 'Cobro automático cancelado (por cortesía)',
+  'platform.staff_invited': 'Persona invitada al equipo', 'platform.staff_invite_resent': 'Invitación reenviada', 'platform.staff_role_changed': 'Rol del equipo cambiado',
+  'platform.staff_disabled': 'Persona del equipo deshabilitada', 'platform.staff_enabled': 'Persona del equipo habilitada',
+  'platform.landing_requested': 'Publicación de la landing pedida', 'platform.landing_withdrawn': 'Publicación de la landing retirada', 'platform.landing_rejected': 'Publicación de la landing rechazada',
+  'platform.landing_published': 'Landing publicada', 'platform.landing_restored': 'Versión de la landing restaurada como borrador',
   'auth.signup': 'Cuenta creada', 'auth.login': 'Inicio de sesión', 'auth.login_failed': 'Inicio de sesión fallido', 'auth.login_blocked': 'Inicio de sesión bloqueado',
   'auth.login_blocked_suspended': 'Intento de acceso a cuenta suspendida', 'auth.logout': 'Cierre de sesión', 'auth.password_reset_requested': 'Recuperación de contraseña pedida',
   'auth.password_reset': 'Contraseña restablecida', 'auth.password_set_by_admin': 'Contraseña fijada por administración', 'auth.email_verified': 'Correo confirmado',

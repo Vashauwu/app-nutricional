@@ -298,6 +298,7 @@ func newRouter(cfg config.Config, logger *slog.Logger, pool *pgxpool.Pool, traci
 	}
 	platformSvc := platform.NewService(pool, planSvc, billingSvc, logger)
 	platformSvc.AllowSelfApproval(cfg.PlatformAllowSelfApproval)
+	platformSvc.SetAuth(authSvc)
 	platform.NewController(platformSvc, authSvc, logger).Register(v1)
 	patientsSvc := patients.NewService(pool, authSvc, logger)
 	patientsSvc.SetLimits(planSvc)

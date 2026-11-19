@@ -2,8 +2,8 @@
 // ver su plan y uso, suspenderlas por abuso y conceder cortesías o reembolsos. Todo lo que cuesta dinero necesita que lo pida
 // una persona y lo apruebe OTRA, y todo queda en la bitácora.
 //
-// Es la primera fase del CRM de cuentas: sirve a quienes tienen el rol platform_admin. Los usuarios propios del CRM, la
-// verificación en dos pasos y la vista de varios ambientes están pendientes (docs/interno/crm-cuentas.md).
+// Lo opera el equipo propio del CRM con roles finos (dueño, soporte, solo lectura, contenido; staff.go). La verificación en
+// dos pasos y la vista de varios ambientes están pendientes (docs/interno/crm-cuentas.md).
 package platform
 
 import (
@@ -21,6 +21,7 @@ import (
 
 	"github.com/nutri/app-nutricional/backend/generated/db"
 	"github.com/nutri/app-nutricional/backend/internal/audit"
+	"github.com/nutri/app-nutricional/backend/internal/auth"
 	"github.com/nutri/app-nutricional/backend/internal/payments"
 	"github.com/nutri/app-nutricional/backend/internal/plans"
 	"github.com/nutri/app-nutricional/backend/internal/tenant"
@@ -55,6 +56,7 @@ type Service struct {
 	q     *db.Queries
 	plans *plans.Service
 	pay   *payments.Service // nil si no hay cobro en línea
+	auth  *auth.Service     // alta e invitación del equipo; nil en pruebas que no lo usan
 	audit audit.Recorder
 	log   *slog.Logger
 	now   func() time.Time

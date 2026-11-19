@@ -9,7 +9,7 @@ SELECT p.id, p.name, p.status, p.suspended_reason, p.created_at,
        (SELECT count(*) FROM patients pa WHERE pa.practice_id = p.id AND pa.deleted_at IS NULL AND pa.status <> 'inactive')::bigint AS active_patients,
        count(*) OVER ()::bigint AS total
 FROM practices p JOIN subscriptions s ON s.practice_id = p.id
-WHERE (sqlc.arg(search)::text = '' OR p.name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
+WHERE NOT p.is_platform AND (sqlc.arg(search)::text = '' OR p.name ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'
        OR EXISTS (SELECT 1 FROM users u WHERE u.practice_id = p.id AND u.email ILIKE '%' || sqlc.arg(search)::text || '%' ESCAPE '\'))
   AND (sqlc.arg(plan)::text = '' OR s.plan = sqlc.arg(plan)::text)
   AND (sqlc.arg(practice_status)::text = '' OR p.status = sqlc.arg(practice_status)::text)
@@ -34,7 +34,7 @@ SELECT p.id, p.name, p.status, p.suspended_reason, p.suspended_at, p.created_at,
        (SELECT COALESCE(sum(f.size_bytes), 0) FROM file_objects f WHERE f.practice_id = p.id AND f.deleted_at IS NULL)::bigint AS storage_bytes,
        (SELECT count(*) FROM users u WHERE u.practice_id = p.id)::bigint AS users
 FROM practices p JOIN subscriptions s ON s.practice_id = p.id
-WHERE p.id = $1;
+WHERE p.id = $1 AND NOT p.is_platform;
 
 -- name: PlatformListPayments :many
 SELECT * FROM payments WHERE practice_id = $1 ORDER BY occurred_at DESC LIMIT 20;
@@ -62,7 +62,7 @@ ORDER BY a.occurred_at DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: PlatformSetPracticeStatus :execrows
-UPDATE practices SET status = $2, suspended_at = $3, suspended_reason = $4 WHERE id = $1;
+UPDATE practices SET status = $2, suspended_at = $3, suspended_reason = $4 WHERE id = $1 AND NOT is_platform;
 
 -- name: PlatformRevokePracticeSessions :exec
 UPDATE user_sessions SET revoked_at = now() WHERE revoked_at IS NULL AND user_id IN (SELECT id FROM users WHERE practice_id = $1);
@@ -101,12 +101,13 @@ SELECT p.id, p.name, p.status, p.created_at,
        s.plan, s.status AS sub_status, s.billing_period, s.trial_ends_at, s.grace_until, s.current_period_end, s.comp_reason,
        COALESCE((SELECT u.email FROM users u JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
                  WHERE u.practice_id = p.id AND r.code = 'nutritionist' ORDER BY u.created_at LIMIT 1), '')::text AS owner_email
-FROM practices p JOIN subscriptions s ON s.practice_id = p.id;
+FROM practices p JOIN subscriptions s ON s.practice_id = p.id
+WHERE NOT p.is_platform;
 
 -- name: PlatformSignupsByDay :many
 SELECT g::date AS day, count(p.id)::bigint AS total
 FROM generate_series(sqlc.arg(from_day)::date, sqlc.arg(to_day)::date, interval '1 day') g
-LEFT JOIN practices p ON (p.created_at AT TIME ZONE 'America/Mexico_City')::date = g::date
+LEFT JOIN practices p ON (p.created_at AT TIME ZONE 'America/Mexico_City')::date = g::date AND NOT p.is_platform
 GROUP BY 1 ORDER BY 1;
 
 -- name: PlatformPaymentStats :one
@@ -126,3 +127,27 @@ SELECT (SELECT count(*) FROM patients WHERE deleted_at IS NULL AND status <> 'in
        (SELECT count(*) FROM users)::bigint AS users,
        (SELECT COALESCE(sum(size_bytes), 0) FROM file_objects WHERE deleted_at IS NULL)::bigint AS storage_bytes,
        (SELECT count(*) FROM platform_actions WHERE status = 'pending')::bigint AS pending_actions;
+
+-- Equipo del CRM. Las personas viven en la «consulta de plataforma» (una sola, marcada is_platform).
+-- name: PlatformStaffPractice :one
+SELECT id FROM practices WHERE is_platform LIMIT 1;
+
+-- name: PlatformMarkPracticePlatform :exec
+UPDATE practices SET is_platform = true WHERE id = $1;
+
+-- name: PlatformListStaff :many
+SELECT u.id, u.email, u.display_name, u.status, u.last_login_at, u.created_at,
+       (array_agg(r.code ORDER BY r.code))::text[] AS roles
+FROM users u JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
+WHERE r.code IN ('platform_admin', 'platform_owner', 'platform_support', 'platform_viewer', 'platform_content')
+GROUP BY u.id ORDER BY u.created_at;
+
+-- name: PlatformRemoveStaffRoles :exec
+DELETE FROM user_role_assignments
+WHERE user_id = $1 AND role_id IN (SELECT id FROM roles WHERE code IN ('platform_admin', 'platform_owner', 'platform_support', 'platform_viewer', 'platform_content'));
+
+-- Personas activas con control total (dueños y el rol heredado): nunca debe quedar la plataforma sin ninguna.
+-- name: PlatformCountActiveOwners :one
+SELECT count(DISTINCT u.id)::bigint FROM users u
+JOIN user_role_assignments ura ON ura.user_id = u.id JOIN roles r ON r.id = ura.role_id
+WHERE u.status = 'active' AND r.code IN ('platform_owner', 'platform_admin');
