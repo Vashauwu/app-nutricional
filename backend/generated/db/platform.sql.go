@@ -243,14 +243,24 @@ WHERE ($1::text = '' OR p.name ILIKE '%' || $1::text || '%' ESCAPE '\'
        OR EXISTS (SELECT 1 FROM users u WHERE u.practice_id = p.id AND u.email ILIKE '%' || $1::text || '%' ESCAPE '\'))
   AND ($2::text = '' OR s.plan = $2::text)
   AND ($3::text = '' OR p.status = $3::text)
-ORDER BY p.created_at DESC
-LIMIT $5 OFFSET $4
+ORDER BY
+  CASE WHEN $4::text = 'name' AND $5::bool = false THEN lower(p.name) END ASC,
+  CASE WHEN $4::text = 'name' AND $5::bool THEN lower(p.name) END DESC,
+  CASE WHEN $4::text = 'plan' AND $5::bool = false THEN (CASE s.plan WHEN 'free' THEN 0 WHEN 'standard' THEN 1 ELSE 2 END) END ASC,
+  CASE WHEN $4::text = 'plan' AND $5::bool THEN (CASE s.plan WHEN 'free' THEN 0 WHEN 'standard' THEN 1 ELSE 2 END) END DESC,
+  CASE WHEN $4::text = 'patients' AND $5::bool = false THEN (SELECT count(*) FROM patients pa WHERE pa.practice_id = p.id AND pa.deleted_at IS NULL AND pa.status <> 'inactive') END ASC,
+  CASE WHEN $4::text = 'patients' AND $5::bool THEN (SELECT count(*) FROM patients pa WHERE pa.practice_id = p.id AND pa.deleted_at IS NULL AND pa.status <> 'inactive') END DESC,
+  CASE WHEN $4::text = 'created' AND $5::bool = false THEN p.created_at END ASC,
+  p.created_at DESC
+LIMIT $7 OFFSET $6
 `
 
 type PlatformListAccountsParams struct {
 	Search         string `json:"search"`
 	Plan           string `json:"plan"`
 	PracticeStatus string `json:"practice_status"`
+	SortKey        string `json:"sort_key"`
+	SortDesc       bool   `json:"sort_desc"`
 	PageOffset     int32  `json:"page_offset"`
 	PageLimit      int32  `json:"page_limit"`
 }
@@ -281,6 +291,8 @@ func (q *Queries) PlatformListAccounts(ctx context.Context, arg PlatformListAcco
 		arg.Search,
 		arg.Plan,
 		arg.PracticeStatus,
+		arg.SortKey,
+		arg.SortDesc,
 		arg.PageOffset,
 		arg.PageLimit,
 	)
@@ -321,8 +333,8 @@ func (q *Queries) PlatformListAccounts(ctx context.Context, arg PlatformListAcco
 }
 
 const platformListActions = `-- name: PlatformListActions :many
-SELECT a.id, a.practice_id, a.kind, a.params, a.reason, a.status, a.requested_by, a.requested_at, a.decided_by, a.decided_at, a.decision_note, a.executed_at, a.error, p.name AS practice_name, COALESCE(u.email, '')::text AS requester_email
-FROM platform_actions a JOIN practices p ON p.id = a.practice_id LEFT JOIN users u ON u.id = a.requested_by
+SELECT a.id, a.practice_id, a.kind, a.params, a.reason, a.status, a.requested_by, a.requested_at, a.decided_by, a.decided_at, a.decision_note, a.executed_at, a.error, p.name AS practice_name, COALESCE(u.email, '')::text AS requester_email, COALESCE(d.email, '')::text AS decider_email
+FROM platform_actions a JOIN practices p ON p.id = a.practice_id LEFT JOIN users u ON u.id = a.requested_by LEFT JOIN users d ON d.id = a.decided_by
 WHERE ($1::text = '' OR a.status = $1::text)
 ORDER BY a.requested_at DESC LIMIT 100
 `
@@ -343,6 +355,7 @@ type PlatformListActionsRow struct {
 	Error          pgtype.Text        `json:"error"`
 	PracticeName   string             `json:"practice_name"`
 	RequesterEmail string             `json:"requester_email"`
+	DeciderEmail   string             `json:"decider_email"`
 }
 
 func (q *Queries) PlatformListActions(ctx context.Context, actionStatus string) ([]PlatformListActionsRow, error) {
@@ -370,6 +383,85 @@ func (q *Queries) PlatformListActions(ctx context.Context, actionStatus string) 
 			&i.Error,
 			&i.PracticeName,
 			&i.RequesterEmail,
+			&i.DeciderEmail,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const platformListActivity = `-- name: PlatformListActivity :many
+SELECT a.id, a.action, a.occurred_at, a.metadata, a.practice_id, COALESCE(p.name, '')::text AS practice_name,
+       COALESCE(u.email, '')::text AS actor_email, count(*) OVER ()::bigint AS total
+FROM audit_logs a
+LEFT JOIN practices p ON p.id = a.practice_id
+LEFT JOIN users u ON u.id = a.actor_user_id
+WHERE split_part(a.action, '.', 1) = ANY($1::text[])
+  AND ($2::text = '' OR split_part(a.action, '.', 1) = $2::text)
+  AND ($3::uuid = '00000000-0000-0000-0000-000000000000'::uuid OR a.practice_id = $3::uuid)
+  AND ($4::text = '' OR a.action ILIKE '%' || $4::text || '%' ESCAPE '\'
+       OR p.name ILIKE '%' || $4::text || '%' ESCAPE '\' OR u.email ILIKE '%' || $4::text || '%' ESCAPE '\')
+  AND a.occurred_at >= $5::timestamptz
+  AND a.occurred_at < $6::timestamptz
+ORDER BY a.occurred_at DESC
+LIMIT $8 OFFSET $7
+`
+
+type PlatformListActivityParams struct {
+	Categories []string           `json:"categories"`
+	Category   string             `json:"category"`
+	Practice   uuid.UUID          `json:"practice"`
+	Search     string             `json:"search"`
+	Since      pgtype.Timestamptz `json:"since"`
+	Until      pgtype.Timestamptz `json:"until"`
+	PageOffset int32              `json:"page_offset"`
+	PageLimit  int32              `json:"page_limit"`
+}
+
+type PlatformListActivityRow struct {
+	ID           uuid.UUID          `json:"id"`
+	Action       string             `json:"action"`
+	OccurredAt   pgtype.Timestamptz `json:"occurred_at"`
+	Metadata     []byte             `json:"metadata"`
+	PracticeID   uuid.NullUUID      `json:"practice_id"`
+	PracticeName string             `json:"practice_name"`
+	ActorEmail   string             `json:"actor_email"`
+	Total        int64              `json:"total"`
+}
+
+// Bitácora global de la plataforma. Solo eventos operativos (las categorías las fija el servicio): nunca se mezclan datos clínicos.
+func (q *Queries) PlatformListActivity(ctx context.Context, arg PlatformListActivityParams) ([]PlatformListActivityRow, error) {
+	rows, err := q.db.Query(ctx, platformListActivity,
+		arg.Categories,
+		arg.Category,
+		arg.Practice,
+		arg.Search,
+		arg.Since,
+		arg.Until,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PlatformListActivityRow
+	for rows.Next() {
+		var i PlatformListActivityRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Action,
+			&i.OccurredAt,
+			&i.Metadata,
+			&i.PracticeID,
+			&i.PracticeName,
+			&i.ActorEmail,
+			&i.Total,
 		); err != nil {
 			return nil, err
 		}

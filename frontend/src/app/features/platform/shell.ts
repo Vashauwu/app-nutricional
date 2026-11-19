@@ -30,7 +30,7 @@ interface Item { path: string; label: string; icon: IconName; exact?: boolean; b
           <span class="name">Nutrición Integral</span>
         </a>
         <span tuiBadge tuiAppearance="neutral" size="m">Plataforma</span>
-        @if (env) { <span tuiBadge tuiAppearance="warning" size="m">{{ env }}</span> }
+        @if (env) { <span tuiBadge [tuiAppearance]="env.tone" size="m">{{ env.label }}</span> }
         <span class="grow"></span>
         <app-theme-toggle />
         <a tuiButton appearance="secondary" size="s" routerLink="/" class="back"><app-icon name="arrow-left" [size]="16" /> <span class="lbl">Mi consulta</span></a>
@@ -55,10 +55,14 @@ interface Item { path: string; label: string; icon: IconName; exact?: boolean; b
 export class PlatformShell implements OnInit {
   private readonly api = inject(PlatformApi);
   /** Nombre del ambiente según el dominio, para no confundir staging con producción. */
-  protected readonly env = typeof location !== 'undefined' && /^(staging|localhost)/.test(location.hostname) ? (location.hostname.startsWith('staging') ? 'Staging' : 'Local') : '';
+  protected readonly env: { label: string; tone: string } | null = typeof location === 'undefined' ? null
+    : location.hostname.startsWith('staging') ? { label: 'Staging', tone: 'warning' }
+    : /^(localhost|127\.)/.test(location.hostname) ? { label: 'Local', tone: 'info' }
+    : { label: 'Producción', tone: 'negative' };
   protected readonly items: Item[] = [
     { path: '/plataforma', label: 'Resumen', icon: 'layout', exact: true },
     { path: '/plataforma/cuentas', label: 'Cuentas', icon: 'users' },
+    { path: '/plataforma/actividad', label: 'Actividad', icon: 'file-text' },
     { path: '/plataforma/aprobaciones', label: 'Aprobaciones', icon: 'shield', badge: () => this.api.pending() },
   ];
 

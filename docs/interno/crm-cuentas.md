@@ -1,7 +1,7 @@
 # CRM de cuentas y suscripciones (fase 1)
 
 Documento interno. Operación de la plataforma sobre las cuentas (consultas) y sus suscripciones. Es la primera fase del CRM
-descrito en la hoja de ruta (M6); el CRM de contenido de la landing (`crm-landing.md`) **no** está construido.
+descrito en la hoja de ruta (M6); el CRM de contenido de la landing está **propuesto** en [`crm-landing.md`](crm-landing.md) y **no** está construido.
 
 ## Panel (Angular + Taiga UI)
 
@@ -13,7 +13,9 @@ Es una zona lazy con el mismo sistema visual (marfil, ciruela, Inter/Playfair, m
   Viene de `GET /api/v1/platform/overview`.
 - **Cuentas**: búsqueda, filtros por plan y acceso, paginación; en móvil pasa a tarjetas.
 - **Ficha**: plan, uso frente a límites, cobros, solicitudes y bitácora; acciones (cortesía, prórroga, reembolso, suspender/reactivar).
-- **Aprobaciones**: pendientes e historial; aprobar/rechazar con nota. El error de autoaprobación se muestra tal cual.
+- **Aprobaciones**: pendientes e historial; aprobar/rechazar con nota, y filtro por tipo de solicitud. El error de autoaprobación se muestra tal cual.
+- **Actividad** (`/plataforma/actividad`, `GET /api/v1/platform/activity`): bitácora **global** de todas las cuentas, filtrable por texto (evento, consulta o correo), tipo (accesos, cobros, plataforma), rango de fechas y cuenta (`?cuenta=<id>`, enlazada desde la ficha). Solo muestra eventos **operativos** (`auth`, `billing`, `platform`): el servidor nunca entrega eventos clínicos, aunque se pidan. Ventana máxima de un año.
+- **Cuentas ordenables** por consulta, plan, pacientes y alta (clic en el encabezado; `aria-sort` y orden fijado en el servidor con lista cerrada de columnas).
 
 La consola ligera de abajo (`/api/v1/platform/console`) sigue existiendo como respaldo; el panel la sustituye en el uso diario.
 
@@ -50,10 +52,9 @@ La especificación (`crm-landing.md`) pide cosas que esta fase **no** cumple tod
    `platform_admin`. Debe limitarse a quien sea dueño o desarrollador del producto.
 2. **Verificación en dos pasos (MFA)** para esos usuarios.
 3. **Vista de varios ambientes** (staging y producción en una pantalla, con token por ambiente): hoy cada ambiente tiene su consola.
-4. **Cuatro ojos en publicaciones** y el resto del ciclo de contenido: el **CRM de contenido de la landing** no existe.
-5. Roles finos (`owner`, soporte, solo lectura) y registro de actividad global filtrable.
-6. Un plan de cortesía sobre una cuenta con suscripción de pago activa **no cancela** esa suscripción en la pasarela: un cobro
-   posterior puede volver a cambiar el plan. Cancelar primero (o esperar) antes de conceder cortesías a cuentas que pagan.
+4. **Cuatro ojos en publicaciones** y el resto del ciclo de contenido: el **CRM de contenido de la landing** no existe (propuesta y fases en `crm-landing.md`).
+5. Roles finos (`owner`, soporte, solo lectura). *(El registro de actividad global filtrable ya existe: ver **Actividad**.)*
+6. ~~Cortesía sobre una cuenta que paga~~ **Resuelto**: al ejecutar una cortesía, si la cuenta tiene una suscripción viva en la pasarela se **cancela primero** allá (queda en la bitácora como `platform.provider_subscription_canceled`). Si la cancelación falla, la cortesía **no se concede** y la solicitud queda como «falló» con la causa.
 
 ## Probarlo
 

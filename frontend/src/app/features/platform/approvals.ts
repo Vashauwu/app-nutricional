@@ -1,71 +1,87 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { TuiBadge } from '@taiga-ui/kit/components/badge';
-import { TuiSegmented } from '@taiga-ui/kit/components/segmented';
-import { TuiTextarea } from '@taiga-ui/kit/components/textarea';
 import { TuiAppearance } from '@taiga-ui/core/directives/appearance';
+import { TuiBadge } from '@taiga-ui/kit/components/badge';
 import { TuiButton } from '@taiga-ui/core/components/button';
+import { TuiChevron } from '@taiga-ui/kit/directives/chevron';
+import { TuiDataListWrapper } from '@taiga-ui/kit/components/data-list-wrapper';
+import { TuiInput } from '@taiga-ui/core/components/input';
+import { TuiSelect } from '@taiga-ui/kit/components/select';
 import { TuiDialog } from '@taiga-ui/core/portals/dialog';
-import { TuiLoader } from '@taiga-ui/core/components/loader';
+import { TuiSkeleton } from '@taiga-ui/kit/directives/skeleton';
+import { TuiTabs } from '@taiga-ui/kit/components/tabs';
+import { TuiTextarea } from '@taiga-ui/kit/components/textarea';
 import { ActionRow, PlatformApi } from '../../core/api/platform-api';
 import { AuthService } from '../../core/auth/auth.service';
 import { Icon } from '../../shared/components/icon';
-import { PageHeader } from '../../shared/components/page-header';
-import { ACTION_LABEL, ACTION_TONE, KIND_LABEL, PLAN_LABEL, fd, fdt, nf } from './labels';
+import { PfHead } from './head';
+import { ACTION_LABEL, ACTION_TONE, KIND_LABEL, PLAN_LABEL, TONE_VAR, fdt } from './labels';
 
 @Component({
   selector: 'app-platform-approvals',
-  imports: [FormsModule, RouterLink, TuiAppearance, TuiBadge, TuiButton, TuiDialog, TuiLoader, TuiSegmented, TuiTextarea, Icon, PageHeader],
+  imports: [FormsModule, RouterLink, TuiAppearance, TuiBadge, TuiButton, TuiChevron, TuiDataListWrapper, TuiDialog, TuiInput, TuiSelect, TuiSkeleton, TuiTabs, TuiTextarea, Icon, PfHead],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-page-header title="Aprobaciones" sub="Lo que cuesta dinero lo pide una persona y lo aprueba otra" />
+    <app-pf-head title="Aprobaciones" sub="Lo que cuesta dinero lo pide una persona y lo aprueba otra" />
 
-    <tui-segmented class="seg" [activeItemIndex]="tab()" (activeItemIndexChange)="setTab($event)" aria-label="Filtrar solicitudes">
-      <button type="button">Pendientes@if (pendingCount() > 0) { ({{ pendingCount() }}) }</button>
-      <button type="button">Historial</button>
-    </tui-segmented>
+    <tui-tabs class="pf-tabs" [activeItemIndex]="tab()" (activeItemIndexChange)="tab.set($event)">
+      <button tuiTab type="button">Pendientes{{ pendingCount() ? ' (' + pendingCount() + ')' : '' }}</button>
+      <button tuiTab type="button">Historial</button>
+    </tui-tabs>
 
-    @if (error()) { <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body"><strong>No se pudo cargar.</strong><span>{{ error() }}</span></div></div> }
+    <form class="pf-toolbar" (submit)="$event.preventDefault()">
+      <tui-textfield tuiChevron class="wide" [tuiTextfieldCleaner]="false">
+        <label tuiLabel for="ap-kind">Tipo de solicitud</label>
+        <input id="ap-kind" tuiSelect name="tipo" [ngModel]="kindLabel()" (ngModelChange)="kind.set(kindCode[$event ?? 'Todas'] ?? '')" />
+        <tui-data-list-wrapper *tuiDropdown new [items]="kindItems" />
+      </tui-textfield>
+    </form>
+
+    @if (error()) {
+      <div class="callout callout--crit" role="alert"><app-icon name="alert-circle" /><div class="callout-body"><strong>No se pudo cargar.</strong><span>{{ error() }}</span><span><button tuiButton appearance="secondary" size="s" type="button" (click)="load()">Reintentar</button></span></div></div>
+    }
     @if (notice()) { <div class="callout callout--ok" role="status"><app-icon name="check-circle" /><div class="callout-body"><strong>{{ notice() }}</strong></div></div> }
 
-    <section class="pf-card" style="margin-block-start: 1rem" aria-label="Solicitudes">
-      <tui-loader [loading]="loading()" [overlay]="true">
-        @if (shown().length) {
-          <ul class="pf-list">
-            @for (r of shown(); track r.id) {
-              <li>
-                <span class="who">
-                  <strong>{{ kinds[r.kind] }} · <a [routerLink]="['/plataforma/cuentas', r.practice_id]">{{ r.practice_name }}</a></strong>
-                  <small>{{ detail(r) }}</small>
-                  <small>«{{ r.reason }}» · pidió {{ r.requested_by_email }} el {{ fdt(r.requested_at) }}</small>
-                  @if (r.decision_note) { <small>Nota: {{ r.decision_note }}</small> }
-                  @if (r.error) { <small class="pf-error">Error: {{ r.error }}</small> }
-                </span>
-                @if (r.status === 'pending') {
-                  <span class="pf-actions">
-                    <button tuiButton appearance="primary" size="s" type="button" (click)="ask(r, true)">Aprobar</button>
-                    <button tuiButton appearance="secondary" size="s" type="button" (click)="ask(r, false)">Rechazar</button>
-                  </span>
-                } @else { <span tuiBadge [tuiAppearance]="tone[r.status]" size="m">{{ labels[r.status] }}</span> }
-              </li>
-            }
-          </ul>
-        } @else if (!loading()) {
-          <p class="pf-empty">{{ tab() === 0 ? 'No hay solicitudes pendientes.' : 'Todavía no hay solicitudes resueltas.' }}</p>
+    @if (loading() && !all().length) {
+      <ul class="pf-todo" aria-hidden="true"><li><span class="pf-dot"></span><strong [tuiSkeleton]="true">Plan de cortesía · Cuenta</strong><span class="why" [tuiSkeleton]="true">Motivo de la solicitud y quién la pidió</span></li></ul>
+    } @else if (shown().length) {
+      <ul class="pf-todo">
+        @for (r of shown(); track r.id) {
+          <li>
+            <span class="pf-dot" [style.--tone]="dot(r)" aria-hidden="true"></span>
+            <strong>{{ kinds[r.kind] }} · <a [routerLink]="['/plataforma/cuentas', r.practice_id]" style="color:inherit">{{ r.practice_name }}</a></strong>
+            <span class="why">{{ detail(r) }}</span>
+            <span class="why">«{{ r.reason }}» · pidió {{ isMine(r) ? 'tú' : r.requested_by_email }} el {{ fdt(r.requested_at) }}</span>
+            @if (r.status !== 'pending' && r.decided_by_email) { <span class="why">{{ labels[r.status] }} por {{ r.decided_by_email }}{{ r.decided_at ? ' el ' + fdt(r.decided_at) : '' }}{{ r.decision_note ? ' · «' + r.decision_note + '»' : '' }}</span> }
+            @if (r.error) { <span class="why pf-error">No se pudo ejecutar: {{ r.error }}</span> }
+            @if (r.status === 'pending') {
+              <span class="pf-actions" style="grid-column: 3; grid-row: 1 / span 4; align-self: center">
+                @if (isMine(r)) {
+                  <span class="pf-muted" style="font-size:.8125rem">Espera a otra persona</span>
+                  <button tuiButton appearance="secondary" size="s" type="button" (click)="ask(r, false)">Retirar</button>
+                } @else {
+                  <button tuiButton appearance="primary" size="s" type="button" (click)="ask(r, true)">Aprobar</button>
+                  <button tuiButton appearance="secondary" size="s" type="button" (click)="ask(r, false)">Rechazar</button>
+                }
+              </span>
+            } @else { <span tuiBadge [tuiAppearance]="tone[r.status]" size="m" style="grid-column: 3; grid-row: 1">{{ labels[r.status] }}</span> }
+          </li>
         }
-      </tui-loader>
-    </section>
+      </ul>
+    } @else {
+      <p class="pf-empty">{{ tab() === 0 ? 'No hay solicitudes pendientes. Las cortesías, prórrogas y reembolsos que alguien pida aparecerán aquí.' : 'Todavía no hay solicitudes resueltas.' }}</p>
+    }
 
-    <ng-template [tuiDialog]="current() !== null" [tuiDialogOptions]="{ label: approve() ? 'Aprobar y ejecutar' : 'Rechazar solicitud', size: 's', dismissible: !busy() }" (tuiDialogChange)="$event || close()">
+    <ng-template [tuiDialog]="current() !== null" [tuiDialogOptions]="{ label: approve() ? 'Aprobar y ejecutar' : (current() && isMine(current()!) ? 'Retirar solicitud' : 'Rechazar solicitud'), size: 's', dismissible: !busy() }" (tuiDialogChange)="$event || close()">
       @if (current(); as r) {
         <form class="pf-form" (ngSubmit)="submit()">
-          <p class="sub"><strong>{{ kinds[r.kind] }}</strong> · {{ r.practice_name }}<br />{{ detail(r) }}</p>
-          @if (approve() && isMine(r)) { <div class="callout callout--warn" role="status"><app-icon name="alert" /><div class="callout-body"><strong>Tú pediste esto.</strong><span>Solo otra persona puede aprobarlo.</span></div></div> }
+          <p class="pf-hint"><strong>{{ kinds[r.kind] }}</strong> · {{ r.practice_name }}<br />{{ detail(r) }}</p>
+          @if (approve()) { <p class="pf-hint">Se ejecuta en el acto y queda en la bitácora de la cuenta con tu nombre.</p> }
           <tui-textfield><label tuiLabel for="a-note">Nota (opcional)</label><textarea id="a-note" tuiTextarea name="note" rows="2" [(ngModel)]="note"></textarea></tui-textfield>
           @if (formError()) { <p class="pf-error" role="alert">{{ formError() }}</p> }
           <div class="pf-actions">
-            <button tuiButton type="submit" [appearance]="approve() ? 'primary' : 'primary-destructive'" size="m" [disabled]="busy()">{{ approve() ? 'Aprobar y ejecutar' : 'Rechazar' }}</button>
+            <button tuiButton type="submit" [appearance]="approve() ? 'primary' : 'primary-destructive'" size="m" [disabled]="busy()">{{ approve() ? 'Aprobar y ejecutar' : (isMine(r) ? 'Retirar' : 'Rechazar') }}</button>
             <button tuiButton type="button" appearance="secondary" size="m" (click)="close()" [disabled]="busy()">Cancelar</button>
           </div>
         </form>
@@ -74,7 +90,6 @@ import { ACTION_LABEL, ACTION_TONE, KIND_LABEL, PLAN_LABEL, fd, fdt, nf } from '
   `,
 })
 export class PlatformApprovals {
-  protected readonly fd = fd; protected readonly fdt = fdt; protected readonly nf = nf;
   private readonly api = inject(PlatformApi);
   private readonly auth = inject(AuthService);
   protected readonly tab = signal(0);
@@ -90,22 +105,26 @@ export class PlatformApprovals {
   protected readonly kinds = KIND_LABEL;
   protected readonly labels = ACTION_LABEL;
   protected readonly tone = ACTION_TONE;
-
+  protected readonly fdt = fdt;
+  protected readonly kind = signal('');
+  protected readonly kindItems = ['Todas', ...Object.values(KIND_LABEL)];
+  protected readonly kindCode: Record<string, string> = { Todas: '', ...Object.fromEntries(Object.entries(KIND_LABEL).map(([k, v]) => [v, k])) };
+  protected readonly kindLabel = computed(() => (this.kind() ? KIND_LABEL[this.kind() as keyof typeof KIND_LABEL] : 'Todas'));
   protected readonly pendingCount = computed(() => this.all().filter((r) => r.status === 'pending').length);
-  protected readonly shown = computed(() => this.all().filter((r) => (this.tab() === 0 ? r.status === 'pending' : r.status !== 'pending')));
+  protected readonly shown = computed(() => this.all().filter((r) => (this.tab() === 0 ? r.status === 'pending' : r.status !== 'pending') && (!this.kind() || r.kind === this.kind())));
 
   constructor() { this.load(); }
 
-  private load(): void {
-    this.loading.set(true);
+  protected load(): void {
+    this.loading.set(true); this.error.set('');
     this.api.actions().subscribe({
       next: (r) => { this.all.set(r.items); this.api.setPending(r.items.filter((x) => x.status === 'pending').length); this.loading.set(false); },
       error: (e: Error) => { this.error.set(e.message); this.loading.set(false); },
     });
   }
 
-  protected setTab(i: number): void { this.tab.set(i); }
-  protected isMine(r: ActionRow): boolean { return r.requested_by_email === this.auth.user()?.email; }
+  protected dot(r: ActionRow): string { return TONE_VAR[this.tone[r.status]]; }
+  protected isMine(r: ActionRow): boolean { return !!r.requested_by_email && r.requested_by_email === this.auth.user()?.email; }
 
   protected detail(r: ActionRow): string {
     const p = r.params;
@@ -124,7 +143,7 @@ export class PlatformApprovals {
     this.api.decide(r.id, this.approve(), this.note).subscribe({
       next: (res) => {
         this.busy.set(false); this.current.set(null);
-        this.notice.set(res.status === 'failed' ? `Se aprobó, pero no se pudo ejecutar: ${res.error}` : this.approve() ? 'Solicitud aprobada y ejecutada.' : 'Solicitud rechazada.');
+        this.notice.set(res.status === 'failed' ? `Se aprobó, pero no se pudo ejecutar: ${res.error}` : this.approve() ? 'Solicitud aprobada y ejecutada.' : this.isMine(r) ? 'Solicitud retirada.' : 'Solicitud rechazada.');
         this.load();
       },
       error: (e: Error) => { this.busy.set(false); this.formError.set(e.message); },

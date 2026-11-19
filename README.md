@@ -1,6 +1,6 @@
 # Plataforma de gestión nutricional
 
-Especificación: [MVP_SPEC_v1.1.md](MVP_SPEC_v1.1.md). Estado actual: **Fase 0** (base del proyecto).
+Especificación: [MVP_SPEC_v1.1.md](MVP_SPEC_v1.1.md). Estado actual: MVP clínico completo y conectado a la API, cuentas aisladas por consulta, planes, registro, cobro (pasarela simulada) y CRM de cuentas. Pendientes en `docs/interno/`.
 
 ## Estructura
 
@@ -53,8 +53,7 @@ npm start
 | Seguimiento: registro por comida, fotos, comentarios, bandeja, cumplimiento | Listo y probado |
 | Alertas nutricionales (§14) y reportes: CSV, Excel, PDF con auditoría | Listo y probado |
 
-**Pendiente de conectar en el frontend** (en modo `api` siguen siendo datos de ejemplo que no persisten): platillos, catálogo
-SMAE, planes, seguimiento, reportes y configuración. Los documentos PDF del expediente aparecen como "próximamente".
+**Frontend:** todos los módulos de la tabla ya están conectados a la API en modo `api`. Lo que sigue pendiente (documentos PDF del expediente, cobro real con Conekta, CFDI, catálogo SMAE oficial) está en `docs/interno/`.
 
 Notas importantes:
 

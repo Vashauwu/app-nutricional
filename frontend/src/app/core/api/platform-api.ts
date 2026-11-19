@@ -18,7 +18,7 @@ export interface PaymentRow { id: string; status: 'paid' | 'failed' | 'refunded'
 export interface AuditRow { action: string; actor: string; occurred_at: string; metadata: Record<string, unknown> }
 export interface ActionRow {
   id: string; practice_id: string; practice_name?: string; kind: ActionKind; params: { plan?: PlanCode; period?: string; days?: number; payment_id?: string };
-  reason: string; status: ActionStatus; requested_by: string; requested_by_email?: string; requested_at: string; decided_at?: string; decision_note?: string; error?: string;
+  reason: string; status: ActionStatus; requested_by: string; requested_by_email?: string; requested_at: string; decided_at?: string; decided_by_email?: string; decision_note?: string; error?: string;
 }
 /** -1 = sin tope. */
 export interface Limits { active_patients: number; storage_bytes: number; tracking_photos: boolean }
@@ -31,7 +31,7 @@ export interface DayCount { day: string; total: number }
 export interface Overview {
   generated_at: string; accounts: number; suspended: number; comped: number;
   by_state: Partial<Record<SubState, number>>; by_plan: Partial<Record<PlanCode, number>>;
-  paying_accounts: number; mrr_mxn: number; trials_ending_soon: number; pending_actions: number;
+  paying_accounts: number; mrr_mxn: number; mrr_by_plan: Partial<Record<PlanCode, number>>; trials_ending_soon: number; pending_actions: number;
   signups_daily: DayCount[]; signups_30d: number; signups_prev_30d: number;
   payments_30d: { paid_count: number; paid_mxn: number; failed_count: number; returned_mxn: number };
   recent_payments: { id: string; practice_id: string; practice_name: string; status: PaymentRow['status']; amount_mxn: number; plan: PlanCode; occurred_at: string }[];
@@ -39,7 +39,14 @@ export interface Overview {
   usage: { active_patients: number; users: number; storage_bytes: number };
 }
 
-export interface AccountQuery { q?: string; plan?: string; status?: string; limit?: number; offset?: number }
+export type AccountSort = 'name' | 'plan' | 'patients' | 'created';
+export interface AccountQuery { q?: string; plan?: string; status?: string; sort?: AccountSort | ''; dir?: 'asc' | 'desc'; limit?: number; offset?: number }
+
+/** Bitácora global: solo eventos operativos (accesos, cobros y plataforma); los clínicos nunca llegan aquí. */
+export type ActivityCategory = '' | 'auth' | 'billing' | 'platform';
+export interface ActivityRow { id: string; action: string; occurred_at: string; actor: string; practice_id?: string; practice_name?: string; metadata: Record<string, unknown> }
+export interface ActivityPage { items: ActivityRow[]; total: number; limit: number; offset: number }
+export interface ActivityQuery { q?: string; category?: ActivityCategory; practice?: string; from?: string; to?: string; limit?: number; offset?: number }
 
 @Injectable({ providedIn: 'root' })
 export class PlatformApi {
@@ -49,6 +56,7 @@ export class PlatformApi {
   overview(): Observable<Overview> { return this.api.get<Overview>('/platform/overview').pipe(tap((o) => this.pending.set(o.pending_actions))); }
   accounts(q: AccountQuery): Observable<AccountsPage> { return this.api.get<AccountsPage>('/platform/accounts', { ...q }); }
   account(id: string): Observable<AccountDetail> { return this.api.get<AccountDetail>(`/platform/accounts/${id}`); }
+  activity(q: ActivityQuery): Observable<ActivityPage> { return this.api.get<ActivityPage>('/platform/activity', { ...q }); }
   actions(status = ''): Observable<{ items: ActionRow[] }> { return this.api.get<{ items: ActionRow[] }>('/platform/actions', { status }); }
   suspend(id: string, reason: string): Observable<void> { return this.api.post(`/platform/accounts/${id}/suspend`, { reason }); }
   reactivate(id: string): Observable<void> { return this.api.post(`/platform/accounts/${id}/reactivate`); }

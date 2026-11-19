@@ -109,7 +109,19 @@ type AccountsPage struct {
 
 type ListQuery struct {
 	Search, Plan, Status string
-	Limit, Offset        int
+	// Sort: name, plan, patients o created (omisión: las más recientes primero). Desc invierte el orden.
+	Sort          string
+	Desc          bool
+	Limit, Offset int
+}
+
+// sortKey acepta solo las columnas conocidas: cualquier otro valor cae al orden por omisión.
+func sortKey(k string) string {
+	switch k {
+	case "name", "plan", "patients", "created":
+		return k
+	}
+	return ""
 }
 
 func (s *Service) ListAccounts(ctx context.Context, q ListQuery) (AccountsPage, error) {
@@ -119,7 +131,7 @@ func (s *Service) ListAccounts(ctx context.Context, q ListQuery) (AccountsPage, 
 	if q.Offset < 0 {
 		q.Offset = 0
 	}
-	rows, err := s.q.PlatformListAccounts(tenant.Bypass(ctx), db.PlatformListAccountsParams{Search: escapeLike(q.Search), Plan: q.Plan, PracticeStatus: q.Status, PageLimit: int32(q.Limit), PageOffset: int32(q.Offset)})
+	rows, err := s.q.PlatformListAccounts(tenant.Bypass(ctx), db.PlatformListAccountsParams{Search: escapeLike(q.Search), Plan: q.Plan, PracticeStatus: q.Status, SortKey: sortKey(q.Sort), SortDesc: q.Desc, PageLimit: int32(q.Limit), PageOffset: int32(q.Offset)})
 	if err != nil {
 		return AccountsPage{}, err
 	}

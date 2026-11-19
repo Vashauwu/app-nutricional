@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -39,6 +40,7 @@ func (ct *Controller) Register(v1 *gin.RouterGroup) {
 	g.GET("/accounts", ct.list)
 	g.GET("/accounts/:id", ct.account)
 	g.GET("/actions", ct.actions)
+	g.GET("/activity", ct.activity)
 	w := g.Group("", auth.CSRF())
 	w.POST("/accounts/:id/suspend", ct.suspend)
 	w.POST("/accounts/:id/reactivate", ct.reactivate)
@@ -114,7 +116,7 @@ func (ct *Controller) overview(c *gin.Context) {
 func (ct *Controller) list(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.Query("limit"))
 	offset, _ := strconv.Atoi(c.Query("offset"))
-	p, err := ct.svc.ListAccounts(c.Request.Context(), ListQuery{Search: c.Query("q"), Plan: c.Query("plan"), Status: c.Query("status"), Limit: limit, Offset: offset})
+	p, err := ct.svc.ListAccounts(c.Request.Context(), ListQuery{Search: c.Query("q"), Plan: c.Query("plan"), Status: c.Query("status"), Sort: c.Query("sort"), Desc: c.Query("dir") == "desc", Limit: limit, Offset: offset})
 	if err != nil {
 		ct.fail(c, err)
 		return
@@ -142,6 +144,48 @@ func (ct *Controller) actions(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": a})
+}
+
+// activity: bitácora global. Fechas en formato AAAA-MM-DD (hora de la Ciudad de México); «hasta» incluye el día indicado.
+func (ct *Controller) activity(c *gin.Context) {
+	limit, _ := strconv.Atoi(c.Query("limit"))
+	offset, _ := strconv.Atoi(c.Query("offset"))
+	q := ActivityQuery{Search: c.Query("q"), Category: c.Query("category"), Limit: limit, Offset: offset}
+	if v := c.Query("practice"); v != "" {
+		id, err := uuid.Parse(v)
+		if err != nil {
+			shared.AbortWithError(c, http.StatusUnprocessableEntity, "invalid_request", "La consulta indicada no es válida.")
+			return
+		}
+		q.Practice = id
+	}
+	loc, err := time.LoadLocation("America/Mexico_City")
+	if err != nil {
+		loc = time.UTC
+	}
+	if v := c.Query("from"); v != "" {
+		t, err := time.ParseInLocation("2006-01-02", v, loc)
+		if err != nil {
+			shared.AbortWithError(c, http.StatusUnprocessableEntity, "invalid_request", "La fecha «desde» no es válida.")
+			return
+		}
+		q.Since = t
+	}
+	if v := c.Query("to"); v != "" {
+		t, err := time.ParseInLocation("2006-01-02", v, loc)
+		if err != nil {
+			shared.AbortWithError(c, http.StatusUnprocessableEntity, "invalid_request", "La fecha «hasta» no es válida.")
+			return
+		}
+		q.Until = t.AddDate(0, 0, 1)
+	}
+	p, err := ct.svc.Activity(c.Request.Context(), q)
+	if err != nil {
+		ct.fail(c, err)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.JSON(http.StatusOK, p)
 }
 
 type reasonReq struct {

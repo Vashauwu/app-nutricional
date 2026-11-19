@@ -253,6 +253,8 @@ type Querier interface {
 	// Operaciones de plataforma: se ejecutan con tenant.Bypass y SIEMPRE filtran por consulta de forma explícita.
 	PlatformListAccounts(ctx context.Context, arg PlatformListAccountsParams) ([]PlatformListAccountsRow, error)
 	PlatformListActions(ctx context.Context, actionStatus string) ([]PlatformListActionsRow, error)
+	// Bitácora global de la plataforma. Solo eventos operativos (las categorías las fija el servicio): nunca se mezclan datos clínicos.
+	PlatformListActivity(ctx context.Context, arg PlatformListActivityParams) ([]PlatformListActivityRow, error)
 	PlatformListAudit(ctx context.Context, practiceID uuid.NullUUID) ([]PlatformListAuditRow, error)
 	PlatformListPayments(ctx context.Context, practiceID uuid.UUID) ([]Payment, error)
 	// Resumen del panel: todas las suscripciones (el estado efectivo se resuelve en Go con plans.Resolve).

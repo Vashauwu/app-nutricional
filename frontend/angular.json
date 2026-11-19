@@ -29,7 +29,7 @@
                 "input": "public"
               },
               {
-                "glob": "{chevron-down,chevron-up,chevron-left,chevron-right,x,check,circle-x,plus,minus}.svg",
+                "glob": "{calendar,chevron-down,chevron-up,chevron-left,chevron-right,x,check,circle-x,plus,minus}.svg",
                 "input": "node_modules/@taiga-ui/icons/src",
                 "output": "assets/taiga-ui/icons"
               }
